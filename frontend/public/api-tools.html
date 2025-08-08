@@ -396,7 +396,7 @@
                 return;
             }
 
-            const result = await makeRequest(`${API_BASE_URL}/glossary/terms?project_id=${projectId}`);
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}`);
             showResponse('glossaryResponse', result);
         }
 
@@ -408,9 +408,8 @@
                 return;
             }
 
-            const result = await makeRequest(`${API_BASE_URL}/processing/analyze`, {
-                method: 'POST',
-                body: JSON.stringify({ chapter_id: parseInt(chapterId) })
+            const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${chapterId}/analyze`, {
+                method: 'POST'
             });
             showResponse('processingResponse', result);
         }
@@ -424,12 +423,8 @@
                 return;
             }
 
-            const result = await makeRequest(`${API_BASE_URL}/translation/translate`, {
-                method: 'POST',
-                body: JSON.stringify({ 
-                    chapter_id: parseInt(chapterId),
-                    use_glossary: useGlossary
-                })
+            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate`, {
+                method: 'POST'
             });
             showResponse('processingResponse', result);
         }

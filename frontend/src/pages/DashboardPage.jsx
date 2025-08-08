@@ -61,7 +61,9 @@ export default function DashboardPage() {
               📝 API Tools (Формы)
             </a>
             <a 
-              href="/docs" 
+              href={window.location.hostname === 'localhost' 
+                ? 'http://localhost:8000/docs' 
+                : window.location.origin.replace('lightnovel-frontend', 'lightnovel-backend') + '/docs'} 
               target="_blank" 
               rel="noopener noreferrer"
               style={{

@@ -27,6 +27,7 @@ class CacheService:
     def get(self, key: str) -> Optional[Any]:
         """Получить значение из кэша."""
         try:
+            self._reconnect_if_needed()
             value = self.redis_client.get(key)
             if value:
                 return json.loads(value)
@@ -35,9 +36,20 @@ class CacheService:
             print(f"Cache get error: {e}")
             return None
 
+    def _reconnect_if_needed(self):
+        """Переподключиться к Redis если соединение потеряно."""
+        try:
+            self.redis_client.ping()
+        except Exception:
+            try:
+                self.redis_client = redis.from_url(settings.REDIS_URL)
+            except Exception as e:
+                print(f"Redis reconnection failed: {e}")
+
     def set(self, key: str, value: Any, ttl: int = None) -> bool:
         """Установить значение в кэш."""
         try:
+            self._reconnect_if_needed()
             ttl = ttl or self.default_ttl
             serialized_value = json.dumps(value, default=str)
             return self.redis_client.setex(key, ttl, serialized_value)
