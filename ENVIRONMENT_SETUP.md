@@ -24,9 +24,10 @@
 
 3. **GEMINI_API_KEYS**
    - **Источник**: Google AI Studio
-   - **Формат**: `key1,key2,key3` (через запятую)
+   - **Формат**: `key1,key2,key3` (через запятую, БЕЗ пробелов)
    - **Пример**: `AIzaSyC1234567890abcdef,AIzaSyD0987654321fedcba,AIzaSyE111222333444555`
    - **Где найти**: [Google AI Studio](https://makersuite.google.com/app/apikey) → Create API Key
+   - **⚠️ Важно**: Не добавляйте пробелы между ключами, только запятые
 
 #### **Дополнительные переменные:**
 
@@ -55,6 +56,7 @@
    - **Значение**: `https://lightnovel-frontend.onrender.com`
    - **Описание**: Разрешенные CORS origins
    - **Примечание**: Замените на ваш реальный frontend URL
+   - **⚠️ Важно**: Если несколько origins, разделяйте запятыми БЕЗ пробелов
 
 ### Frontend (Static Site)
 

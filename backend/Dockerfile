@@ -30,5 +30,5 @@ USER app
 # Открываем порт
 EXPOSE 8000
 
-# Команда запуска с использованием переменной PORT
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Команда запуска с проверкой конфигурации
+CMD ["sh", "-c", "python check_config.py && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

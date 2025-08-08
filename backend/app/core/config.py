@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from typing import List
+import os
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -28,6 +29,26 @@ class Settings(BaseSettings):
         default=["http://localhost:3000", "http://localhost:5173"],
         description="Allowed CORS origins"
     )
+
+    @field_validator('GEMINI_API_KEYS', mode='before')
+    @classmethod
+    def parse_gemini_keys(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            # Разделяем по запятой и убираем пробелы
+            return [key.strip() for key in v.split(',') if key.strip()]
+        return v
+
+    @field_validator('ALLOWED_ORIGINS', mode='before')
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return ["http://localhost:3000", "http://localhost:5173"]
+            # Разделяем по запятой и убираем пробелы
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
 
     class Config:
         env_file = ".env"

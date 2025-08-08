@@ -1,9 +1,25 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
-from app.db import engine, Base
-from app.api import projects, glossary, processing, translation, batch
-from app.core.config import settings
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+try:
+    from app.db import engine, Base
+    from app.api import projects, glossary, processing, translation, batch
+    from app.core.config import settings
+    
+    logger.info("Configuration loaded successfully")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Database configured: {bool(settings.DATABASE_URL)}")
+    logger.info(f"Redis configured: {bool(settings.REDIS_URL)}")
+    logger.info(f"Gemini keys count: {len(settings.GEMINI_API_KEYS)}")
+    
+except Exception as e:
+    logger.error(f"Failed to load configuration: {e}")
+    raise
 
 # Создаем таблицы
 Base.metadata.create_all(bind=engine)
