@@ -1,13 +1,6 @@
-services:
-  # Redis сервис (единственный в Blueprint)
-  - type: redis
-    name: lightnovel-redis
-    plan: free
-    ipAllowList: [] # только внутренние соединения
-
-# ПРИМЕЧАНИЕ: Для бесплатного деплоймента рекомендуется ручное создание!
+# ПРИМЕЧАНИЕ: Для бесплатного деплоймента используем Upstash.com для Redis!
 # 
-# Этот Blueprint создает только Redis. Остальные сервисы создайте вручную:
+# Этот Blueprint НЕ создает Redis. Создайте Redis на Upstash.com:
 #
 # 1. Backend (Web Service):
 #    - New → Web Service → Python
@@ -22,10 +15,16 @@ services:
 #    - Build Command: cd frontend && npm install && npm run build
 #    - Publish Directory: frontend/dist
 #
-# 3. Настройте переменные окружения в каждом сервисе
-# 4. Используйте Neon.tech для PostgreSQL
+# 3. Redis (Upstash.com):
+#    - Создайте на upstash.com
+#    - Получите connection string
+#    - Добавьте в переменные окружения backend
 #
-# Преимущества ручного создания:
-# - Полный контроль над каждым сервисом
-# - Бесплатные планы доступны для всех сервисов
-# - Простота и гибкость настройки
+# 4. Настройте переменные окружения в каждом сервисе
+# 5. Используйте Neon.tech для PostgreSQL
+#
+# Преимущества Upstash Redis:
+# - 256MB data size (больше чем Render)
+# - 500K commands per month
+# - Более стабильный сервис
+# - Лучшая производительность
