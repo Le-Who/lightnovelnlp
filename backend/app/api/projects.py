@@ -21,7 +21,9 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)) -> Pro
     exists = db.query(Project).filter(Project.name == payload.name).first()
     if exists:
         raise HTTPException(status_code=400, detail="Project with this name already exists")
-    project = Project(name=payload.name)
+    # Учитываем жанр из payload (может прийти как Enum или как строка)
+    genre_value = getattr(payload.genre, "value", payload.genre)
+    project = Project(name=payload.name, genre=genre_value)
     db.add(project)
     db.commit()
     db.refresh(project)

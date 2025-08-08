@@ -61,7 +61,14 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                     raise Exception("Project not found")
                 
                 # Извлекаем термины с учетом жанра проекта
-                extracted_terms = term_extractor.extract_terms(chapter.original_text, project.genre)
+                from app.models.project import ProjectGenre
+                project_genre = project.genre
+                if isinstance(project_genre, str):
+                    try:
+                        project_genre = ProjectGenre(project_genre)
+                    except Exception:
+                        project_genre = ProjectGenre.OTHER
+                extracted_terms = term_extractor.extract_terms(chapter.original_text, project_genre)
                 
                 # Сохраняем термины с автоматическим утверждением
                 saved_terms = []

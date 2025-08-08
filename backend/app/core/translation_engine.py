@@ -108,7 +108,8 @@ class TranslationEngine:
             if term.status != TermStatus.APPROVED:
                 continue  # Используем только утвержденные термины
                 
-            cat = term.category.value
+            cat = getattr(term, "category", None)
+            cat = getattr(cat, "value", cat)
             if cat not in categories:
                 categories[cat] = []
             categories[cat].append(term)

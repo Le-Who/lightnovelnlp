@@ -42,8 +42,9 @@ class TermExtractor:
         # Жанр-специфичные инструкции
         genre_instructions = self._get_genre_instructions(project_genre)
         
+        genre_label = getattr(project_genre, "value", project_genre)
         return f"""
-Ты - эксперт по анализу текстов ранобэ в жанре {project_genre.value.upper()}. 
+Ты - эксперт по анализу текстов ранобэ в жанре {str(genre_label).upper()}. 
 Проанализируй следующий текст и извлеки все важные термины, которые нужно переводить консистентно.
 
 {genre_instructions}
@@ -183,7 +184,12 @@ class TermExtractor:
 """
         }
         
-        return instructions.get(genre, instructions[ProjectGenre.OTHER])
+        # genre может быть Enum или строкой
+        try:
+            key = genre if isinstance(genre, ProjectGenre) else ProjectGenre(str(genre))
+        except Exception:
+            key = ProjectGenre.OTHER
+        return instructions.get(key, instructions[ProjectGenre.OTHER])
 
     def _parse_response(self, response: str) -> List[Dict[str, Any]]:
         """Парсит JSON-ответ от Gemini API."""

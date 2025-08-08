@@ -47,8 +47,11 @@ class RelationshipAnalyzer:
         """Строит промпт для анализа связей."""
         
         # Формируем список терминов для анализа
+        def cat_label(term):
+            cat = getattr(term, "category", None)
+            return getattr(cat, "value", cat)
         terms_text = "\n".join([
-            f"- {term.source_term} ({term.category.value})"
+            f"- {term.source_term} ({cat_label(term)})"
             for term in terms
         ])
         

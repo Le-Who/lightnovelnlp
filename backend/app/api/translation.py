@@ -141,7 +141,7 @@ def preview_translation(chapter_id: int, db: Session = Depends(get_db)) -> dict:
                 {
                     "source_term": term.source_term,
                     "translated_term": term.translated_term,
-                    "category": term.category.value
+                    "category": getattr(getattr(term, "category", None), "value", getattr(term, "category", None))
                 }
                 for term in glossary_terms
             ]

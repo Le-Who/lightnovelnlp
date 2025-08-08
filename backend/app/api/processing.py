@@ -26,7 +26,15 @@ def process_chapter_sync(chapter_id: int, db: Session):
             return {"error": "Project not found", "chapter_id": chapter_id}
         
         # 1. Извлекаем термины с учетом жанра проекта
-        extracted_terms = term_extractor.extract_terms(chapter.original_text, project.genre)
+        # project.genre в БД хранится как строка; приведем к Enum при необходимости
+        from app.models.project import ProjectGenre
+        project_genre = project.genre
+        if isinstance(project_genre, str):
+            try:
+                project_genre = ProjectGenre(project_genre)
+            except Exception:
+                project_genre = ProjectGenre.OTHER
+        extracted_terms = term_extractor.extract_terms(chapter.original_text, project_genre)
         
         # Сохраняем термины в БД с автоматическим утверждением
         saved_terms = []
@@ -110,7 +118,7 @@ def process_chapter_sync(chapter_id: int, db: Session):
             "pending_terms": len(saved_terms) - auto_approved_count,
             "relationships": len(relationships),
             "summary_created": bool(chapter_summary),
-            "project_genre": project.genre.value
+            "project_genre": getattr(project_genre, "value", project_genre)
         }
         
     except Exception as e:

@@ -160,8 +160,15 @@
                 <button onclick="createProject()">Создать проект</button>
             </div>
             <div>
-                <h3>Получить проекты</h3>
+                <h3>Получить/Удалить проекты</h3>
                 <button onclick="getProjects()">Получить все проекты</button>
+                <div class="form-group" style="margin-top:10px;">
+                    <label for="deleteProjectId">Удалить проект:</label>
+                    <select id="deleteProjectId">
+                        <option value="">Выберите проект...</option>
+                    </select>
+                </div>
+                <button onclick="deleteProject()" class="danger">Удалить выбранный проект</button>
             </div>
         </div>
         <div id="projectsResponse" class="response" style="display: none;"></div>
@@ -453,6 +460,39 @@
         async function getProjects() {
             const result = await makeRequest(`${API_BASE_URL}/projects/`);
             showResponse('projectsResponse', result);
+            // Обновим выпадающие списки проектов
+            if (result.success) {
+                const projects = result.data;
+                const selects = ['chapterProjectId','getChaptersProjectId','termProjectId','getTermsProjectId','analyzeProjectId','translateProjectId','manageTermsProjectId','editTermsProjectId','deleteProjectId'];
+                selects.forEach(id => {
+                    const sel = document.getElementById(id);
+                    if (!sel) return;
+                    sel.innerHTML = '<option value="">Выберите проект...</option>';
+                    projects.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.textContent = `${p.name} (${p.genre})`;
+                        sel.appendChild(opt);
+                    });
+                });
+            }
+        }
+
+        // Удаление проекта
+        async function deleteProject() {
+            const select = document.getElementById('deleteProjectId');
+            const projectId = select.value;
+            if (!projectId) {
+                alert('Выберите проект для удаления');
+                return;
+            }
+            const confirmed = confirm('Удалить проект и все связанные данные? Это действие необратимо.');
+            if (!confirmed) return;
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}`, { method: 'DELETE' });
+            showResponse('projectsResponse', result);
+            if (result.success) {
+                loadProjects();
+            }
         }
 
                      // Главы
