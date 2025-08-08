@@ -15,7 +15,7 @@ class GlossaryTermBase(BaseModel):
 
 
 class GlossaryTermCreate(GlossaryTermBase):
-    pass
+    project_id: int
 
 
 class GlossaryTermUpdate(BaseModel):

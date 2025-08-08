@@ -76,8 +76,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                             translated_term=term_data.get("translated_term", ""),
                             category=term_data.get("category", TermCategory.OTHER),
                             status=TermStatus.PENDING,
-                            context=term_data.get("context", ""),
-                            frequency=term_data.get("frequency", 1)
+                            context=term_data.get("context", "")
                         )
                         db.add(term)
                         saved_terms.append(term)
