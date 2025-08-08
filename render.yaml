@@ -1,20 +1,72 @@
 services:
+  # Backend API (бесплатный)
+  - type: web
+    name: lightnovel-backend
+    env: python
+    plan: free
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      python init_db.py
+    startCommand: |
+      cd backend
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: lightnovel-redis
+          property: connectionString
+      - key: GEMINI_API_KEYS
+        generateValue: true
+      - key: GEMINI_API_LIMIT_PER_KEY
+        value: 1000
+      - key: GEMINI_API_LIMIT_THRESHOLD_PERCENT
+        value: 95
+      - key: GEMINI_API_COOLDOWN_HOURS
+        value: 24
+      - key: ENVIRONMENT
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: https://lightnovel-frontend.onrender.com
+
+  # Frontend (бесплатный)
+  - type: web
+    name: lightnovel-frontend
+    env: static
+    plan: free
+    buildCommand: |
+      cd frontend
+      npm install
+      npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://lightnovel-backend.onrender.com
+
   # Redis сервис (бесплатный)
   - type: redis
     name: lightnovel-redis
     plan: free
     ipAllowList: [] # только внутренние соединения
 
-# ПРИМЕЧАНИЕ: Background Worker не поддерживает бесплатный план в Render
+# ПРИМЕЧАНИЕ: Проект адаптирован для бесплатного деплоймента!
 # 
-# Для бесплатного деплоймента:
-# 1. Запустите этот Blueprint для Redis (бесплатно)
-# 2. Создайте web services (backend и frontend) вручную в Render Dashboard с plan: free
-# 3. Создайте background worker вручную в Render Dashboard (платно) или используйте альтернативы
-# 4. Используйте Neon.tech для PostgreSQL базы данных
-# 5. Настройте переменные окружения вручную
+# Изменения:
+# 1. Убран Background Worker (не поддерживает бесплатный план)
+# 2. Celery заменен на синхронную обработку через FastAPI BackgroundTasks
+# 3. Все сервисы теперь поддерживают plan: free
+# 4. Обработка задач выполняется в рамках web сервиса
 #
-# Альтернативы для background worker:
-# - Используйте платный worker в Render
-# - Используйте внешние сервисы (Upstash QStash, Cloudflare Workers)
-# - Запускайте Celery локально для разработки
+# Ограничения бесплатного плана:
+# - Web сервисы "засыпают" после 15 минут неактивности
+# - Ограниченное количество запросов в месяц
+# - Ограниченное время выполнения запросов
+#
+# Для продакшена рекомендуется:
+# - Использовать платные планы для больших нагрузок
+# - Добавить Background Worker для длительных задач
+# - Использовать внешние сервисы для очередей (Upstash QStash)
