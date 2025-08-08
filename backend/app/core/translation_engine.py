@@ -47,7 +47,22 @@ class TranslationEngine:
         project_summary: str | None = None
     ) -> str:
         """Строит промпт для перевода с учетом глоссария и контекста."""
-        
+        # Нормализуем входной текст: приводим переводы строк к \n и убираем лишние пустые
+        normalized = text.replace("\r\n", "\n")
+        lines = [ln.rstrip() for ln in normalized.split("\n")]
+        # Оставляем максимум одну пустую строку подряд
+        compact_lines = []
+        prev_empty = False
+        for ln in lines:
+            if ln == "":
+                if not prev_empty:
+                    compact_lines.append("")
+                prev_empty = True
+            else:
+                compact_lines.append(ln)
+                prev_empty = False
+        normalized_text = "\n".join(compact_lines)
+
         # Формируем глоссарий для промпта
         glossary_text = self._format_glossary_for_prompt(glossary_terms)
         
@@ -80,7 +95,7 @@ class TranslationEngine:
         
         prompt += f"""
 ТЕКСТ ДЛЯ ПЕРЕВОДА:
-{text}
+{normalized_text}
 
 ИНСТРУКЦИИ:
 1. Переведи текст на русский язык, сохраняя стиль и атмосферу

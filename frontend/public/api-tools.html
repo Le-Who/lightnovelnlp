@@ -196,14 +196,22 @@
                 <button onclick="createChapter()">Создать главу</button>
             </div>
             <div>
-                <h3>Получить главы проекта</h3>
+                <h3>Загрузить главу из файла</h3>
                 <div class="form-group">
-                    <label for="getChaptersProjectId">Проект:</label>
-                    <select id="getChaptersProjectId">
+                    <label for="uploadChapterProjectId">Проект:</label>
+                    <select id="uploadChapterProjectId">
                         <option value="">Выберите проект...</option>
                     </select>
                 </div>
-                <button onclick="getChapters()">Получить главы</button>
+                <div class="form-group">
+                    <label for="uploadChapterTitle">Название главы:</label>
+                    <input type="text" id="uploadChapterTitle" placeholder="Глава 1">
+                </div>
+                <div class="form-group">
+                    <label for="uploadChapterFile">Файл (.txt/.pdf/.rtf/.doc):</label>
+                    <input type="file" id="uploadChapterFile" accept=".txt,.pdf,.rtf,.doc">
+                </div>
+                <button onclick="uploadChapterFile()">Загрузить файл главы</button>
             </div>
         </div>
         <div id="chaptersResponse" class="response" style="display: none;"></div>
@@ -463,7 +471,7 @@
             // Обновим выпадающие списки проектов
             if (result.success) {
                 const projects = result.data;
-                const selects = ['chapterProjectId','getChaptersProjectId','termProjectId','getTermsProjectId','analyzeProjectId','translateProjectId','manageTermsProjectId','editTermsProjectId','deleteProjectId'];
+                const selects = ['chapterProjectId','getChaptersProjectId','termProjectId','getTermsProjectId','analyzeProjectId','translateProjectId','manageTermsProjectId','editTermsProjectId','deleteProjectId','uploadChapterProjectId'];
                 selects.forEach(id => {
                     const sel = document.getElementById(id);
                     if (!sel) return;
@@ -513,7 +521,7 @@
                  showResponse('chaptersResponse', result);
              }
 
-                     async function getChapters() {
+        async function getChapters() {
                  const projectId = document.getElementById('getChaptersProjectId').value;
                  if (!projectId) {
                      alert('Выберите проект');
@@ -523,6 +531,25 @@
                  const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
                  showResponse('chaptersResponse', result);
              }
+
+        async function uploadChapterFile() {
+            const projectId = document.getElementById('uploadChapterProjectId').value;
+            const title = document.getElementById('uploadChapterTitle').value;
+            const fileInput = document.getElementById('uploadChapterFile');
+            if (!projectId || !title || !fileInput.files.length) {
+                alert('Выберите проект, введите название и выберите файл');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('file', fileInput.files[0]);
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters/upload`, {
+                method: 'POST',
+                body: formData,
+                headers: {} // fetch сам выставит boundary
+            });
+            showResponse('chaptersResponse', result);
+        }
 
                      // Глоссарий
              async function createTerm() {

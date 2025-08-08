@@ -6,6 +6,13 @@ from sqlalchemy.orm import Session
 from app.deps import get_db
 from app.models.project import Project, Chapter
 from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead
+from fastapi import File, UploadFile, Form
+import io
+try:
+    import PyPDF2
+except Exception:
+    PyPDF2 = None
+
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
 
 router = APIRouter()
@@ -43,6 +50,19 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Явно удаляем зависимые сущности, чтобы избежать обращения к отсутствующим колонкам
+    from app.models.glossary import GlossaryTerm, TermRelationship, GlossaryVersion, BatchJob, BatchJobItem
+    from app.models.project import Chapter
+
+    db.query(TermRelationship).filter(TermRelationship.project_id == project_id).delete(synchronize_session=False)
+    db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).delete(synchronize_session=False)
+    db.query(GlossaryVersion).filter(GlossaryVersion.project_id == project_id).delete(synchronize_session=False)
+    db.query(BatchJobItem).filter(BatchJobItem.project_id == project_id).delete(synchronize_session=False)
+    db.query(BatchJob).filter(BatchJob.project_id == project_id).delete(synchronize_session=False)
+    db.query(Chapter).filter(Chapter.project_id == project_id).delete(synchronize_session=False)
+
+    # Теперь удаляем сам проект
     db.delete(project)
     db.commit()
 
@@ -57,8 +77,8 @@ def list_chapters(project_id: int, db: Session = Depends(get_db)) -> List[Chapte
 
 @router.post("/{project_id}/chapters", response_model=ChapterRead, status_code=status.HTTP_201_CREATED)
 def create_chapter(
-    project_id: int, 
-    payload: ChapterCreate, 
+    project_id: int,
+    payload: ChapterCreate,
     db: Session = Depends(get_db)
 ) -> Chapter:
     """Создать новую главу в проекте."""
@@ -73,6 +93,55 @@ def create_chapter(
         original_text=payload.original_text
     )
     
+    db.add(chapter)
+    db.commit()
+    db.refresh(chapter)
+    return chapter
+
+
+@router.post("/{project_id}/chapters/upload", response_model=ChapterRead, status_code=status.HTTP_201_CREATED)
+def create_chapter_from_file(
+    project_id: int,
+    title: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+) -> Chapter:
+    """Создать главу из файла (txt, pdf, rtf, doc - простая поддержка)."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    content_bytes = file.file.read()
+    text = ""
+    filename = (file.filename or "").lower()
+    if filename.endswith(".txt"):
+        text = content_bytes.decode(errors="ignore")
+    elif filename.endswith(".pdf") and PyPDF2 is not None:
+        try:
+            reader = PyPDF2.PdfReader(io.BytesIO(content_bytes))
+            pages = [page.extract_text() or "" for page in reader.pages]
+            text = "\n".join(pages)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Failed to parse PDF")
+    elif filename.endswith(".rtf"):
+        # Простейшее извлечение: удалим RTF теги
+        raw = content_bytes.decode(errors="ignore")
+        import re
+        text = re.sub(r"\\[a-zA-Z]+[0-9]* ?|[{}]", "", raw)
+    elif filename.endswith(".doc"):
+        # .doc без внешних зависимостей корректно не парсится; попытаемся как текст
+        text = content_bytes.decode(errors="ignore")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use txt/pdf/rtf/doc")
+
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="File has no extractable text")
+
+    chapter = Chapter(
+        project_id=project_id,
+        title=title,
+        original_text=text
+    )
     db.add(chapter)
     db.commit()
     db.refresh(chapter)

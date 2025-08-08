@@ -98,9 +98,13 @@ def process_chapter_sync(chapter_id: int, db: Session):
                     )
                     db.add(relationship)
         
-        # 3. Создаем саммари главы
+        # 3. Создаем саммари главы (с нормализацией исходного текста)
+        normalized_text = chapter.original_text.replace('\r\n', '\n')
+        # Удалим избыточные пустые строки
+        lines = [ln.strip() for ln in normalized_text.split('\n')]
+        compact_text = "\n".join([ln for ln in lines if ln != ""])  # убираем пустые строки
         chapter_summary = context_summarizer.summarize_context(
-            chapter.original_text,
+            compact_text,
             chapter.title
         )
         
