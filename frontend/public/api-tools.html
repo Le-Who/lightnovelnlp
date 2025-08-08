@@ -271,10 +271,10 @@
     </div>
 
     <script>
-        // Определяем базовый URL API
-        const API_BASE_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:8000' 
-            : window.location.origin.replace('lightnovel-frontend', 'lightnovel-backend');
+                     // Определяем базовый URL API
+             const API_BASE_URL = window.location.hostname === 'localhost' 
+                 ? 'http://localhost:8000' 
+                 : 'https://lightnovel-backend.onrender.com';
 
         document.getElementById('currentUrl').textContent = API_BASE_URL;
 
@@ -334,60 +334,78 @@
             showResponse('projectsResponse', result);
         }
 
-        // Главы
-        async function createChapter() {
-            const projectId = document.getElementById('chapterProjectId').value;
-            const title = document.getElementById('chapterTitle').value;
-            const text = document.getElementById('chapterText').value;
+                     // Главы
+             async function createChapter() {
+                 const projectId = document.getElementById('chapterProjectId').value;
+                 const title = document.getElementById('chapterTitle').value;
+                 const text = document.getElementById('chapterText').value;
+     
+                 if (!projectId || !title || !text) {
+                     alert('Заполните все поля');
+                     return;
+                 }
+     
+                 const parsedProjectId = parseInt(projectId);
+                 if (isNaN(parsedProjectId)) {
+                     alert('ID проекта должен быть числом');
+                     return;
+                 }
+     
+                 const result = await makeRequest(`${API_BASE_URL}/projects/${parsedProjectId}/chapters`, {
+                     method: 'POST',
+                     body: JSON.stringify({ title, original_text: text })
+                 });
+                 showResponse('chaptersResponse', result);
+             }
 
-            if (!projectId || !title || !text) {
-                alert('Заполните все поля');
-                return;
-            }
+                     async function getChapters() {
+                 const projectId = document.getElementById('getChaptersProjectId').value;
+                 if (!projectId) {
+                     alert('Введите ID проекта');
+                     return;
+                 }
+     
+                 const parsedProjectId = parseInt(projectId);
+                 if (isNaN(parsedProjectId)) {
+                     alert('ID проекта должен быть числом');
+                     return;
+                 }
+     
+                 const result = await makeRequest(`${API_BASE_URL}/projects/${parsedProjectId}/chapters`);
+                 showResponse('chaptersResponse', result);
+             }
 
-            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`, {
-                method: 'POST',
-                body: JSON.stringify({ title, original_text: text })
-            });
-            showResponse('chaptersResponse', result);
-        }
-
-        async function getChapters() {
-            const projectId = document.getElementById('getChaptersProjectId').value;
-            if (!projectId) {
-                alert('Введите ID проекта');
-                return;
-            }
-
-            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
-            showResponse('chaptersResponse', result);
-        }
-
-        // Глоссарий
-        async function createTerm() {
-            const projectId = document.getElementById('termProjectId').value;
-            const sourceTerm = document.getElementById('sourceTerm').value;
-            const translatedTerm = document.getElementById('translatedTerm').value;
-            const category = document.getElementById('termCategory').value;
-            const context = document.getElementById('termContext').value;
-
-            if (!projectId || !sourceTerm || !translatedTerm) {
-                alert('Заполните обязательные поля');
-                return;
-            }
-
-            const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    project_id: parseInt(projectId),
-                    source_term: sourceTerm,
-                    translated_term: translatedTerm,
-                    category,
-                    context
-                })
-            });
-            showResponse('glossaryResponse', result);
-        }
+                     // Глоссарий
+             async function createTerm() {
+                 const projectId = document.getElementById('termProjectId').value;
+                 const sourceTerm = document.getElementById('sourceTerm').value;
+                 const translatedTerm = document.getElementById('translatedTerm').value;
+                 const category = document.getElementById('termCategory').value;
+                 const context = document.getElementById('termContext').value;
+     
+                 if (!projectId || !sourceTerm || !translatedTerm) {
+                     alert('Заполните обязательные поля');
+                     return;
+                 }
+     
+                 const parsedProjectId = parseInt(projectId);
+                 if (isNaN(parsedProjectId)) {
+                     alert('ID проекта должен быть числом');
+                     return;
+                 }
+     
+                 const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
+                     method: 'POST',
+                     body: JSON.stringify({
+                         project_id: parsedProjectId,
+                         source_term: sourceTerm,
+                         translated_term: translatedTerm,
+                         category,
+                         context
+                     })
+                 });
+                 showResponse('glossaryResponse', result);
+             }
 
         async function getTerms() {
             const projectId = document.getElementById('getTermsProjectId').value;
@@ -395,8 +413,14 @@
                 alert('Введите ID проекта');
                 return;
             }
+            
+            const parsedProjectId = parseInt(projectId);
+            if (isNaN(parsedProjectId)) {
+                alert('ID проекта должен быть числом');
+                return;
+            }
 
-            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}`);
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${parsedProjectId}`);
             showResponse('glossaryResponse', result);
         }
 
@@ -407,8 +431,14 @@
                 alert('Введите ID главы');
                 return;
             }
+            
+            const parsedChapterId = parseInt(chapterId);
+            if (isNaN(parsedChapterId)) {
+                alert('ID главы должен быть числом');
+                return;
+            }
 
-            const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${chapterId}/analyze`, {
+            const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${parsedChapterId}/analyze`, {
                 method: 'POST'
             });
             showResponse('processingResponse', result);
@@ -422,8 +452,14 @@
                 alert('Введите ID главы');
                 return;
             }
+            
+            const parsedChapterId = parseInt(chapterId);
+            if (isNaN(parsedChapterId)) {
+                alert('ID главы должен быть числом');
+                return;
+            }
 
-            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate`, {
+            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${parsedChapterId}/translate`, {
                 method: 'POST'
             });
             showResponse('processingResponse', result);

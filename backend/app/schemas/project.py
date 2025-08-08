@@ -25,7 +25,7 @@ class ChapterBase(BaseModel):
 
 
 class ChapterCreate(ChapterBase):
-    project_id: int
+    pass
 
 
 class ChapterRead(ChapterBase):

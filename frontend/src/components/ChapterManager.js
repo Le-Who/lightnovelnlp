@@ -32,10 +32,7 @@ export default function ChapterManager({ projectId }) {
     if (!newChapter.title.trim() || !newChapter.original_text.trim()) return
 
     try {
-      await api.post(`/projects/${projectId}/chapters`, {
-        ...newChapter,
-        project_id: projectId
-      })
+      await api.post(`/projects/${projectId}/chapters`, newChapter)
       setNewChapter({ title: '', original_text: '' })
       loadChapters()
     } catch (e) {
