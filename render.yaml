@@ -1,9 +1,8 @@
 services:
-  # Backend API (бесплатный)
+  # Backend API
   - type: web
     name: lightnovel-backend
     env: python
-    plan: free
     buildCommand: |
       cd backend
       pip install -r requirements.txt
@@ -33,11 +32,10 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://lightnovel-frontend.onrender.com
 
-  # Frontend (бесплатный)
+  # Frontend
   - type: web
     name: lightnovel-frontend
     env: static
-    plan: free
     buildCommand: |
       cd frontend
       npm install
@@ -53,20 +51,15 @@ services:
     plan: free
     ipAllowList: [] # только внутренние соединения
 
-# ПРИМЕЧАНИЕ: Проект адаптирован для бесплатного деплоймента!
+# ПРИМЕЧАНИЕ: Web сервисы не поддерживают plan: free в Blueprint!
 # 
-# Изменения:
-# 1. Убран Background Worker (не поддерживает бесплатный план)
-# 2. Celery заменен на синхронную обработку через FastAPI BackgroundTasks
-# 3. Все сервисы теперь поддерживают plan: free
-# 4. Обработка задач выполняется в рамках web сервиса
+# Для бесплатного деплоймента:
+# 1. Запустите этот Blueprint для Redis (бесплатно)
+# 2. Создайте backend и frontend вручную в Render Dashboard с plan: free
+# 3. Используйте Neon.tech для PostgreSQL базы данных
+# 4. Настройте переменные окружения вручную
 #
-# Ограничения бесплатного плана:
-# - Web сервисы "засыпают" после 15 минут неактивности
-# - Ограниченное количество запросов в месяц
-# - Ограниченное время выполнения запросов
-#
-# Для продакшена рекомендуется:
-# - Использовать платные планы для больших нагрузок
-# - Добавить Background Worker для длительных задач
-# - Использовать внешние сервисы для очередей (Upstash QStash)
+# Инструкции по ручному созданию:
+# - Backend: New > Web Service > Python > Free
+# - Frontend: New > Static Site > Free
+# - Настройте переменные окружения в каждом сервисе
