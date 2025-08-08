@@ -37,13 +37,12 @@ def get_project(project_id: int, db: Session = Depends(get_db)) -> Project:
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, db: Session = Depends(get_db)) -> None:
+def delete_project(project_id: int, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     db.delete(project)
     db.commit()
-    return None
 
 
 # Главы
@@ -88,7 +87,7 @@ def get_chapter(chapter_id: int, db: Session = Depends(get_db)) -> Chapter:
 
 
 @router.delete("/chapters/{chapter_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_chapter(chapter_id: int, db: Session = Depends(get_db)) -> None:
+def delete_chapter(chapter_id: int, db: Session = Depends(get_db)):
     """Удалить главу."""
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
@@ -96,7 +95,6 @@ def delete_chapter(chapter_id: int, db: Session = Depends(get_db)) -> None:
     
     db.delete(chapter)
     db.commit()
-    return None
 
 
 # API для создания общего саммари проекта

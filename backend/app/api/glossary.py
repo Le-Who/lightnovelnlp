@@ -56,7 +56,7 @@ def update_glossary_term(term_id: int, term: GlossaryTermUpdate, db: Session = D
 
 
 @router.delete("/terms/{term_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_glossary_term(term_id: int, db: Session = Depends(get_db)) -> None:
+def delete_glossary_term(term_id: int, db: Session = Depends(get_db)):
     """Удалить термин из глоссария."""
     db_term = db.get(GlossaryTerm, term_id)
     if not db_term:
