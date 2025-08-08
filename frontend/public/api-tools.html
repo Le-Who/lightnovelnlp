@@ -428,12 +428,15 @@
         // Общие функции
         async function makeRequest(url, options = {}) {
             try {
+                const isFormData = options && options.body instanceof FormData;
+                const headers = {
+                    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+                    ...(options.headers || {})
+                };
+
                 const response = await fetch(url, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    },
-                    ...options
+                    ...options,
+                    headers
                 });
                 
                 if (!response.ok) {
@@ -441,8 +444,14 @@
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
                 
-                const data = await response.json();
-                return { success: true, data, status: response.status };
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    return { success: true, data, status: response.status };
+                } else {
+                    const text = await response.text();
+                    return { success: true, data: { raw: text }, status: response.status };
+                }
             } catch (error) {
                 return { success: false, data: { error: error.message }, status: 0 };
             }
@@ -462,6 +471,47 @@
                 <div class="loading-spinner"></div>
             </div>`;
             element.style.display = 'block';
+        }
+
+        // Прогресс-бар
+        function startProgress(elementId, message = 'Выполняется...') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'response';
+            element.innerHTML = `
+                <div style="margin-bottom:8px;font-weight:bold;">${message}</div>
+                <div style="background:#eee;border-radius:6px;overflow:hidden;height:14px;">
+                    <div id="${elementId}-bar" style="width:0%;height:100%;background:#3498db;transition:width 0.2s ease"></div>
+                </div>
+                <div id="${elementId}-percent" style="font-family:monospace;margin-top:6px;color:#555;">0%</div>
+            `;
+            let width = 0;
+            const bar = document.getElementById(`${elementId}-bar`);
+            const label = document.getElementById(`${elementId}-percent`);
+            element._progressTimer = setInterval(() => {
+                // Медленно растем до 90%, финализацию делаем в finishProgress
+                if (width < 90) {
+                    width += Math.max(0.5, (90 - width) * 0.03);
+                    bar.style.width = `${width.toFixed(1)}%`;
+                    label.textContent = `${Math.floor(width)}%`;
+                }
+            }, 200);
+        }
+
+        function finishProgress(elementId, result) {
+            const element = document.getElementById(elementId);
+            if (element._progressTimer) {
+                clearInterval(element._progressTimer);
+                element._progressTimer = null;
+            }
+            const bar = document.getElementById(`${elementId}-bar`);
+            const label = document.getElementById(`${elementId}-percent`);
+            if (bar && label) {
+                bar.style.width = '100%';
+                label.textContent = '100%';
+            }
+            // Небольшая задержка, чтобы пользователь увидел 100%
+            setTimeout(() => showResponse(elementId, result), 300);
         }
 
         // CSS для анимации загрузки
@@ -604,13 +654,12 @@
             const formData = new FormData();
             formData.append('title', title);
             formData.append('file', fileInput.files[0]);
-            showLoading('chaptersResponse', 'Загружаем файл главы...');
+            startProgress('chaptersResponse', 'Загружаем файл главы...');
             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters/upload`, {
                 method: 'POST',
-                body: formData,
-                headers: {} // fetch сам выставит boundary
+                body: formData
             });
-            showResponse('chaptersResponse', result);
+            finishProgress('chaptersResponse', result);
         }
 
                      // Глоссарий
@@ -940,17 +989,18 @@
          }
 
          // Обновляем функции анализа и перевода
-         async function analyzeChapter() {
+        async function analyzeChapter() {
              const chapterId = document.getElementById('analyzeChapterId').value;
              if (!chapterId) {
                  alert('Выберите главу для анализа');
                  return;
              }
 
-             const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${chapterId}/analyze`, {
+            startProgress('processingResponse', 'Анализируем главу...');
+            const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${chapterId}/analyze`, {
                  method: 'POST'
              });
-             showResponse('processingResponse', result);
+            finishProgress('processingResponse', result);
              
              // Перезагружаем список глав после анализа
              if (result.success) {
@@ -958,7 +1008,7 @@
              }
          }
 
-         async function translateChapter() {
+        async function translateChapter() {
              const chapterId = document.getElementById('translateChapterId').value;
              const useGlossary = document.getElementById('useGlossary').checked;
 
@@ -967,10 +1017,11 @@
                  return;
              }
 
-             const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate`, {
+            startProgress('processingResponse', 'Переводим главу...');
+            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate`, {
                  method: 'POST'
              });
-             showResponse('processingResponse', result);
+            finishProgress('processingResponse', result);
              
              // Перезагружаем список глав после перевода
              if (result.success) {

@@ -181,12 +181,28 @@ def download_chapter(
 {chapter.original_text}
 """
     
-    # Возвращаем файл для скачивания
+    # Подготавливаем безопасные заголовки для скачивания (RFC 5987)
+    # Основной filename должен быть ASCII-совместимым, а полный UTF-8 — через filename*
+    try:
+        from urllib.parse import quote
+    except Exception:
+        quote = None
+
+    safe_filename = f"chapter_{chapter_id}.txt"
+    full_filename = f"chapter_{chapter_id}_{project.name}_{chapter.title}.txt"
+    if quote is not None:
+        encoded_full = "UTF-8''" + quote(full_filename, safe='')
+    else:
+        # Fallback: заменяем не-ASCII символы на '_'
+        encoded_full = "UTF-8''" + ''.join(ch if ord(ch) < 128 else '_' for ch in full_filename)
+
+    content_disposition = f"attachment; filename=\"{safe_filename}\"; filename*={encoded_full}"
+
     return Response(
         content=content,
         media_type="text/plain; charset=utf-8",
         headers={
-            "Content-Disposition": f"attachment; filename=chapter_{chapter_id}_{project.name}_{chapter.title}.txt"
+            "Content-Disposition": content_disposition
         }
     )
 
