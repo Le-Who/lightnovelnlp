@@ -30,9 +30,31 @@ def get_glossary_terms(project_id: int, db: Session = Depends(get_db)) -> List[G
     return terms
 
 
+@router.get("/terms/{project_id}/pending", response_model=List[GlossaryTermRead])
+def get_pending_glossary_terms(project_id: int, db: Session = Depends(get_db)) -> List[GlossaryTerm]:
+    """Получить термины глоссария в ожидании утверждения для проекта."""
+    terms = db.query(GlossaryTerm).filter(
+        GlossaryTerm.project_id == project_id,
+        GlossaryTerm.status == TermStatus.PENDING
+    ).all()
+    return terms
+
+
 @router.post("/terms", response_model=GlossaryTermRead, status_code=status.HTTP_201_CREATED)
 def create_glossary_term(term: GlossaryTermCreate, db: Session = Depends(get_db)) -> GlossaryTerm:
     """Создать новый термин в глоссарии."""
+    # Проверяем, не существует ли уже такой термин в проекте
+    existing_term = db.query(GlossaryTerm).filter(
+        GlossaryTerm.project_id == term.project_id,
+        GlossaryTerm.source_term == term.source_term
+    ).first()
+    
+    if existing_term:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Term '{term.source_term}' already exists in this project"
+        )
+    
     db_term = GlossaryTerm(**term.dict())
     db.add(db_term)
     db.commit()
@@ -74,6 +96,20 @@ def approve_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossa
         raise HTTPException(status_code=404, detail="Term not found")
     
     db_term.status = TermStatus.APPROVED
+    db_term.approved_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_term)
+    return db_term
+
+
+@router.post("/terms/{term_id}/reject", response_model=GlossaryTermRead)
+def reject_glossary_term(term_id: int, db: Session = Depends(get_db)) -> GlossaryTerm:
+    """Отклонить термин в глоссарии."""
+    db_term = db.get(GlossaryTerm, term_id)
+    if not db_term:
+        raise HTTPException(status_code=404, detail="Term not found")
+    
+    db_term.status = TermStatus.REJECTED
     db_term.approved_at = datetime.utcnow()
     db.commit()
     db.refresh(db_term)

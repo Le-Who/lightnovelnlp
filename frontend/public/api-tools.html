@@ -229,6 +229,36 @@
         <div id="glossaryResponse" class="response" style="display: none;"></div>
     </div>
 
+    <div class="container">
+        <h2>✅ Управление терминами</h2>
+        <div class="grid">
+            <div>
+                <h3>Утвердить/Отклонить термины</h3>
+                <div class="form-group">
+                    <label for="manageTermsProjectId">Проект:</label>
+                    <select id="manageTermsProjectId" onchange="loadTermsForManagement()">
+                        <option value="">Выберите проект...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="manageTermsList">Термины (pending):</label>
+                    <select id="manageTermsList" disabled>
+                        <option value="">Сначала выберите проект...</option>
+                    </select>
+                </div>
+                <button onclick="approveTerm()" id="approveBtn" disabled>✅ Утвердить</button>
+                <button onclick="rejectTerm()" id="rejectBtn" disabled>❌ Отклонить</button>
+            </div>
+            <div>
+                <h3>Статус терминов</h3>
+                <div id="termsStatus" style="margin-top: 20px;">
+                    <p>Выберите проект для просмотра статистики терминов</p>
+                </div>
+            </div>
+        </div>
+        <div id="termManagementResponse" class="response" style="display: none;"></div>
+    </div>
+
          <div class="container">
          <h2>🔍 Обработка и перевод</h2>
          <div class="grid">
@@ -440,6 +470,74 @@
             showResponse('glossaryResponse', result);
         }
 
+        // Управление терминами
+        async function loadTermsForManagement() {
+            const projectId = document.getElementById('manageTermsProjectId').value;
+            const termsList = document.getElementById('manageTermsList');
+            const approveBtn = document.getElementById('approveBtn');
+            const rejectBtn = document.getElementById('rejectBtn');
+            const termsStatus = document.getElementById('termsStatus');
+
+            if (!projectId) {
+                termsList.innerHTML = '<option value="">Сначала выберите проект...</option>';
+                termsList.disabled = true;
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                termsStatus.innerHTML = '<p>Выберите проект для просмотра терминов</p>';
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}/pending`);
+            if (result.success) {
+                const terms = result.data;
+                termsList.innerHTML = '<option value="">Выберите термин для управления...</option>';
+                terms.forEach(term => {
+                    const option = document.createElement('option');
+                    option.value = term.id;
+                    option.textContent = `${term.source_term} -> ${term.translated_term} (ID: ${term.id})`;
+                    termsList.appendChild(option);
+                });
+                termsList.disabled = false;
+                approveBtn.disabled = false;
+                rejectBtn.disabled = false;
+                termsStatus.innerHTML = `<p>Найдено <strong>${terms.length}</strong> терминов в ожидании утверждения.</p>`;
+            } else {
+                termsList.innerHTML = '<option value="">Нет терминов в ожидании утверждения.</option>';
+                termsList.disabled = true;
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                termsStatus.innerHTML = '<p>Нет терминов в ожидании утверждения.</p>';
+            }
+        }
+
+        async function approveTerm() {
+            const termId = document.getElementById('manageTermsList').value;
+            if (!termId) {
+                alert('Выберите термин для утверждения');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${termId}/approve`, {
+                method: 'POST'
+            });
+            showResponse('termManagementResponse', result);
+            loadTermsForManagement(); // Обновляем список после утверждения
+        }
+
+        async function rejectTerm() {
+            const termId = document.getElementById('manageTermsList').value;
+            if (!termId) {
+                alert('Выберите термин для отклонения');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${termId}/reject`, {
+                method: 'POST'
+            });
+            showResponse('termManagementResponse', result);
+            loadTermsForManagement(); // Обновляем список после отклонения
+        }
+
         // Обработка
         async function analyzeChapter() {
             const chapterId = document.getElementById('analyzeChapterId').value;
@@ -499,7 +597,7 @@
                  const projects = result.data;
                  
                  // Заполняем все селекты проектов
-                 const projectSelects = ['analyzeProjectId', 'translateProjectId'];
+                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId'];
                  projectSelects.forEach(selectId => {
                      const select = document.getElementById(selectId);
                      select.innerHTML = '<option value="">Выберите проект...</option>';

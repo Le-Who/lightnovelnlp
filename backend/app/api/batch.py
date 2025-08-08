@@ -85,24 +85,36 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 if len(saved_terms) > 1:
                     relationships = relationship_analyzer.analyze_relationships(
                         chapter.original_text,
-                        [term.source_term for term in saved_terms]
+                        saved_terms  # Pass GlossaryTerm objects, not strings
                     )
                     
                     for rel_data in relationships:
-                        relationship = TermRelationship(
-                            project_id=chapter.project_id,
-                            source_term=rel_data["source_term"],
-                            target_term=rel_data["target_term"],
-                            relationship_type=rel_data["relationship_type"],
-                            confidence=rel_data.get("confidence", 0.5),
-                            context=rel_data.get("context", "")
-                        )
-                        db.add(relationship)
+                        # Find the source and target terms by their source_term strings
+                        source_term_obj = db.query(GlossaryTerm).filter(
+                            GlossaryTerm.project_id == chapter.project_id,
+                            GlossaryTerm.source_term == rel_data["source_term"]
+                        ).first()
+                        
+                        target_term_obj = db.query(GlossaryTerm).filter(
+                            GlossaryTerm.project_id == chapter.project_id,
+                            GlossaryTerm.source_term == rel_data["target_term"]
+                        ).first()
+                        
+                        if source_term_obj and target_term_obj:
+                            relationship = TermRelationship(
+                                project_id=chapter.project_id,
+                                source_term_id=source_term_obj.id,
+                                target_term_id=target_term_obj.id,
+                                relation_type=rel_data["relationship_type"],
+                                confidence=rel_data.get("confidence", 0.5),
+                                context=rel_data.get("context", "")
+                            )
+                            db.add(relationship)
                 
                 # Создаем саммари
-                chapter_summary = context_summarizer.summarize_chapter(
+                chapter_summary = context_summarizer.summarize_context(
                     chapter.original_text,
-                    [term.source_term for term in saved_terms]
+                    chapter.title
                 )
                 
                 # Обновляем главу

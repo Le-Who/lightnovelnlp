@@ -13,6 +13,7 @@ from . import Base
 class TermStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
+    REJECTED = "rejected"
 
 
 class TermCategory(str, Enum):
@@ -34,6 +35,7 @@ class GlossaryTerm(Base):
     status = Column(String(20), default=TermStatus.PENDING)
     context = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    approved_at = Column(DateTime, nullable=True)  # When the term was approved/rejected
     
     # Связи
     project = relationship("Project", back_populates="glossary_terms")

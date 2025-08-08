@@ -1,113 +1,205 @@
 #!/usr/bin/env python3
 """
-Тестовый скрипт для проверки всех исправлений API
+Тестовый скрипт для проверки всех исправлений в API
 """
 
 import requests
 import json
-import sys
+import time
 
 # Конфигурация
 API_BASE_URL = "https://lightnovel-backend.onrender.com"
 
-def test_endpoint(method, endpoint, data=None, expected_status=200):
-    """Тестирует API endpoint"""
-    url = f"{API_BASE_URL}{endpoint}"
-    
+def make_request(url, method="GET", data=None):
+    """Выполнить HTTP запрос"""
     try:
-        if method.upper() == "GET":
+        if method == "GET":
             response = requests.get(url)
-        elif method.upper() == "POST":
+        elif method == "POST":
             response = requests.post(url, json=data)
-        elif method.upper() == "PUT":
+        elif method == "PUT":
             response = requests.put(url, json=data)
-        elif method.upper() == "DELETE":
+        elif method == "DELETE":
             response = requests.delete(url)
-        else:
-            print(f"❌ Неподдерживаемый метод: {method}")
-            return False
         
-        print(f"{'✅' if response.status_code == expected_status else '❌'} {method} {endpoint}")
-        print(f"   Status: {response.status_code}")
-        
-        if response.status_code != expected_status:
-            print(f"   Error: {response.text}")
-        
-        return response.status_code == expected_status
-        
+        return {
+            "success": response.status_code < 400,
+            "status_code": response.status_code,
+            "data": response.json() if response.content else None,
+            "error": None
+        }
     except Exception as e:
-        print(f"❌ {method} {endpoint} - Exception: {e}")
-        return False
+        return {
+            "success": False,
+            "status_code": None,
+            "data": None,
+            "error": str(e)
+        }
+
+def test_health_check():
+    """Тест проверки здоровья API"""
+    print("🔍 Тест 1: Проверка здоровья API")
+    result = make_request(f"{API_BASE_URL}/health")
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Ответ: {result['data']}")
+    print()
+
+def test_project_creation():
+    """Тест создания проекта"""
+    print("🔍 Тест 2: Создание проекта")
+    project_data = {
+        "name": f"Тестовый проект {int(time.time())}"
+    }
+    result = make_request(f"{API_BASE_URL}/projects", method="POST", data=project_data)
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Создан проект: {result['data']}")
+        return result['data']['id']
+    print()
+    return None
+
+def test_chapter_creation(project_id):
+    """Тест создания главы"""
+    print("🔍 Тест 3: Создание главы")
+    chapter_data = {
+        "title": "Тестовая глава",
+        "original_text": "これはテスト用のテキストです。主人公は勇者です。"
+    }
+    result = make_request(f"{API_BASE_URL}/projects/{project_id}/chapters", method="POST", data=chapter_data)
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Создана глава: {result['data']}")
+        return result['data']['id']
+    print()
+    return None
+
+def test_term_creation(project_id):
+    """Тест создания термина"""
+    print("🔍 Тест 4: Создание термина")
+    term_data = {
+        "project_id": project_id,
+        "source_term": "主人公",
+        "translated_term": "Главный герой",
+        "category": "character",
+        "context": "Тестовый контекст"
+    }
+    result = make_request(f"{API_BASE_URL}/glossary/terms", method="POST", data=term_data)
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Создан термин: {result['data']}")
+        return result['data']['id']
+    print()
+    return None
+
+def test_duplicate_term_creation(project_id):
+    """Тест создания дубликата термина"""
+    print("🔍 Тест 5: Попытка создания дубликата термина")
+    term_data = {
+        "project_id": project_id,
+        "source_term": "主人公",  # Тот же термин
+        "translated_term": "Другой перевод",
+        "category": "character",
+        "context": "Другой контекст"
+    }
+    result = make_request(f"{API_BASE_URL}/glossary/terms", method="POST", data=term_data)
+    print(f"   Статус: {'✅' if not result['success'] else '❌'} (должен быть неуспешным)")
+    print(f"   Код ответа: {result['status_code']} (должен быть 400)")
+    if result['data']:
+        print(f"   Ошибка: {result['data']}")
+    print()
+
+def test_term_approval(term_id):
+    """Тест утверждения термина"""
+    print("🔍 Тест 6: Утверждение термина")
+    result = make_request(f"{API_BASE_URL}/glossary/terms/{term_id}/approve", method="POST")
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Термин утвержден: {result['data']}")
+    print()
+
+def test_term_rejection(term_id):
+    """Тест отклонения термина"""
+    print("🔍 Тест 7: Отклонение термина")
+    result = make_request(f"{API_BASE_URL}/glossary/terms/{term_id}/reject", method="POST")
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Термин отклонен: {result['data']}")
+    print()
+
+def test_chapter_analysis(chapter_id):
+    """Тест анализа главы"""
+    print("🔍 Тест 8: Анализ главы")
+    result = make_request(f"{API_BASE_URL}/processing/chapters/{chapter_id}/analyze", method="POST")
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Результат анализа: {result['data']}")
+    print()
+
+def test_get_pending_terms(project_id):
+    """Тест получения терминов в ожидании"""
+    print("🔍 Тест 9: Получение терминов в ожидании")
+    result = make_request(f"{API_BASE_URL}/glossary/terms/{project_id}/pending")
+    print(f"   Статус: {'✅' if result['success'] else '❌'}")
+    print(f"   Код ответа: {result['status_code']}")
+    if result['data']:
+        print(f"   Найдено терминов в ожидании: {len(result['data'])}")
+        for term in result['data']:
+            print(f"     - {term['source_term']} -> {term['translated_term']} (статус: {term['status']})")
+    print()
 
 def main():
-    print("🧪 Тестирование всех исправлений API")
+    """Основная функция тестирования"""
+    print("🚀 Начинаем тестирование всех исправлений API")
     print("=" * 60)
     
-    # Системные endpoints
-    print("\n📊 Системные endpoints:")
-    test_endpoint("GET", "/health")
-    test_endpoint("GET", "/info")
+    # Тест 1: Проверка здоровья
+    test_health_check()
     
-    # Проекты
-    print("\n📁 Тестирование проектов:")
-    test_endpoint("GET", "/projects/")
+    # Тест 2: Создание проекта
+    project_id = test_project_creation()
+    if not project_id:
+        print("❌ Не удалось создать проект. Прерываем тестирование.")
+        return
     
-    # Создаем тестовый проект
-    project_data = {"name": "Test Project All Fixes"}
-    test_endpoint("POST", "/projects/", project_data, 201)
+    # Тест 3: Создание главы
+    chapter_id = test_chapter_creation(project_id)
+    if not chapter_id:
+        print("❌ Не удалось создать главу. Прерываем тестирование.")
+        return
     
-    # Получаем проекты снова
-    test_endpoint("GET", "/projects/")
+    # Тест 4: Создание термина
+    term_id = test_term_creation(project_id)
+    if not term_id:
+        print("❌ Не удалось создать термин. Прерываем тестирование.")
+        return
     
-    # Тестируем создание главы (ИСПРАВЛЕНИЕ 1)
-    print("\n📖 Тестирование создания главы (ИСПРАВЛЕНИЕ 1):")
-    chapter_data = {
-        "title": "Test Chapter All Fixes",
-        "original_text": "テストテキスト для проверки всех исправлений"
-    }
-    test_endpoint("POST", "/projects/1/chapters", chapter_data, 201)
+    # Тест 5: Попытка создания дубликата
+    test_duplicate_term_creation(project_id)
     
-    # Получаем главы проекта
-    test_endpoint("GET", "/projects/1/chapters")
+    # Тест 6: Утверждение термина
+    test_term_approval(term_id)
     
-    # Глоссарий
-    print("\n📚 Тестирование глоссария:")
-    test_endpoint("GET", "/glossary/terms/1")
+    # Тест 7: Отклонение термина (создаем новый термин для этого теста)
+    term_id2 = test_term_creation(project_id)
+    if term_id2:
+        test_term_rejection(term_id2)
     
-    # Создаем тестовый термин (ИСПРАВЛЕНИЕ 2)
-    print("\n📝 Тестирование создания термина (ИСПРАВЛЕНИЕ 2):")
-    term_data = {
-        "project_id": 1,
-        "source_term": "テスト",
-        "translated_term": "Тест",
-        "category": "other",
-        "context": "Тестовый термин для проверки исправлений"
-    }
-    test_endpoint("POST", "/glossary/terms", term_data, 201)
+    # Тест 8: Анализ главы
+    test_chapter_analysis(chapter_id)
     
-    # Получаем термины снова
-    test_endpoint("GET", "/glossary/terms/1")
+    # Тест 9: Получение терминов в ожидании
+    test_get_pending_terms(project_id)
     
-    # Тестируем анализ главы (ИСПРАВЛЕНИЕ 3)
-    print("\n🔍 Тестирование анализа главы (ИСПРАВЛЕНИЕ 3):")
-    test_endpoint("POST", "/processing/chapters/1/analyze", {}, 200)
-    
-    # Мониторинг
-    print("\n📈 Тестирование мониторинга:")
-    test_endpoint("GET", "/glossary/api-usage")
-    test_endpoint("GET", "/glossary/cache-stats")
-    
-    print("\n" + "=" * 60)
-    print("✅ Тестирование всех исправлений завершено!")
-    print("\n📋 Сводка всех исправлений:")
-    print("1. ✅ Убран project_id из ChapterCreate schema")
-    print("2. ✅ Добавлен project_id в GlossaryTermCreate schema")
-    print("3. ✅ Добавлена валидация project_id в api-tools.html")
-    print("4. ✅ Исправлен URL для Swagger docs")
-    print("5. ✅ Добавлена валидация всех ID в формах")
-    print("6. ✅ Убран frequency из создания GlossaryTerm")
-    print("7. ✅ Улучшен интерфейс с выпадающими списками")
-    print("\n🎯 Теперь все должно работать корректно!")
+    print("🎉 Тестирование завершено!")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
