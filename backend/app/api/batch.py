@@ -1,23 +1,18 @@
 from __future__ import annotations
 
-from typing import List
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import List
 
 from app.deps import get_db
-from app.models.glossary import BatchJob, BatchJobItem
-from app.models.project import Chapter
-from app.schemas.glossary import (
-    BatchJobCreate, 
-    BatchJobRead, 
-    BatchJobStatus
+from app.models.project import Chapter, Project
+from app.models.glossary import (
+    BatchJob, BatchJobItem, GlossaryTerm, TermStatus, TermCategory, TermRelationship
 )
 from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
-from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship
 from app.core.translation_engine import translation_engine
 from app.services.cache_service import cache_service
 
@@ -25,7 +20,7 @@ router = APIRouter()
 
 
 def process_batch_analyze_sync(batch_job_id: int, db: Session):
-    """Синхронная пакетная обработка глав для анализа."""
+    """Синхронная пакетная обработка глав для извлечения терминов."""
     try:
         # Получаем задачу
         batch_job = db.get(BatchJob, batch_job_id)
@@ -45,6 +40,9 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
         total_items = len(job_items)
         processed_items = 0
         failed_items = 0
+        total_terms = 0
+        total_auto_approved = 0
+        total_pending = 0
         
         for job_item in job_items:
             try:
@@ -53,16 +51,22 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 job_item.started_at = datetime.utcnow()
                 db.commit()
                 
-                # Получаем главу
+                # Получаем главу и проект
                 chapter = db.get(Chapter, job_item.item_id)
                 if not chapter:
                     raise Exception("Chapter not found")
                 
-                # Извлекаем термины
-                extracted_terms = term_extractor.extract_terms(chapter.original_text)
+                project = db.get(Project, chapter.project_id)
+                if not project:
+                    raise Exception("Project not found")
                 
-                # Сохраняем термины
+                # Извлекаем термины с учетом жанра проекта
+                extracted_terms = term_extractor.extract_terms(chapter.original_text, project.genre)
+                
+                # Сохраняем термины с автоматическим утверждением
                 saved_terms = []
+                auto_approved_count = 0
+                
                 for term_data in extracted_terms:
                     existing_term = db.query(GlossaryTerm).filter(
                         GlossaryTerm.project_id == chapter.project_id,
@@ -70,13 +74,21 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                     ).first()
                     
                     if not existing_term:
+                        # Определяем статус на основе auto_approve флага
+                        auto_approve = term_data.get("auto_approve", False)
+                        initial_status = TermStatus.APPROVED if auto_approve else TermStatus.PENDING
+                        
+                        if auto_approve:
+                            auto_approved_count += 1
+                        
                         term = GlossaryTerm(
                             project_id=chapter.project_id,
                             source_term=term_data["source_term"],
                             translated_term=term_data.get("translated_term", ""),
                             category=term_data.get("category", TermCategory.OTHER),
-                            status=TermStatus.PENDING,
-                            context=term_data.get("context", "")
+                            status=initial_status,
+                            context=term_data.get("context", ""),
+                            approved_at=datetime.utcnow() if auto_approve else None
                         )
                         db.add(term)
                         saved_terms.append(term)
@@ -121,50 +133,64 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 chapter.summary = chapter_summary
                 chapter.processed_at = datetime.utcnow()
                 
+                # Обновляем статистику
+                total_terms += len(saved_terms)
+                total_auto_approved += auto_approved_count
+                total_pending += (len(saved_terms) - auto_approved_count)
+                
                 # Обновляем элемент задачи
                 job_item.status = "completed"
                 job_item.completed_at = datetime.utcnow()
                 job_item.result = {
                     "extracted_terms": len(saved_terms),
+                    "auto_approved_terms": auto_approved_count,
+                    "pending_terms": len(saved_terms) - auto_approved_count,
                     "relationships": len(relationships) if 'relationships' in locals() else 0,
                     "summary_created": bool(chapter_summary)
                 }
-                db.commit()
                 
                 processed_items += 1
-                
-            except Exception as e:
-                # Обрабатываем ошибку
-                job_item.status = "failed"
-                job_item.completed_at = datetime.utcnow()
-                job_item.error_message = str(e)
                 db.commit()
                 
+            except Exception as e:
+                print(f"Error processing job item {job_item.id}: {e}")
+                job_item.status = "failed"
+                job_item.completed_at = datetime.utcnow()
+                job_item.error = str(e)
                 failed_items += 1
-                print(f"Error processing chapter {job_item.item_id}: {e}")
-            
-            # Обновляем прогресс основной задачи
-            progress_percentage = int((processed_items + failed_items) / total_items * 100)
-            batch_job.processed_items = processed_items
-            batch_job.failed_items = failed_items
-            batch_job.progress_percentage = progress_percentage
-            db.commit()
+                db.commit()
         
-        # Завершаем задачу
+        # Обновляем статус задачи
         batch_job.status = "completed"
         batch_job.completed_at = datetime.utcnow()
+        batch_job.result = {
+            "total_items": total_items,
+            "processed_items": processed_items,
+            "failed_items": failed_items,
+            "total_terms": total_terms,
+            "total_auto_approved": total_auto_approved,
+            "total_pending": total_pending
+        }
         db.commit()
         
         return {
             "batch_job_id": batch_job_id,
             "status": "completed",
+            "total_items": total_items,
             "processed_items": processed_items,
             "failed_items": failed_items,
-            "total_items": total_items
+            "total_terms": total_terms,
+            "total_auto_approved": total_auto_approved,
+            "total_pending": total_pending
         }
         
     except Exception as e:
-        db.rollback()
+        if 'batch_job' in locals():
+            batch_job.status = "failed"
+            batch_job.completed_at = datetime.utcnow()
+            batch_job.error = str(e)
+            db.commit()
+        
         return {"error": str(e), "batch_job_id": batch_job_id}
 
 
@@ -224,210 +250,215 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
                 
                 # Проверяем кэш
                 cached_translation = cache_service.get_cached_translation(chapter.id, glossary_hash)
+                
                 if cached_translation:
                     translated_text = cached_translation
                 else:
+                    # Получаем контекст (если есть)
+                    project_summary = None
+                    project_chapters = db.query(Chapter).filter(
+                        Chapter.project_id == chapter.project_id,
+                        Chapter.summary.isnot(None)
+                    ).order_by(Chapter.id).all()
+                    
+                    if len(project_chapters) > 1:
+                        chapters_data = [
+                            {
+                                "title": ch.title,
+                                "summary": ch.summary,
+                                "original_text": ch.original_text
+                            }
+                            for ch in project_chapters[:5]
+                        ]
+                        project_summary = context_summarizer.create_project_summary(chapters_data)
+                    
                     # Выполняем перевод
-                    translated_text = translation_engine.translate_chapter(
-                        chapter.original_text,
-                        glossary_terms,
-                        chapter.project_id
+                    translated_text = translation_engine.translate_with_glossary(
+                        text=chapter.original_text,
+                        glossary_terms=glossary_terms,
+                        context_summary=chapter.summary,
+                        project_summary=project_summary
                     )
                     
                     # Кэшируем результат
                     cache_service.cache_translation(chapter.id, glossary_hash, translated_text)
                 
-                # Обновляем главу
+                # Сохраняем перевод
                 chapter.translated_text = translated_text
-                chapter.translated_at = datetime.utcnow()
+                db.commit()
                 
                 # Обновляем элемент задачи
                 job_item.status = "completed"
                 job_item.completed_at = datetime.utcnow()
                 job_item.result = {
                     "translated": True,
-                    "text_length": len(translated_text)
+                    "glossary_terms_used": len(glossary_terms),
+                    "cached": bool(cached_translation)
                 }
-                db.commit()
                 
                 processed_items += 1
-                
-            except Exception as e:
-                # Обрабатываем ошибку
-                job_item.status = "failed"
-                job_item.completed_at = datetime.utcnow()
-                job_item.error_message = str(e)
                 db.commit()
                 
+            except Exception as e:
+                print(f"Error processing job item {job_item.id}: {e}")
+                job_item.status = "failed"
+                job_item.completed_at = datetime.utcnow()
+                job_item.error = str(e)
                 failed_items += 1
-                print(f"Error translating chapter {job_item.item_id}: {e}")
-            
-            # Обновляем прогресс основной задачи
-            progress_percentage = int((processed_items + failed_items) / total_items * 100)
-            batch_job.processed_items = processed_items
-            batch_job.failed_items = failed_items
-            batch_job.progress_percentage = progress_percentage
-            db.commit()
+                db.commit()
         
-        # Завершаем задачу
+        # Обновляем статус задачи
         batch_job.status = "completed"
         batch_job.completed_at = datetime.utcnow()
+        batch_job.result = {
+            "total_items": total_items,
+            "processed_items": processed_items,
+            "failed_items": failed_items
+        }
         db.commit()
         
         return {
             "batch_job_id": batch_job_id,
             "status": "completed",
+            "total_items": total_items,
             "processed_items": processed_items,
-            "failed_items": failed_items,
-            "total_items": total_items
+            "failed_items": failed_items
         }
         
     except Exception as e:
-        db.rollback()
+        if 'batch_job' in locals():
+            batch_job.status = "failed"
+            batch_job.completed_at = datetime.utcnow()
+            batch_job.error = str(e)
+            db.commit()
+        
         return {"error": str(e), "batch_job_id": batch_job_id}
 
 
-@router.post("/{project_id}/analyze-chapters", response_model=BatchJobRead, status_code=status.HTTP_201_CREATED)
+@router.post("/analyze", status_code=status.HTTP_200_OK)
 def create_batch_analyze_job(
-    project_id: int,
-    payload: BatchJobCreate,
+    chapter_ids: List[int],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
-) -> BatchJob:
-    """Создать задачу пакетного анализа глав (синхронно)."""
-    # Проверяем, что проект существует
-    from app.models.project import Project
-    project = db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+) -> dict:
+    """Создать задачу пакетного анализа глав."""
+    if not chapter_ids:
+        raise HTTPException(status_code=400, detail="No chapter IDs provided")
     
-    # Получаем главы для анализа
-    chapters = db.query(Chapter).filter(
-        Chapter.project_id == project_id
-    ).all()
-    
-    if not chapters:
-        raise HTTPException(
-            status_code=400, 
-            detail="No chapters found in project."
-        )
+    # Проверяем, что все главы существуют
+    chapters = db.query(Chapter).filter(Chapter.id.in_(chapter_ids)).all()
+    if len(chapters) != len(chapter_ids):
+        raise HTTPException(status_code=404, detail="Some chapters not found")
     
     # Создаем задачу
     batch_job = BatchJob(
-        project_id=project_id,
         job_type="analyze",
         status="pending",
-        total_items=len(chapters),
-        job_data=payload.job_data or {}
+        created_at=datetime.utcnow()
     )
-    
     db.add(batch_job)
     db.commit()
-    db.refresh(batch_job)
     
     # Создаем элементы задачи
-    for chapter in chapters:
+    for chapter_id in chapter_ids:
         job_item = BatchJobItem(
             batch_job_id=batch_job.id,
-            item_type="chapter",
-            item_id=chapter.id,
-            status="pending"
+            item_id=chapter_id,
+            status="pending",
+            created_at=datetime.utcnow()
         )
         db.add(job_item)
     
     db.commit()
     
-    # Запускаем обработку в фоновом режиме
+    # Запускаем обработку в фоне
     background_tasks.add_task(process_batch_analyze_sync, batch_job.id, db)
     
-    return batch_job
+    return {
+        "batch_job_id": batch_job.id,
+        "status": "pending",
+        "total_items": len(chapter_ids),
+        "message": "Batch analysis job created"
+    }
 
 
-@router.post("/{project_id}/translate-chapters", response_model=BatchJobRead, status_code=status.HTTP_201_CREATED)
+@router.post("/translate", status_code=status.HTTP_200_OK)
 def create_batch_translate_job(
-    project_id: int,
-    payload: BatchJobCreate,
+    chapter_ids: List[int],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
-) -> BatchJob:
-    """Создать задачу пакетного перевода глав (синхронно)."""
-    # Проверяем, что проект существует
-    from app.models.project import Project
-    project = db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+) -> dict:
+    """Создать задачу пакетного перевода глав."""
+    if not chapter_ids:
+        raise HTTPException(status_code=400, detail="No chapter IDs provided")
     
-    # Получаем главы для перевода (только те, которые еще не переведены)
-    chapters = db.query(Chapter).filter(
-        Chapter.project_id == project_id,
-        Chapter.translated_text.is_(None)
-    ).all()
-    
-    if not chapters:
-        raise HTTPException(
-            status_code=400, 
-            detail="No untranslated chapters found in project."
-        )
+    # Проверяем, что все главы существуют
+    chapters = db.query(Chapter).filter(Chapter.id.in_(chapter_ids)).all()
+    if len(chapters) != len(chapter_ids):
+        raise HTTPException(status_code=404, detail="Some chapters not found")
     
     # Создаем задачу
     batch_job = BatchJob(
-        project_id=project_id,
         job_type="translate",
         status="pending",
-        total_items=len(chapters),
-        job_data=payload.job_data or {}
+        created_at=datetime.utcnow()
     )
-    
     db.add(batch_job)
     db.commit()
-    db.refresh(batch_job)
     
     # Создаем элементы задачи
-    for chapter in chapters:
+    for chapter_id in chapter_ids:
         job_item = BatchJobItem(
             batch_job_id=batch_job.id,
-            item_type="chapter",
-            item_id=chapter.id,
-            status="pending"
+            item_id=chapter_id,
+            status="pending",
+            created_at=datetime.utcnow()
         )
         db.add(job_item)
     
     db.commit()
     
-    # Запускаем обработку в фоновом режиме
+    # Запускаем обработку в фоне
     background_tasks.add_task(process_batch_translate_sync, batch_job.id, db)
     
-    return batch_job
+    return {
+        "batch_job_id": batch_job.id,
+        "status": "pending",
+        "total_items": len(chapter_ids),
+        "message": "Batch translation job created"
+    }
 
 
-@router.get("/{project_id}/jobs", response_model=List[BatchJobRead])
-def list_batch_jobs(project_id: int, db: Session = Depends(get_db)) -> List[BatchJob]:
-    """Получить список пакетных задач для проекта."""
-    jobs = db.query(BatchJob).filter(BatchJob.project_id == project_id).all()
-    return jobs
-
-
-@router.get("/jobs/{job_id}", response_model=BatchJobRead)
-def get_batch_job(job_id: int, db: Session = Depends(get_db)) -> BatchJob:
-    """Получить детали пакетной задачи."""
-    job = db.get(BatchJob, job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Batch job not found")
-    return job
-
-
-@router.post("/jobs/{job_id}/cancel", response_model=BatchJobRead)
-def cancel_batch_job(job_id: int, db: Session = Depends(get_db)) -> BatchJob:
-    """Отменить пакетную задачу."""
-    job = db.get(BatchJob, job_id)
-    if not job:
+@router.get("/jobs/{job_id}")
+def get_batch_job_status(job_id: int, db: Session = Depends(get_db)) -> dict:
+    """Получить статус пакетной задачи."""
+    batch_job = db.get(BatchJob, job_id)
+    if not batch_job:
         raise HTTPException(status_code=404, detail="Batch job not found")
     
-    if job.status in ["completed", "failed", "cancelled"]:
-        raise HTTPException(status_code=400, detail="Cannot cancel completed job")
+    # Получаем элементы задачи
+    job_items = db.query(BatchJobItem).filter(
+        BatchJobItem.batch_job_id == job_id
+    ).all()
     
-    job.status = "cancelled"
-    job.completed_at = datetime.utcnow()
-    db.commit()
-    
-    return job
+    return {
+        "batch_job_id": batch_job.id,
+        "job_type": batch_job.job_type,
+        "status": batch_job.status,
+        "created_at": batch_job.created_at,
+        "started_at": batch_job.started_at,
+        "completed_at": batch_job.completed_at,
+        "error": batch_job.error,
+        "result": batch_job.result,
+        "items": [
+            {
+                "item_id": item.item_id,
+                "status": item.status,
+                "started_at": item.started_at,
+                "completed_at": item.completed_at,
+                "error": item.error,
+                "result": item.result
+            }
+            for item in job_items
+        ]
+    }

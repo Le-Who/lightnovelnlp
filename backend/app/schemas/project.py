@@ -3,9 +3,12 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.project import ProjectGenre
+
 
 class ProjectBase(BaseModel):
     name: str
+    genre: ProjectGenre = ProjectGenre.OTHER
 
 
 class ProjectCreate(ProjectBase):

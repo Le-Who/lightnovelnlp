@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.deps import get_db
-from app.models.project import Chapter
+from app.models.project import Chapter, Project
 from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
@@ -16,16 +16,22 @@ router = APIRouter()
 def process_chapter_sync(chapter_id: int, db: Session):
     """Синхронная обработка главы для извлечения терминов."""
     try:
-        # Получаем главу
+        # Получаем главу и проект
         chapter = db.get(Chapter, chapter_id)
         if not chapter:
             return {"error": "Chapter not found", "chapter_id": chapter_id}
         
-        # 1. Извлекаем термины
-        extracted_terms = term_extractor.extract_terms(chapter.original_text)
+        project = db.get(Project, chapter.project_id)
+        if not project:
+            return {"error": "Project not found", "chapter_id": chapter_id}
         
-        # Сохраняем термины в БД
+        # 1. Извлекаем термины с учетом жанра проекта
+        extracted_terms = term_extractor.extract_terms(chapter.original_text, project.genre)
+        
+        # Сохраняем термины в БД с автоматическим утверждением
         saved_terms = []
+        auto_approved_count = 0
+        
         for term_data in extracted_terms:
             # Проверяем, не существует ли уже такой термин
             existing_term = db.query(GlossaryTerm).filter(
@@ -34,18 +40,27 @@ def process_chapter_sync(chapter_id: int, db: Session):
             ).first()
             
             if not existing_term:
+                # Определяем статус на основе auto_approve флага
+                auto_approve = term_data.get("auto_approve", False)
+                initial_status = TermStatus.APPROVED if auto_approve else TermStatus.PENDING
+                
+                if auto_approve:
+                    auto_approved_count += 1
+                
                 term = GlossaryTerm(
                     project_id=chapter.project_id,
                     source_term=term_data["source_term"],
                     translated_term=term_data.get("translated_term", ""),
                     category=term_data.get("category", TermCategory.OTHER),
-                    status=TermStatus.PENDING,
-                    context=term_data.get("context", "")
+                    status=initial_status,
+                    context=term_data.get("context", ""),
+                    approved_at=datetime.utcnow() if auto_approve else None
                 )
                 db.add(term)
                 saved_terms.append(term)
         
         # 2. Анализируем связи между терминами
+        relationships = []
         if len(saved_terms) > 1:
             relationships = relationship_analyzer.analyze_relationships(
                 chapter.original_text, 
@@ -85,13 +100,17 @@ def process_chapter_sync(chapter_id: int, db: Session):
         chapter.summary = chapter_summary
         chapter.processed_at = datetime.utcnow()
         
+        # Сохраняем все изменения
         db.commit()
         
         return {
             "chapter_id": chapter_id,
             "extracted_terms": len(saved_terms),
-            "relationships": len(relationships) if 'relationships' in locals() else 0,
-            "summary_created": bool(chapter_summary)
+            "auto_approved_terms": auto_approved_count,
+            "pending_terms": len(saved_terms) - auto_approved_count,
+            "relationships": len(relationships),
+            "summary_created": bool(chapter_summary),
+            "project_genre": project.genre.value
         }
         
     except Exception as e:
@@ -111,17 +130,13 @@ def analyze_chapter(
     if not chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
     
-    # Выполняем обработку синхронно
+    # Выполняем анализ синхронно
     result = process_chapter_sync(chapter_id, db)
     
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     
-    return {
-        "message": "Analysis completed",
-        "chapter_id": chapter_id,
-        "result": result
-    }
+    return result
 
 
 @router.post("/chapters/{chapter_id}/analyze-async", status_code=status.HTTP_202_ACCEPTED)

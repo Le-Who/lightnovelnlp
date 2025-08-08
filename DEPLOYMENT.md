@@ -205,6 +205,41 @@
    - Проверьте статус "Active"
    - Проверьте логи на ошибки подключения
 
+### 4.4 Выполнение миграции базы данных
+
+1. **Вариант A: Через Alembic (рекомендуется)**
+   ```bash
+   # В Render Dashboard -> Backend -> Shell
+   cd /opt/render/project/src/backend
+   python run_migration.py
+   ```
+
+2. **Вариант B: Прямой SQL (если Alembic не работает)**
+   ```sql
+   -- Выполните в Neon Dashboard -> SQL Editor
+   -- Миграция 1: Добавление approved_at в glossary_terms
+   ALTER TABLE glossary_terms 
+   ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
+   
+   -- Миграция 2: Добавление genre в projects
+   ALTER TABLE projects 
+   ADD COLUMN IF NOT EXISTS genre VARCHAR(50) DEFAULT 'other' NOT NULL;
+   ```
+
+3. **Проверка миграции**
+   ```sql
+   -- Проверьте, что колонки добавлены
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'glossary_terms' 
+   AND column_name = 'approved_at';
+   
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'projects' 
+   AND column_name = 'genre';
+   ```
+
 ## 🔧 Шаг 5: Настройка и тестирование
 
 ### 5.1 Создание первого проекта

@@ -6,8 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.core.config import settings
-from app.models.project import Base as ProjectBase
-from app.models.glossary import Base as GlossaryBase
+from app.models import Base  # Use unified Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,7 +19,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-target_metadata = [ProjectBase.metadata, GlossaryBase.metadata]
+target_metadata = Base.metadata  # Use unified metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

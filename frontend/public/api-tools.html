@@ -143,6 +143,20 @@
                     <label for="projectName">Название проекта:</label>
                     <input type="text" id="projectName" placeholder="Мой первый проект">
                 </div>
+                <div class="form-group">
+                    <label for="projectGenre">Жанр проекта:</label>
+                    <select id="projectGenre">
+                        <option value="fantasy">Фантастика</option>
+                        <option value="scifi">Научная фантастика</option>
+                        <option value="romance">Романтика</option>
+                        <option value="action">Боевик</option>
+                        <option value="mystery">Детектив/Мистерия</option>
+                        <option value="horror">Ужасы</option>
+                        <option value="slice_of_life">Повседневность</option>
+                        <option value="adventure">Приключения</option>
+                        <option value="other">Другое</option>
+                    </select>
+                </div>
                 <button onclick="createProject()">Создать проект</button>
             </div>
             <div>
@@ -159,8 +173,10 @@
             <div>
                 <h3>Создать главу</h3>
                 <div class="form-group">
-                    <label for="chapterProjectId">ID проекта:</label>
-                    <input type="number" id="chapterProjectId" placeholder="1">
+                    <label for="chapterProjectId">Проект:</label>
+                    <select id="chapterProjectId">
+                        <option value="">Выберите проект...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="chapterTitle">Название главы:</label>
@@ -175,8 +191,10 @@
             <div>
                 <h3>Получить главы проекта</h3>
                 <div class="form-group">
-                    <label for="getChaptersProjectId">ID проекта:</label>
-                    <input type="number" id="getChaptersProjectId" placeholder="1">
+                    <label for="getChaptersProjectId">Проект:</label>
+                    <select id="getChaptersProjectId">
+                        <option value="">Выберите проект...</option>
+                    </select>
                 </div>
                 <button onclick="getChapters()">Получить главы</button>
             </div>
@@ -190,8 +208,10 @@
             <div>
                 <h3>Создать термин</h3>
                 <div class="form-group">
-                    <label for="termProjectId">ID проекта:</label>
-                    <input type="number" id="termProjectId" placeholder="1">
+                    <label for="termProjectId">Проект:</label>
+                    <select id="termProjectId">
+                        <option value="">Выберите проект...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="sourceTerm">Исходный термин:</label>
@@ -220,8 +240,10 @@
             <div>
                 <h3>Получить термины проекта</h3>
                 <div class="form-group">
-                    <label for="getTermsProjectId">ID проекта:</label>
-                    <input type="number" id="getTermsProjectId" placeholder="1">
+                    <label for="getTermsProjectId">Проект:</label>
+                    <select id="getTermsProjectId">
+                        <option value="">Выберите проект...</option>
+                    </select>
                 </div>
                 <button onclick="getTerms()">Получить термины</button>
             </div>
@@ -363,6 +385,7 @@
         // Проекты
         async function createProject() {
             const name = document.getElementById('projectName').value;
+            const genre = document.getElementById('projectGenre').value;
             if (!name) {
                 alert('Введите название проекта');
                 return;
@@ -370,9 +393,13 @@
 
             const result = await makeRequest(`${API_BASE_URL}/projects/`, {
                 method: 'POST',
-                body: JSON.stringify({ name })
+                body: JSON.stringify({ name, genre })
             });
             showResponse('projectsResponse', result);
+            if (result.success) {
+                document.getElementById('projectName').value = '';
+                loadProjects(); // Перезагружаем список проектов
+            }
         }
 
         async function getProjects() {
@@ -391,13 +418,7 @@
                      return;
                  }
      
-                 const parsedProjectId = parseInt(projectId);
-                 if (isNaN(parsedProjectId)) {
-                     alert('ID проекта должен быть числом');
-                     return;
-                 }
-     
-                 const result = await makeRequest(`${API_BASE_URL}/projects/${parsedProjectId}/chapters`, {
+                 const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`, {
                      method: 'POST',
                      body: JSON.stringify({ title, original_text: text })
                  });
@@ -407,17 +428,11 @@
                      async function getChapters() {
                  const projectId = document.getElementById('getChaptersProjectId').value;
                  if (!projectId) {
-                     alert('Введите ID проекта');
+                     alert('Выберите проект');
                      return;
                  }
      
-                 const parsedProjectId = parseInt(projectId);
-                 if (isNaN(parsedProjectId)) {
-                     alert('ID проекта должен быть числом');
-                     return;
-                 }
-     
-                 const result = await makeRequest(`${API_BASE_URL}/projects/${parsedProjectId}/chapters`);
+                 const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
                  showResponse('chaptersResponse', result);
              }
 
@@ -434,16 +449,10 @@
                      return;
                  }
      
-                 const parsedProjectId = parseInt(projectId);
-                 if (isNaN(parsedProjectId)) {
-                     alert('ID проекта должен быть числом');
-                     return;
-                 }
-     
                  const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
                      method: 'POST',
                      body: JSON.stringify({
-                         project_id: parsedProjectId,
+                         project_id: projectId,
                          source_term: sourceTerm,
                          translated_term: translatedTerm,
                          category,
@@ -456,17 +465,11 @@
         async function getTerms() {
             const projectId = document.getElementById('getTermsProjectId').value;
             if (!projectId) {
-                alert('Введите ID проекта');
-                return;
-            }
-            
-            const parsedProjectId = parseInt(projectId);
-            if (isNaN(parsedProjectId)) {
-                alert('ID проекта должен быть числом');
+                alert('Выберите проект');
                 return;
             }
 
-            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${parsedProjectId}`);
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}`);
             showResponse('glossaryResponse', result);
         }
 
@@ -597,14 +600,15 @@
                  const projects = result.data;
                  
                  // Заполняем все селекты проектов
-                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId'];
+                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId'];
                  projectSelects.forEach(selectId => {
                      const select = document.getElementById(selectId);
                      select.innerHTML = '<option value="">Выберите проект...</option>';
                      projects.forEach(project => {
                          const option = document.createElement('option');
                          option.value = project.id;
-                         option.textContent = project.name;
+                         const genreLabel = getGenreLabel(project.genre);
+                         option.textContent = `${project.name} (${genreLabel})`;
                          select.appendChild(option);
                      });
                  });
@@ -704,6 +708,22 @@
              if (result.success) {
                  setTimeout(loadChaptersForTranslation, 1000);
              }
+         }
+
+         // Функция для получения русского названия жанра
+         function getGenreLabel(genre) {
+             const labels = {
+                 'fantasy': 'Фантастика',
+                 'scifi': 'Научная фантастика',
+                 'romance': 'Романтика',
+                 'action': 'Боевик',
+                 'mystery': 'Детектив',
+                 'horror': 'Ужасы',
+                 'slice_of_life': 'Повседневность',
+                 'adventure': 'Приключения',
+                 'other': 'Другое'
+             };
+             return labels[genre] || genre;
          }
 
          // Автоматически загружаем проекты и проверяем здоровье API при загрузке
