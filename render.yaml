@@ -1,45 +1,20 @@
 services:
-  # Celery Worker (бесплатный)
-  - type: worker
-    name: lightnovel-worker
-    env: python
-    plan: free
-    buildCommand: |
-      cd backend
-      pip install -r requirements.txt
-    startCommand: |
-      cd backend
-      celery -A app.tasks.celery_app worker --loglevel=info
-    envVars:
-      - key: DATABASE_URL
-        generateValue: true
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: lightnovel-redis
-          property: connectionString
-      - key: GEMINI_API_KEYS
-        generateValue: true
-      - key: GEMINI_API_LIMIT_PER_KEY
-        value: 1000
-      - key: GEMINI_API_LIMIT_THRESHOLD_PERCENT
-        value: 95
-      - key: GEMINI_API_COOLDOWN_HOURS
-        value: 24
-      - key: ENVIRONMENT
-        value: production
-
   # Redis сервис (бесплатный)
   - type: redis
     name: lightnovel-redis
     plan: free
     ipAllowList: [] # только внутренние соединения
 
-# ПРИМЕЧАНИЕ: Web сервисы (backend и frontend) нужно создать вручную в Render Dashboard
-# так как они не поддерживают plan: free в Blueprint
+# ПРИМЕЧАНИЕ: Background Worker не поддерживает бесплатный план в Render
 # 
 # Для бесплатного деплоймента:
-# 1. Запустите этот Blueprint для worker и redis (бесплатно)
-# 2. Создайте backend и frontend вручную в Render Dashboard с plan: free
-# 3. Используйте Neon.tech для PostgreSQL базы данных
-# 4. Настройте переменные окружения вручную
+# 1. Запустите этот Blueprint для Redis (бесплатно)
+# 2. Создайте web services (backend и frontend) вручную в Render Dashboard с plan: free
+# 3. Создайте background worker вручную в Render Dashboard (платно) или используйте альтернативы
+# 4. Используйте Neon.tech для PostgreSQL базы данных
+# 5. Настройте переменные окружения вручную
+#
+# Альтернативы для background worker:
+# - Используйте платный worker в Render
+# - Используйте внешние сервисы (Upstash QStash, Cloudflare Workers)
+# - Запускайте Celery локально для разработки
