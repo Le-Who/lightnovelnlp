@@ -1,0 +1,92 @@
+import React, { useState, useEffect } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import api from '../services/apiClient'
+import ChapterManager from '../components/ChapterManager'
+import GlossaryEditor from '../components/GlossaryEditor'
+
+export default function ProjectPage() {
+  const { projectId } = useParams()
+  const [project, setProject] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('chapters') // 'chapters' или 'glossary'
+
+  const loadProject = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get(`/projects/${projectId}`)
+      setProject(res.data)
+    } catch (e) {
+      console.error('Error loading project:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (projectId) {
+      loadProject()
+    }
+  }, [projectId])
+
+  if (loading) return <div>Загрузка проекта...</div>
+  if (!project) return <div>Проект не найден</div>
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <Link 
+          to="/" 
+          style={{ 
+            display: 'inline-block', 
+            marginBottom: 16, 
+            color: '#2196F3', 
+            textDecoration: 'none' 
+          }}
+        >
+          ← Назад к проектам
+        </Link>
+        <h2>{project.name}</h2>
+        <p style={{ color: '#666' }}>Создан: {new Date(project.created_at).toLocaleDateString()}</p>
+      </div>
+
+      {/* Табы */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+        <button
+          onClick={() => setActiveTab('chapters')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: activeTab === 'chapters' ? '#2196F3' : '#f5f5f5',
+            color: activeTab === 'chapters' ? 'white' : '#333',
+            cursor: 'pointer',
+            borderTopLeftRadius: 8,
+            borderBottomLeftRadius: 8
+          }}
+        >
+          Главы
+        </button>
+        <button
+          onClick={() => setActiveTab('glossary')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: activeTab === 'glossary' ? '#2196F3' : '#f5f5f5',
+            color: activeTab === 'glossary' ? 'white' : '#333',
+            cursor: 'pointer',
+            borderTopRightRadius: 8,
+            borderBottomRightRadius: 8
+          }}
+        >
+          Глоссарий
+        </button>
+      </div>
+
+      {/* Контент табов */}
+      {activeTab === 'chapters' ? (
+        <ChapterManager projectId={projectId} />
+      ) : (
+        <GlossaryEditor projectId={projectId} />
+      )}
+    </div>
+  )
+}

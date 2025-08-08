@@ -17,6 +17,9 @@ class Project(Base):
     chapters: Mapped[List["Chapter"]] = relationship(
         "Chapter", back_populates="project", cascade="all, delete-orphan"
     )
+    glossary_terms: Mapped[List["GlossaryTerm"]] = relationship(
+        "GlossaryTerm", back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Chapter(Base):

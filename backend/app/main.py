@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db import Base, engine
 from app.api.projects import router as projects_router
+from app.api.glossary import router as glossary_router
+from app.api.processing import router as processing_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -18,3 +20,5 @@ app.add_middleware(
 )
 
 app.include_router(projects_router, prefix="/projects", tags=["projects"])
+app.include_router(glossary_router, prefix="/glossary", tags=["glossary"])
+app.include_router(processing_router, prefix="/processing", tags=["processing"])

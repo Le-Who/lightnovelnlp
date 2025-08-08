@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
-from app.models.project import Project
-from app.schemas.project import ProjectCreate, ProjectRead
+from app.models.project import Project, Chapter
+from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead
 
 router = APIRouter()
 
@@ -41,5 +41,58 @@ def delete_project(project_id: int, db: Session = Depends(get_db)) -> None:
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     db.delete(project)
+    db.commit()
+    return None
+
+
+# Главы
+@router.get("/{project_id}/chapters", response_model=List[ChapterRead])
+def list_chapters(project_id: int, db: Session = Depends(get_db)) -> List[Chapter]:
+    """Получить все главы проекта."""
+    chapters = db.query(Chapter).filter(Chapter.project_id == project_id).all()
+    return chapters
+
+
+@router.post("/{project_id}/chapters", response_model=ChapterRead, status_code=status.HTTP_201_CREATED)
+def create_chapter(
+    project_id: int, 
+    payload: ChapterCreate, 
+    db: Session = Depends(get_db)
+) -> Chapter:
+    """Создать новую главу в проекте."""
+    # Проверяем, что проект существует
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    chapter = Chapter(
+        project_id=project_id,
+        title=payload.title,
+        original_text=payload.original_text
+    )
+    
+    db.add(chapter)
+    db.commit()
+    db.refresh(chapter)
+    return chapter
+
+
+@router.get("/chapters/{chapter_id}", response_model=ChapterRead)
+def get_chapter(chapter_id: int, db: Session = Depends(get_db)) -> Chapter:
+    """Получить главу по ID."""
+    chapter = db.get(Chapter, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    return chapter
+
+
+@router.delete("/chapters/{chapter_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_chapter(chapter_id: int, db: Session = Depends(get_db)) -> None:
+    """Удалить главу."""
+    chapter = db.get(Chapter, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    
+    db.delete(chapter)
     db.commit()
     return None
