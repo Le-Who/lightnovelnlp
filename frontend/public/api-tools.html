@@ -664,7 +664,6 @@
             const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${termId}`, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    source_term: sourceTerm,
                     translated_term: translatedTerm,
                     category,
                     context

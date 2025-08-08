@@ -149,19 +149,19 @@ def get_glossary_versions(project_id: int, db: Session = Depends(get_db)) -> Lis
     return versions
 
 
-@router.post("/versions", response_model=GlossaryVersionRead, status_code=status.HTTP_201_CREATED)
-def create_glossary_version(version: GlossaryVersionCreate, db: Session = Depends(get_db)) -> GlossaryVersion:
+@router.post("/versions/{project_id}", response_model=GlossaryVersionRead, status_code=status.HTTP_201_CREATED)
+def create_glossary_version(project_id: int, version: GlossaryVersionCreate, db: Session = Depends(get_db)) -> GlossaryVersion:
     """Создать новую версию глоссария."""
     # Получаем все утвержденные термины для проекта
     terms = db.query(GlossaryTerm).filter(
-        GlossaryTerm.project_id == version.project_id,
+        GlossaryTerm.project_id == project_id,
         GlossaryTerm.status == TermStatus.APPROVED
     ).all()
     
     # Создаем версию
     db_version = GlossaryVersion(
-        project_id=version.project_id,
-        version_name=version.version_name,
+        project_id=project_id,
+        version_name=version.name or f"Version {datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
         description=version.description,
         terms_data=[{
             "source_term": term.source_term,

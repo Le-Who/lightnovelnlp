@@ -350,10 +350,15 @@ def create_batch_analyze_job(
     if len(chapters) != len(chapter_ids):
         raise HTTPException(status_code=404, detail="Some chapters not found")
     
+    # Получаем project_id из первой главы (все главы должны быть из одного проекта)
+    project_id = chapters[0].project_id
+    
     # Создаем задачу
     batch_job = BatchJob(
+        project_id=project_id,
         job_type="analyze",
         status="pending",
+        total_items=len(chapter_ids),
         created_at=datetime.utcnow()
     )
     db.add(batch_job)
@@ -362,7 +367,9 @@ def create_batch_analyze_job(
     # Создаем элементы задачи
     for chapter_id in chapter_ids:
         job_item = BatchJobItem(
+            project_id=project_id,
             batch_job_id=batch_job.id,
+            item_type="chapter",
             item_id=chapter_id,
             status="pending",
             created_at=datetime.utcnow()
@@ -397,10 +404,15 @@ def create_batch_translate_job(
     if len(chapters) != len(chapter_ids):
         raise HTTPException(status_code=404, detail="Some chapters not found")
     
+    # Получаем project_id из первой главы (все главы должны быть из одного проекта)
+    project_id = chapters[0].project_id
+    
     # Создаем задачу
     batch_job = BatchJob(
+        project_id=project_id,
         job_type="translate",
         status="pending",
+        total_items=len(chapter_ids),
         created_at=datetime.utcnow()
     )
     db.add(batch_job)
@@ -409,7 +421,9 @@ def create_batch_translate_job(
     # Создаем элементы задачи
     for chapter_id in chapter_ids:
         job_item = BatchJobItem(
+            project_id=project_id,
             batch_job_id=batch_job.id,
+            item_type="chapter",
             item_id=chapter_id,
             status="pending",
             created_at=datetime.utcnow()

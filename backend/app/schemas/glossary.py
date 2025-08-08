@@ -22,6 +22,7 @@ class GlossaryTermUpdate(BaseModel):
     translated_term: Optional[str] = None
     category: Optional[str] = None
     status: Optional[str] = None
+    context: Optional[str] = None
 
 
 class GlossaryTermRead(GlossaryTermBase):
@@ -31,6 +32,7 @@ class GlossaryTermRead(GlossaryTermBase):
     project_id: int
     status: str
     created_at: datetime
+    approved_at: Optional[datetime] = None
 
 
 class TermRelationshipBase(BaseModel):
@@ -42,7 +44,7 @@ class TermRelationshipBase(BaseModel):
 
 
 class TermRelationshipCreate(TermRelationshipBase):
-    pass
+    project_id: int
 
 
 class TermRelationshipRead(TermRelationshipBase):
@@ -68,8 +70,8 @@ class GlossaryVersionRead(GlossaryVersionBase):
     
     id: int
     project_id: int
-    version_number: int
-    terms_snapshot: Dict[str, Any]
+    version_name: str
+    terms_data: Dict[str, Any]
     created_at: datetime
     created_by: Optional[str] = None
 
@@ -86,7 +88,7 @@ class BatchJobBase(BaseModel):
 
 
 class BatchJobCreate(BatchJobBase):
-    pass
+    project_id: int
 
 
 class BatchJobRead(BatchJobBase):
@@ -121,7 +123,8 @@ class BatchJobItemBase(BaseModel):
 
 
 class BatchJobItemCreate(BatchJobItemBase):
-    pass
+    project_id: int
+    batch_job_id: int
 
 
 class BatchJobItemRead(BatchJobItemBase):
@@ -157,7 +160,7 @@ class BatchJobStatus(BaseModel):
 
 class GlossaryVersionInfo(BaseModel):
     version_id: int
-    version_number: int
+    version_name: str
     name: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime

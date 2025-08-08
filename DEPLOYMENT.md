@@ -228,6 +228,11 @@
    -- Миграция 3: Добавление processed_at в chapters
    ALTER TABLE chapters 
    ADD COLUMN IF NOT EXISTS processed_at TIMESTAMP;
+   
+   -- Миграция 4: Переименование колонок в glossary_versions
+   ALTER TABLE glossary_versions RENAME COLUMN version_number TO version_name;
+   ALTER TABLE glossary_versions ALTER COLUMN version_name TYPE VARCHAR(255);
+   ALTER TABLE glossary_versions RENAME COLUMN terms_snapshot TO terms_data;
    ```
 
 3. **Проверка миграции**
@@ -247,6 +252,12 @@
    FROM information_schema.columns 
    WHERE table_name = 'chapters' 
    AND column_name = 'processed_at';
+   
+   -- Проверка миграции 4: glossary_versions
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'glossary_versions' 
+   AND column_name IN ('version_name', 'terms_data');
    ```
 
 ## 🔧 Шаг 5: Настройка и тестирование

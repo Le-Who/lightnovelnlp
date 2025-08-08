@@ -1,205 +1,378 @@
 #!/usr/bin/env python3
 """
-Тестовый скрипт для проверки всех исправлений в API
+Комплексный тестовый скрипт для проверки всех исправлений в API
 """
 
 import requests
 import json
 import time
+from typing import Dict, Any, List
 
 # Конфигурация
 API_BASE_URL = "https://lightnovel-backend.onrender.com"
+# API_BASE_URL = "http://localhost:8000"  # Для локального тестирования
 
-def make_request(url, method="GET", data=None):
-    """Выполнить HTTP запрос"""
-    try:
-        if method == "GET":
-            response = requests.get(url)
-        elif method == "POST":
-            response = requests.post(url, json=data)
-        elif method == "PUT":
-            response = requests.put(url, json=data)
-        elif method == "DELETE":
-            response = requests.delete(url)
+class APITester:
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.test_results = []
         
-        return {
-            "success": response.status_code < 400,
-            "status_code": response.status_code,
-            "data": response.json() if response.content else None,
-            "error": None
+    def log_test(self, test_name: str, success: bool, details: str = ""):
+        """Логирует результат теста"""
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status} {test_name}")
+        if details:
+            print(f"   {details}")
+        self.test_results.append({
+            "test": test_name,
+            "success": success,
+            "details": details
+        })
+        
+    def make_request(self, method: str, endpoint: str, data: Dict = None) -> Dict[str, Any]:
+        """Выполняет HTTP запрос"""
+        url = f"{self.base_url}{endpoint}"
+        headers = {"Content-Type": "application/json"}
+        
+        try:
+            if method.upper() == "GET":
+                response = self.session.get(url, headers=headers)
+            elif method.upper() == "POST":
+                response = self.session.post(url, headers=headers, json=data)
+            elif method.upper() == "PUT":
+                response = self.session.put(url, headers=headers, json=data)
+            elif method.upper() == "DELETE":
+                response = self.session.delete(url, headers=headers)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+                
+            return {
+                "success": response.status_code < 400,
+                "status_code": response.status_code,
+                "data": response.json() if response.content else None,
+                "error": None
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "status_code": 0,
+                "data": None,
+                "error": str(e)
+            }
+    
+    def test_health_check(self):
+        """Тест проверки здоровья API"""
+        result = self.make_request("GET", "/health")
+        self.log_test(
+            "Health Check",
+            result["success"],
+            f"Status: {result['status_code']}"
+        )
+        
+    def test_create_project(self) -> int:
+        """Тест создания проекта"""
+        project_data = {
+            "name": f"Test Project {int(time.time())}",
+            "genre": "fantasy"
         }
-    except Exception as e:
-        return {
-            "success": False,
-            "status_code": None,
-            "data": None,
-            "error": str(e)
+        result = self.make_request("POST", "/projects/", project_data)
+        
+        success = result["success"] and result["data"] and "id" in result["data"]
+        project_id = result["data"]["id"] if success else None
+        
+        self.log_test(
+            "Create Project",
+            success,
+            f"Project ID: {project_id}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+        
+        return project_id
+    
+    def test_create_chapter(self, project_id: int) -> int:
+        """Тест создания главы"""
+        chapter_data = {
+            "title": "Test Chapter",
+            "original_text": "This is a test chapter with some Japanese terms like 剣士 (kenshi) and 魔法 (mahou)."
         }
-
-def test_health_check():
-    """Тест проверки здоровья API"""
-    print("🔍 Тест 1: Проверка здоровья API")
-    result = make_request(f"{API_BASE_URL}/health")
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Ответ: {result['data']}")
-    print()
-
-def test_project_creation():
-    """Тест создания проекта"""
-    print("🔍 Тест 2: Создание проекта")
-    project_data = {
-        "name": f"Тестовый проект {int(time.time())}"
-    }
-    result = make_request(f"{API_BASE_URL}/projects", method="POST", data=project_data)
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Создан проект: {result['data']}")
-        return result['data']['id']
-    print()
-    return None
-
-def test_chapter_creation(project_id):
-    """Тест создания главы"""
-    print("🔍 Тест 3: Создание главы")
-    chapter_data = {
-        "title": "Тестовая глава",
-        "original_text": "これはテスト用のテキストです。主人公は勇者です。"
-    }
-    result = make_request(f"{API_BASE_URL}/projects/{project_id}/chapters", method="POST", data=chapter_data)
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Создана глава: {result['data']}")
-        return result['data']['id']
-    print()
-    return None
-
-def test_term_creation(project_id):
-    """Тест создания термина"""
-    print("🔍 Тест 4: Создание термина")
-    term_data = {
-        "project_id": project_id,
-        "source_term": "主人公",
-        "translated_term": "Главный герой",
-        "category": "character",
-        "context": "Тестовый контекст"
-    }
-    result = make_request(f"{API_BASE_URL}/glossary/terms", method="POST", data=term_data)
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Создан термин: {result['data']}")
-        return result['data']['id']
-    print()
-    return None
-
-def test_duplicate_term_creation(project_id):
-    """Тест создания дубликата термина"""
-    print("🔍 Тест 5: Попытка создания дубликата термина")
-    term_data = {
-        "project_id": project_id,
-        "source_term": "主人公",  # Тот же термин
-        "translated_term": "Другой перевод",
-        "category": "character",
-        "context": "Другой контекст"
-    }
-    result = make_request(f"{API_BASE_URL}/glossary/terms", method="POST", data=term_data)
-    print(f"   Статус: {'✅' if not result['success'] else '❌'} (должен быть неуспешным)")
-    print(f"   Код ответа: {result['status_code']} (должен быть 400)")
-    if result['data']:
-        print(f"   Ошибка: {result['data']}")
-    print()
-
-def test_term_approval(term_id):
-    """Тест утверждения термина"""
-    print("🔍 Тест 6: Утверждение термина")
-    result = make_request(f"{API_BASE_URL}/glossary/terms/{term_id}/approve", method="POST")
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Термин утвержден: {result['data']}")
-    print()
-
-def test_term_rejection(term_id):
-    """Тест отклонения термина"""
-    print("🔍 Тест 7: Отклонение термина")
-    result = make_request(f"{API_BASE_URL}/glossary/terms/{term_id}/reject", method="POST")
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Термин отклонен: {result['data']}")
-    print()
-
-def test_chapter_analysis(chapter_id):
-    """Тест анализа главы"""
-    print("🔍 Тест 8: Анализ главы")
-    result = make_request(f"{API_BASE_URL}/processing/chapters/{chapter_id}/analyze", method="POST")
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Результат анализа: {result['data']}")
-    print()
-
-def test_get_pending_terms(project_id):
-    """Тест получения терминов в ожидании"""
-    print("🔍 Тест 9: Получение терминов в ожидании")
-    result = make_request(f"{API_BASE_URL}/glossary/terms/{project_id}/pending")
-    print(f"   Статус: {'✅' if result['success'] else '❌'}")
-    print(f"   Код ответа: {result['status_code']}")
-    if result['data']:
-        print(f"   Найдено терминов в ожидании: {len(result['data'])}")
-        for term in result['data']:
-            print(f"     - {term['source_term']} -> {term['translated_term']} (статус: {term['status']})")
-    print()
+        result = self.make_request("POST", f"/projects/{project_id}/chapters", chapter_data)
+        
+        success = result["success"] and result["data"] and "id" in result["data"]
+        chapter_id = result["data"]["id"] if success else None
+        
+        self.log_test(
+            "Create Chapter",
+            success,
+            f"Chapter ID: {chapter_id}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+        
+        return chapter_id
+    
+    def test_create_term(self, project_id: int) -> int:
+        """Тест создания термина"""
+        term_data = {
+            "project_id": project_id,
+            "source_term": "剣士",
+            "translated_term": "Мечник",
+            "category": "character",
+            "context": "Test context"
+        }
+        result = self.make_request("POST", "/glossary/terms", term_data)
+        
+        success = result["success"] and result["data"] and "id" in result["data"]
+        term_id = result["data"]["id"] if success else None
+        
+        self.log_test(
+            "Create Term",
+            success,
+            f"Term ID: {term_id}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+        
+        return term_id
+    
+    def test_get_terms(self, project_id: int):
+        """Тест получения терминов"""
+        result = self.make_request("GET", f"/glossary/terms/{project_id}")
+        
+        success = result["success"] and isinstance(result["data"], list)
+        
+        self.log_test(
+            "Get Terms",
+            success,
+            f"Found {len(result['data'])} terms" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_get_pending_terms(self, project_id: int):
+        """Тест получения ожидающих терминов"""
+        result = self.make_request("GET", f"/glossary/terms/{project_id}/pending")
+        
+        success = result["success"] and isinstance(result["data"], list)
+        
+        self.log_test(
+            "Get Pending Terms",
+            success,
+            f"Found {len(result['data'])} pending terms" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_approve_term(self, term_id: int):
+        """Тест утверждения термина"""
+        result = self.make_request("POST", f"/glossary/terms/{term_id}/approve")
+        
+        success = result["success"] and result["data"] and result["data"].get("status") == "approved"
+        
+        self.log_test(
+            "Approve Term",
+            success,
+            f"Term status: {result['data'].get('status')}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_reject_term(self, term_id: int):
+        """Тест отклонения термина"""
+        result = self.make_request("POST", f"/glossary/terms/{term_id}/reject")
+        
+        success = result["success"] and result["data"] and result["data"].get("status") == "rejected"
+        
+        self.log_test(
+            "Reject Term",
+            success,
+            f"Term status: {result['data'].get('status')}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_update_term(self, term_id: int):
+        """Тест обновления термина"""
+        update_data = {
+            "translated_term": "Обновленный мечник",
+            "category": "character",
+            "context": "Обновленный контекст"
+        }
+        result = self.make_request("PUT", f"/glossary/terms/{term_id}", update_data)
+        
+        success = result["success"] and result["data"]
+        
+        self.log_test(
+            "Update Term",
+            success,
+            f"Updated term: {result['data'].get('translated_term')}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_get_term_details(self, term_id: int):
+        """Тест получения деталей термина"""
+        result = self.make_request("GET", f"/glossary/terms/{term_id}/details")
+        
+        success = result["success"] and result["data"] and "id" in result["data"]
+        
+        self.log_test(
+            "Get Term Details",
+            success,
+            f"Term: {result['data'].get('source_term')}" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_analyze_chapter(self, chapter_id: int):
+        """Тест анализа главы"""
+        result = self.make_request("POST", f"/processing/chapters/{chapter_id}/analyze")
+        
+        success = result["success"]
+        
+        self.log_test(
+            "Analyze Chapter",
+            success,
+            f"Analysis completed" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_translate_chapter(self, chapter_id: int):
+        """Тест перевода главы"""
+        result = self.make_request("POST", f"/translation/chapters/{chapter_id}/translate")
+        
+        success = result["success"]
+        
+        self.log_test(
+            "Translate Chapter",
+            success,
+            f"Translation completed" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_get_chapters(self, project_id: int):
+        """Тест получения глав"""
+        result = self.make_request("GET", f"/projects/{project_id}/chapters")
+        
+        success = result["success"] and isinstance(result["data"], list)
+        
+        self.log_test(
+            "Get Chapters",
+            success,
+            f"Found {len(result['data'])} chapters" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_get_projects(self):
+        """Тест получения проектов"""
+        result = self.make_request("GET", "/projects/")
+        
+        success = result["success"] and isinstance(result["data"], list)
+        
+        self.log_test(
+            "Get Projects",
+            success,
+            f"Found {len(result['data'])} projects" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_api_usage(self):
+        """Тест получения статистики API"""
+        result = self.make_request("GET", "/glossary/api-usage")
+        
+        success = result["success"]
+        
+        self.log_test(
+            "Get API Usage",
+            success,
+            f"API stats retrieved" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_cache_stats(self):
+        """Тест получения статистики кэша"""
+        result = self.make_request("GET", "/glossary/cache-stats")
+        
+        success = result["success"]
+        
+        self.log_test(
+            "Get Cache Stats",
+            success,
+            f"Cache stats retrieved" if success else f"Error: {result.get('error', result.get('data', {}).get('detail', 'Unknown'))}"
+        )
+    
+    def test_duplicate_term_creation(self, project_id: int):
+        """Тест создания дублирующегося термина"""
+        term_data = {
+            "project_id": project_id,
+            "source_term": "剣士",  # Тот же термин
+            "translated_term": "Другой мечник",
+            "category": "character"
+        }
+        result = self.make_request("POST", "/glossary/terms", term_data)
+        
+        # Ожидаем ошибку 400 (дубликат)
+        success = not result["success"] and result["status_code"] == 400
+        
+        self.log_test(
+            "Duplicate Term Creation (should fail)",
+            success,
+            f"Correctly rejected duplicate" if success else f"Unexpected result: {result.get('status_code')}"
+        )
+    
+    def run_all_tests(self):
+        """Запускает все тесты"""
+        print("🚀 Запуск комплексного тестирования API")
+        print("=" * 50)
+        
+        # Базовые тесты
+        self.test_health_check()
+        self.test_get_projects()
+        self.test_api_usage()
+        self.test_cache_stats()
+        
+        # Создание тестовых данных
+        project_id = self.test_create_project()
+        if not project_id:
+            print("❌ Не удалось создать проект. Прерываем тестирование.")
+            return
+            
+        chapter_id = self.test_create_chapter(project_id)
+        if not chapter_id:
+            print("❌ Не удалось создать главу. Прерываем тестирование.")
+            return
+            
+        term_id = self.test_create_term(project_id)
+        if not term_id:
+            print("❌ Не удалось создать термин. Прерываем тестирование.")
+            return
+        
+        # Тесты глоссария
+        self.test_get_terms(project_id)
+        self.test_get_pending_terms(project_id)
+        self.test_get_term_details(term_id)
+        self.test_update_term(term_id)
+        self.test_approve_term(term_id)
+        
+        # Создаем еще один термин для теста отклонения
+        term_id2 = self.test_create_term(project_id)
+        if term_id2:
+            self.test_reject_term(term_id2)
+        
+        # Тест дубликатов
+        self.test_duplicate_term_creation(project_id)
+        
+        # Тесты обработки
+        self.test_analyze_chapter(chapter_id)
+        self.test_translate_chapter(chapter_id)
+        
+        # Тесты получения данных
+        self.test_get_chapters(project_id)
+        
+        # Итоговая статистика
+        print("\n" + "=" * 50)
+        print("📊 ИТОГОВАЯ СТАТИСТИКА")
+        print("=" * 50)
+        
+        total_tests = len(self.test_results)
+        passed_tests = sum(1 for result in self.test_results if result["success"])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Всего тестов: {total_tests}")
+        print(f"✅ Успешно: {passed_tests}")
+        print(f"❌ Провалено: {failed_tests}")
+        print(f"📈 Успешность: {(passed_tests/total_tests)*100:.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ ПРОВАЛЕННЫЕ ТЕСТЫ:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['details']}")
+        else:
+            print("\n🎉 Все тесты прошли успешно!")
 
 def main():
-    """Основная функция тестирования"""
-    print("🚀 Начинаем тестирование всех исправлений API")
-    print("=" * 60)
-    
-    # Тест 1: Проверка здоровья
-    test_health_check()
-    
-    # Тест 2: Создание проекта
-    project_id = test_project_creation()
-    if not project_id:
-        print("❌ Не удалось создать проект. Прерываем тестирование.")
-        return
-    
-    # Тест 3: Создание главы
-    chapter_id = test_chapter_creation(project_id)
-    if not chapter_id:
-        print("❌ Не удалось создать главу. Прерываем тестирование.")
-        return
-    
-    # Тест 4: Создание термина
-    term_id = test_term_creation(project_id)
-    if not term_id:
-        print("❌ Не удалось создать термин. Прерываем тестирование.")
-        return
-    
-    # Тест 5: Попытка создания дубликата
-    test_duplicate_term_creation(project_id)
-    
-    # Тест 6: Утверждение термина
-    test_term_approval(term_id)
-    
-    # Тест 7: Отклонение термина (создаем новый термин для этого теста)
-    term_id2 = test_term_creation(project_id)
-    if term_id2:
-        test_term_rejection(term_id2)
-    
-    # Тест 8: Анализ главы
-    test_chapter_analysis(chapter_id)
-    
-    # Тест 9: Получение терминов в ожидании
-    test_get_pending_terms(project_id)
-    
-    print("🎉 Тестирование завершено!")
-    print("=" * 60)
+    """Главная функция"""
+    tester = APITester(API_BASE_URL)
+    tester.run_all_tests()
 
 if __name__ == "__main__":
     main()
