@@ -22,6 +22,7 @@ class Project(Base):
     term_relationships = relationship("TermRelationship", back_populates="project", cascade="all, delete-orphan")
     glossary_versions = relationship("GlossaryVersion", back_populates="project", cascade="all, delete-orphan")
     batch_jobs = relationship("BatchJob", back_populates="project", cascade="all, delete-orphan")
+    batch_job_items = relationship("BatchJobItem", back_populates="project", cascade="all, delete-orphan")
 
 
 class Chapter(Base):

@@ -64,10 +64,9 @@ class GlossaryVersion(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    version_number = Column(Integer, nullable=False)
-    name = Column(String(255), nullable=True)  # Опциональное название версии
+    version_name = Column(String(255), nullable=False)  # Название версии
     description = Column(Text, nullable=True)  # Описание изменений
-    terms_snapshot = Column(JSON, nullable=False)  # Снимок терминов в JSON
+    terms_data = Column(JSON, nullable=False)  # Снимок терминов в JSON
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String(100), nullable=True)  # Кто создал версию
     
@@ -96,12 +95,14 @@ class BatchJob(Base):
     
     # Связи
     project = relationship("Project", back_populates="batch_jobs")
+    items = relationship("BatchJobItem", back_populates="batch_job", cascade="all, delete-orphan")
 
 
 class BatchJobItem(Base):
     __tablename__ = "batch_job_items"
 
     id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     batch_job_id = Column(Integer, ForeignKey("batch_jobs.id"), nullable=False)
     item_type = Column(String(50), nullable=False)  # 'chapter', 'term', etc.
     item_id = Column(Integer, nullable=False)  # ID элемента (главы, термина и т.д.)
@@ -112,4 +113,5 @@ class BatchJobItem(Base):
     completed_at = Column(DateTime, nullable=True)
     
     # Связи
+    project = relationship("Project", back_populates="batch_job_items")
     batch_job = relationship("BatchJob", back_populates="items")
