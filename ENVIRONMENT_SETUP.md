@@ -22,7 +22,7 @@
    - **Пример**: `redis://default:password123@ep-cool-forest-123456.us-east-2.aws.upstash.io:12345`
    - **Где найти**: Upstash Dashboard → Database → Connection Details → Connection String
 
-3. **GEMINI_API_KEYS**
+3. **GEMINI_API_KEYS_RAW**
    - **Источник**: Google AI Studio
    - **Формат**: `key1,key2,key3` (через запятую, БЕЗ пробелов)
    - **Пример**: `AIzaSyC1234567890abcdef,AIzaSyD0987654321fedcba,AIzaSyE111222333444555`
@@ -52,7 +52,7 @@
    - **Значение**: `production`
    - **Описание**: Окружение приложения
 
-9. **ALLOWED_ORIGINS**
+9. **ALLOWED_ORIGINS_RAW**
    - **Значение**: `https://lightnovel-frontend.onrender.com`
    - **Описание**: Разрешенные CORS origins
    - **Примечание**: Замените на ваш реальный frontend URL
@@ -136,16 +136,16 @@
    - Перейдите в "Environment"
 
 2. **Добавьте переменные**
-   ```
-   DATABASE_URL=postgresql://user:password@host/database?sslmode=require
-   REDIS_URL=redis://user:password@host:port
-   GEMINI_API_KEYS=key1,key2,key3
-   GEMINI_API_LIMIT_PER_KEY=1000
-   GEMINI_API_LIMIT_THRESHOLD_PERCENT=95
-   GEMINI_API_COOLDOWN_HOURS=24
-   ENVIRONMENT=production
-   ALLOWED_ORIGINS=https://lightnovel-frontend.onrender.com
-   ```
+       ```
+    DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+    REDIS_URL=redis://user:password@host:port
+    GEMINI_API_KEYS_RAW=key1,key2,key3
+    GEMINI_API_LIMIT_PER_KEY=1000
+    GEMINI_API_LIMIT_THRESHOLD_PERCENT=95
+    GEMINI_API_COOLDOWN_HOURS=24
+    ENVIRONMENT=production
+    ALLOWED_ORIGINS_RAW=https://lightnovel-frontend.onrender.com
+    ```
 
 3. **Сохраните изменения**
    - Нажмите "Save Changes"

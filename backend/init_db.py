@@ -53,13 +53,17 @@ def check_environment():
     required_vars = [
         "DATABASE_URL",
         "REDIS_URL",
-        "GEMINI_API_KEYS"
+        "GEMINI_API_KEYS_RAW"
     ]
     
     missing_vars = []
     for var in required_vars:
         if not getattr(settings, var, None):
             missing_vars.append(var)
+    
+    # Проверяем, что GEMINI_API_KEYS парсится корректно
+    if not settings.GEMINI_API_KEYS:
+        missing_vars.append("GEMINI_API_KEYS (парсинг)")
     
     if missing_vars:
         print(f"❌ Отсутствуют обязательные переменные окружения: {', '.join(missing_vars)}")

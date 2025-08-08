@@ -12,7 +12,7 @@ def check_required_env_vars():
     required_vars = [
         'DATABASE_URL',
         'REDIS_URL',
-        'GEMINI_API_KEYS'
+        'GEMINI_API_KEYS_RAW'
     ]
     
     missing_vars = []
@@ -28,18 +28,18 @@ def check_required_env_vars():
     return True
 
 def check_gemini_keys():
-    """Проверяет формат GEMINI_API_KEYS"""
-    keys_str = os.getenv('GEMINI_API_KEYS', '')
+    """Проверяет формат GEMINI_API_KEYS_RAW"""
+    keys_str = os.getenv('GEMINI_API_KEYS_RAW', '')
     
     if not keys_str.strip():
-        print("❌ GEMINI_API_KEYS пустая или не установлена")
+        print("❌ GEMINI_API_KEYS_RAW пустая или не установлена")
         return False
     
     # Парсим ключи
     keys = [key.strip() for key in keys_str.split(',') if key.strip()]
     
     if not keys:
-        print("❌ GEMINI_API_KEYS не содержит валидных ключей")
+        print("❌ GEMINI_API_KEYS_RAW не содержит валидных ключей")
         return False
     
     print(f"✅ Найдено {len(keys)} ключей Gemini API")
