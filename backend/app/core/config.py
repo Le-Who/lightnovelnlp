@@ -1,23 +1,43 @@
-import os
+from __future__ import annotations
+
 from typing import List
+from pydantic import BaseSettings, Field
 
-class Settings:
-    def __init__(self) -> None:
-        self.database_url: str = os.getenv(
-            "DATABASE_URL", "postgresql+psycopg2://postgres:postgres@postgres:5432/ranobe"
-        )
-        self.redis_url: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
-        allowed = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
-        self.allowed_origins: List[str] = [o.strip() for o in allowed if o.strip()]
+class Settings(BaseSettings):
+    # Database
+    DATABASE_URL: str = Field(..., description="PostgreSQL connection string")
+    
+    # Redis
+    REDIS_URL: str = Field(..., description="Redis connection string")
+    
+    # Gemini API
+    GEMINI_API_KEYS: List[str] = Field(default_factory=list, description="List of Gemini API keys")
+    GEMINI_API_LIMIT_PER_KEY: int = Field(default=1000, description="Daily limit per API key")
+    GEMINI_API_LIMIT_THRESHOLD_PERCENT: int = Field(default=95, description="Threshold percentage for key rotation")
+    GEMINI_API_COOLDOWN_HOURS: int = Field(default=24, description="Cooldown hours for used keys")
+    
+    # Environment
+    ENVIRONMENT: str = Field(default="development", description="Environment (development/production)")
+    
+    # CORS
+    ALLOWED_ORIGINS: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:5173"],
+        description="Allowed CORS origins"
+    )
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+    
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.lower() == "production"
+    
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT.lower() == "development"
 
-        self.gemini_api_keys: List[str] = [
-            k.strip() for k in os.getenv("GEMINI_API_KEYS", "").split(",") if k.strip()
-        ]
-        self.gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
-        self.gemini_daily_limit: int = int(os.getenv("GEMINI_DAILY_LIMIT", "1000"))
-        self.gemini_rotation_threshold_percent: int = int(
-            os.getenv("GEMINI_ROTATION_THRESHOLD_PERCENT", "95")
-        )
 
+# Создаем экземпляр настроек
 settings = Settings()
