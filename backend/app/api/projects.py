@@ -148,6 +148,49 @@ def create_chapter_from_file(
     return chapter
 
 
+@router.get("/{project_id}/chapters/{chapter_id}/download")
+def download_chapter(
+    project_id: int,
+    chapter_id: int,
+    db: Session = Depends(get_db)
+):
+    """Скачать переведенную главу в формате TXT."""
+    from fastapi.responses import Response
+    
+    # Проверяем, что проект и глава существуют
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    chapter = db.get(Chapter, chapter_id)
+    if not chapter or chapter.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    
+    if not chapter.translated_text:
+        raise HTTPException(status_code=404, detail="Chapter not translated yet")
+    
+    # Формируем содержимое файла
+    content = f"""Перевод главы: {chapter.title}
+Проект: {project.name}
+Жанр: {project.genre}
+
+{chapter.translated_text}
+
+---
+Оригинальный текст:
+{chapter.original_text}
+"""
+    
+    # Возвращаем файл для скачивания
+    return Response(
+        content=content,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=chapter_{chapter_id}_{project.name}_{chapter.title}.txt"
+        }
+    )
+
+
 @router.get("/chapters/{chapter_id}", response_model=ChapterRead)
 def get_chapter(chapter_id: int, db: Session = Depends(get_db)) -> Chapter:
     """Получить главу по ID."""

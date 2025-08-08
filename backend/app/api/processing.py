@@ -120,6 +120,9 @@ def process_chapter_sync(chapter_id: int, db: Session):
         # Сохраняем все изменения
         db.commit()
         
+        # Инвалидируем кэш глоссария для проекта
+        cache_service.invalidate_glossary_cache(chapter.project_id)
+        
         return {
             "chapter_id": chapter_id,
             "extracted_terms": len(saved_terms),

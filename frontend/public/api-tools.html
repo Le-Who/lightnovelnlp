@@ -252,16 +252,32 @@
                 </div>
                 <button onclick="createTerm()">Создать термин</button>
             </div>
-            <div>
-                <h3>Получить термины проекта</h3>
-                <div class="form-group">
-                    <label for="getTermsProjectId">Проект:</label>
-                    <select id="getTermsProjectId">
-                        <option value="">Выберите проект...</option>
-                    </select>
-                </div>
-                <button onclick="getTerms()">Получить термины</button>
-            </div>
+                         <div>
+                 <h3>Получить термины проекта</h3>
+                 <div class="form-group">
+                     <label for="getTermsProjectId">Проект:</label>
+                     <select id="getTermsProjectId">
+                         <option value="">Выберите проект...</option>
+                     </select>
+                 </div>
+                 <button onclick="getTerms()">Получить термины</button>
+             </div>
+             <div>
+                 <h3>Скачать переведенную главу</h3>
+                 <div class="form-group">
+                     <label for="downloadProjectId">Проект:</label>
+                     <select id="downloadProjectId" onchange="loadChaptersForDownload()">
+                         <option value="">Выберите проект...</option>
+                     </select>
+                 </div>
+                 <div class="form-group">
+                     <label for="downloadChapterId">Глава:</label>
+                     <select id="downloadChapterId" disabled>
+                         <option value="">Сначала выберите проект...</option>
+                     </select>
+                 </div>
+                 <button onclick="downloadChapter()" id="downloadBtn" disabled>📥 Скачать главу</button>
+             </div>
         </div>
         <div id="glossaryResponse" class="response" style="display: none;"></div>
     </div>
@@ -441,9 +457,9 @@
 
         function showLoading(elementId, message = 'Обработка...') {
             const element = document.getElementById(elementId);
-            element.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">
-                <div style="margin-bottom: 10px;">${message}</div>
-                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            element.innerHTML = `<div class="loading-container">
+                <div class="loading-message">${message}</div>
+                <div class="loading-spinner"></div>
             </div>`;
             element.style.display = 'block';
         }
@@ -454,6 +470,24 @@
             @keyframes spin {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
+            }
+            .loading-spinner {
+                width: 40px;
+                height: 40px;
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto;
+            }
+            .loading-container {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+            }
+            .loading-message {
+                margin-bottom: 10px;
+                font-weight: bold;
             }
         `;
         document.head.appendChild(style);
@@ -496,7 +530,7 @@
             // Обновим выпадающие списки проектов
             if (result.success) {
                 const projects = result.data;
-                const selects = ['chapterProjectId','getChaptersProjectId','termProjectId','getTermsProjectId','analyzeProjectId','translateProjectId','manageTermsProjectId','editTermsProjectId','deleteProjectId','uploadChapterProjectId'];
+                                 const selects = ['chapterProjectId','getChaptersProjectId','termProjectId','getTermsProjectId','analyzeProjectId','translateProjectId','manageTermsProjectId','editTermsProjectId','deleteProjectId','uploadChapterProjectId','downloadProjectId'];
                 selects.forEach(id => {
                     const sel = document.getElementById(id);
                     if (!sel) return;
@@ -834,7 +868,7 @@
                  const projects = result.data;
                  
                  // Заполняем все селекты проектов
-                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'editTermsProjectId'];
+                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId'];
                  projectSelects.forEach(selectId => {
                      const select = document.getElementById(selectId);
                      select.innerHTML = '<option value="">Выберите проект...</option>';
@@ -960,11 +994,59 @@
              return labels[genre] || genre;
          }
 
-         // Автоматически загружаем проекты и проверяем здоровье API при загрузке
-         window.addEventListener('load', async () => {
-             await checkHealth();
-             await loadProjects();
-         });
+                   // Функции для скачивания глав
+          async function loadChaptersForDownload() {
+              const projectId = document.getElementById('downloadProjectId').value;
+              const chapterSelect = document.getElementById('downloadChapterId');
+              const downloadBtn = document.getElementById('downloadBtn');
+              
+              if (!projectId) {
+                  chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
+                  chapterSelect.disabled = true;
+                  downloadBtn.disabled = true;
+                  return;
+              }
+              
+              const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+              if (result.success) {
+                  const chapters = result.data;
+                  chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
+                  chapters.forEach(chapter => {
+                      const option = document.createElement('option');
+                      option.value = chapter.id;
+                      const status = chapter.translated_text ? '✓ Переведена' : '○ Не переведена';
+                      option.textContent = `${chapter.title} (${status})`;
+                      chapterSelect.appendChild(option);
+                  });
+                  chapterSelect.disabled = false;
+                  downloadBtn.disabled = false;
+              }
+          }
+
+          async function downloadChapter() {
+              const projectId = document.getElementById('downloadProjectId').value;
+              const chapterId = document.getElementById('downloadChapterId').value;
+              
+              if (!projectId || !chapterId) {
+                  alert('Выберите проект и главу для скачивания');
+                  return;
+              }
+              
+              // Создаем ссылку для скачивания
+              const downloadUrl = `${API_BASE_URL}/projects/${projectId}/chapters/${chapterId}/download`;
+              const link = document.createElement('a');
+              link.href = downloadUrl;
+              link.download = `chapter_${chapterId}.txt`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+          }
+
+          // Автоматически загружаем проекты и проверяем здоровье API при загрузке
+          window.addEventListener('load', async () => {
+              await checkHealth();
+              await loadProjects();
+          });
     </script>
 </body>
 </html>

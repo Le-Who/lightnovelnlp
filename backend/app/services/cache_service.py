@@ -30,7 +30,11 @@ class CacheService:
             self._reconnect_if_needed()
             value = self.redis_client.get(key)
             if value:
-                return json.loads(value)
+                # Для числовых значений возвращаем как int, для остальных как JSON
+                try:
+                    return int(value.decode())
+                except (ValueError, AttributeError):
+                    return json.loads(value)
             return None
         except Exception as e:
             print(f"Cache get error: {e}")
@@ -51,7 +55,13 @@ class CacheService:
         try:
             self._reconnect_if_needed()
             ttl = ttl or self.default_ttl
-            serialized_value = json.dumps(value, default=str)
+            
+            # Для числовых значений сохраняем как строку, для остальных как JSON
+            if isinstance(value, (int, float)):
+                serialized_value = str(value)
+            else:
+                serialized_value = json.dumps(value, default=str)
+                
             return self.redis_client.setex(key, ttl, serialized_value)
         except Exception as e:
             print(f"Cache set error: {e}")

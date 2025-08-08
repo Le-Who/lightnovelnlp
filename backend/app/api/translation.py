@@ -5,6 +5,7 @@ from app.deps import get_db
 from app.models.project import Chapter
 from app.models.glossary import GlossaryTerm, TermStatus
 from app.core.translation_engine import translation_engine
+from app.services.cache_service import cache_service
 
 router = APIRouter()
 
@@ -61,6 +62,9 @@ def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         # Сохраняем перевод в БД
         chapter.translated_text = translated_text
         db.commit()
+        
+        # Инвалидируем кэш перевода для главы
+        cache_service.invalidate_translation_cache(chapter_id)
         
         return {
             "chapter_id": chapter_id,
