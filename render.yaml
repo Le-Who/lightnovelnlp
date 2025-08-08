@@ -78,8 +78,7 @@ services:
       - key: ENVIRONMENT
         value: production
 
-# Redis сервис (бесплатный)
-services:
+  # Redis сервис (бесплатный)
   - type: redis
     name: lightnovel-redis
     plan: free
