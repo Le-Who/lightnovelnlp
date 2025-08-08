@@ -175,11 +175,14 @@ curl https://lightnovel-backend.onrender.com/info
 - **750 часов/месяц** для web и worker сервисов
 - **15 минут сна** при неактивности
 - **512 MB RAM** на сервис
+- **Free Postgres**: истекает через 30 дней
 
 ### Neon.tech ограничения
+- **191.9 часов/месяц** compute (достаточно для 0.25 CU 24/7)
 - **3 GB storage**
-- **10 одновременных соединений**
-- **0.5 vCPU, 1 GB RAM**
+- **Autoscaling**: до 2 vCPU, 8 GB RAM
+- **Read Replicas**: до 3 на проект
+- **Scale to zero**: автоматическое масштабирование
 
 ### Upstash.com ограничения
 - **10,000 записей**

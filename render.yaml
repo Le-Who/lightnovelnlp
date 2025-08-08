@@ -15,9 +15,7 @@ services:
     healthCheckTimeout: 300
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: lightnovel-db
-          property: connectionString
+        sync: false  # Используйте внешнюю Neon базу данных
       - key: REDIS_URL
         fromService:
           type: redis
@@ -63,9 +61,7 @@ services:
       celery -A app.tasks.celery_app worker --loglevel=info
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: lightnovel-db
-          property: connectionString
+        sync: false  # Используйте внешнюю Neon базу данных
       - key: REDIS_URL
         fromService:
           type: redis
@@ -82,14 +78,13 @@ services:
       - key: ENVIRONMENT
         value: production
 
-databases:
-  - name: lightnovel-db
-    databaseName: lightnovel
-    user: lightnovel_user
-    plan: free
-
+# Redis сервис (бесплатный)
 services:
   - type: redis
     name: lightnovel-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+
+# Примечание: DATABASE_URL должен быть настроен вручную в переменных окружения
+# Используйте Neon.tech для PostgreSQL базы данных
+# Render Free Postgres истекает через 30 дней
