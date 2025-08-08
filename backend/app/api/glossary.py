@@ -40,6 +40,15 @@ def get_pending_glossary_terms(project_id: int, db: Session = Depends(get_db)) -
     return terms
 
 
+@router.get("/terms/{term_id}/details", response_model=GlossaryTermRead)
+def get_glossary_term_details(term_id: int, db: Session = Depends(get_db)) -> GlossaryTerm:
+    """Получить детали конкретного термина глоссария."""
+    db_term = db.get(GlossaryTerm, term_id)
+    if not db_term:
+        raise HTTPException(status_code=404, detail="Term not found")
+    return db_term
+
+
 @router.post("/terms", response_model=GlossaryTermRead, status_code=status.HTTP_201_CREATED)
 def create_glossary_term(term: GlossaryTermCreate, db: Session = Depends(get_db)) -> GlossaryTerm:
     """Создать новый термин в глоссарии."""

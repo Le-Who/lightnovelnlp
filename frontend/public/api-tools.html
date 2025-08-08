@@ -281,6 +281,54 @@
         <div id="termManagementResponse" class="response" style="display: none;"></div>
     </div>
 
+    <div class="container">
+        <h2>✏️ Редактирование терминов</h2>
+        <div class="grid">
+            <div>
+                <h3>Выбрать термин для редактирования</h3>
+                <div class="form-group">
+                    <label for="editTermsProjectId">Проект:</label>
+                    <select id="editTermsProjectId" onchange="loadAllTermsForEdit()">
+                        <option value="">Выберите проект...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editTermsList">Термин:</label>
+                    <select id="editTermsList" disabled onchange="loadTermForEdit()">
+                        <option value="">Сначала выберите проект...</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <h3>Редактировать термин</h3>
+                <div class="form-group">
+                    <label for="editSourceTerm">Исходный термин:</label>
+                    <input type="text" id="editSourceTerm" placeholder="主人公">
+                </div>
+                <div class="form-group">
+                    <label for="editTranslatedTerm">Переведенный термин:</label>
+                    <input type="text" id="editTranslatedTerm" placeholder="Главный герой">
+                </div>
+                <div class="form-group">
+                    <label for="editTermCategory">Категория:</label>
+                    <select id="editTermCategory">
+                        <option value="character">Персонаж</option>
+                        <option value="location">Локация</option>
+                        <option value="skill">Навык</option>
+                        <option value="artifact">Артефакт</option>
+                        <option value="other">Другое</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editTermContext">Контекст:</label>
+                    <textarea id="editTermContext" placeholder="Дополнительная информация о термине..."></textarea>
+                </div>
+                <button onclick="updateTerm()" id="updateBtn" disabled>💾 Сохранить изменения</button>
+            </div>
+        </div>
+        <div id="editTermsResponse" class="response" style="display: none;"></div>
+    </div>
+
          <div class="container">
          <h2>🔍 Обработка и перевод</h2>
          <div class="grid">
@@ -541,6 +589,95 @@
             loadTermsForManagement(); // Обновляем список после отклонения
         }
 
+        // Редактирование терминов
+        async function loadAllTermsForEdit() {
+            const projectId = document.getElementById('editTermsProjectId').value;
+            const termsList = document.getElementById('editTermsList');
+            const updateBtn = document.getElementById('updateBtn');
+
+            if (!projectId) {
+                termsList.innerHTML = '<option value="">Сначала выберите проект...</option>';
+                termsList.disabled = true;
+                updateBtn.disabled = true;
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}`);
+            if (result.success) {
+                const terms = result.data;
+                termsList.innerHTML = '<option value="">Выберите термин для редактирования...</option>';
+                terms.forEach(term => {
+                    const option = document.createElement('option');
+                    option.value = term.id;
+                    option.textContent = `${term.source_term} -> ${term.translated_term} (${term.status}) [ID: ${term.id}]`;
+                    termsList.appendChild(option);
+                });
+                termsList.disabled = false;
+            } else {
+                termsList.innerHTML = '<option value="">Ошибка загрузки терминов</option>';
+                termsList.disabled = true;
+                updateBtn.disabled = true;
+            }
+        }
+
+        async function loadTermForEdit() {
+            const termId = document.getElementById('editTermsList').value;
+            const updateBtn = document.getElementById('updateBtn');
+
+            if (!termId) {
+                updateBtn.disabled = true;
+                // Очищаем поля формы
+                document.getElementById('editSourceTerm').value = '';
+                document.getElementById('editTranslatedTerm').value = '';
+                document.getElementById('editTermCategory').value = 'character';
+                document.getElementById('editTermContext').value = '';
+                return;
+            }
+
+            // Получаем полные данные термина с сервера
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${termId}/details`);
+            if (result.success) {
+                const term = result.data;
+                document.getElementById('editSourceTerm').value = term.source_term;
+                document.getElementById('editTranslatedTerm').value = term.translated_term;
+                document.getElementById('editTermCategory').value = term.category;
+                document.getElementById('editTermContext').value = term.context || '';
+                updateBtn.disabled = false;
+            } else {
+                alert('Ошибка загрузки данных термина');
+                updateBtn.disabled = true;
+            }
+        }
+
+        async function updateTerm() {
+            const termId = document.getElementById('editTermsList').value;
+            const sourceTerm = document.getElementById('editSourceTerm').value;
+            const translatedTerm = document.getElementById('editTranslatedTerm').value;
+            const category = document.getElementById('editTermCategory').value;
+            const context = document.getElementById('editTermContext').value;
+
+            if (!termId || !sourceTerm || !translatedTerm) {
+                alert('Заполните обязательные поля');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${termId}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    source_term: sourceTerm,
+                    translated_term: translatedTerm,
+                    category,
+                    context
+                })
+            });
+            showResponse('editTermsResponse', result);
+            
+            if (result.success) {
+                // Обновляем список терминов после успешного редактирования
+                loadAllTermsForEdit();
+            }
+        }
+
         // Обработка
         async function analyzeChapter() {
             const chapterId = document.getElementById('analyzeChapterId').value;
@@ -600,7 +737,7 @@
                  const projects = result.data;
                  
                  // Заполняем все селекты проектов
-                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId'];
+                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'editTermsProjectId'];
                  projectSelects.forEach(selectId => {
                      const select = document.getElementById(selectId);
                      select.innerHTML = '<option value="">Выберите проект...</option>';
