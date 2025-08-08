@@ -1,65 +1,31 @@
 services:
-  # Backend API
-  - type: web
-    name: lightnovel-backend
-    env: python
-    buildCommand: |
-      cd backend
-      pip install -r requirements.txt
-      python init_db.py
-    startCommand: |
-      cd backend
-      uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
-    envVars:
-      - key: DATABASE_URL
-        generateValue: true
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: lightnovel-redis
-          property: connectionString
-      - key: GEMINI_API_KEYS
-        generateValue: true
-      - key: GEMINI_API_LIMIT_PER_KEY
-        value: 1000
-      - key: GEMINI_API_LIMIT_THRESHOLD_PERCENT
-        value: 95
-      - key: GEMINI_API_COOLDOWN_HOURS
-        value: 24
-      - key: ENVIRONMENT
-        value: production
-      - key: ALLOWED_ORIGINS
-        value: https://lightnovel-frontend.onrender.com
-
-  # Frontend
-  - type: web
-    name: lightnovel-frontend
-    env: static
-    buildCommand: |
-      cd frontend
-      npm install
-      npm run build
-    staticPublishPath: ./frontend/dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://lightnovel-backend.onrender.com
-
-  # Redis сервис (бесплатный)
+  # Redis сервис (единственный в Blueprint)
   - type: redis
     name: lightnovel-redis
     plan: free
     ipAllowList: [] # только внутренние соединения
 
-# ПРИМЕЧАНИЕ: Web сервисы не поддерживают plan: free в Blueprint!
+# ПРИМЕЧАНИЕ: Для бесплатного деплоймента рекомендуется ручное создание!
 # 
-# Для бесплатного деплоймента:
-# 1. Запустите этот Blueprint для Redis (бесплатно)
-# 2. Создайте backend и frontend вручную в Render Dashboard с plan: free
-# 3. Используйте Neon.tech для PostgreSQL базы данных
-# 4. Настройте переменные окружения вручную
+# Этот Blueprint создает только Redis. Остальные сервисы создайте вручную:
 #
-# Инструкции по ручному созданию:
-# - Backend: New > Web Service > Python > Free
-# - Frontend: New > Static Site > Free
-# - Настройте переменные окружения в каждом сервисе
+# 1. Backend (Web Service):
+#    - New → Web Service → Python
+#    - Plan: Free
+#    - Build Command: cd backend && pip install -r requirements.txt && python init_db.py
+#    - Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+#    - Health Check Path: /health
+#
+# 2. Frontend (Static Site):
+#    - New → Static Site
+#    - Plan: Free
+#    - Build Command: cd frontend && npm install && npm run build
+#    - Publish Directory: frontend/dist
+#
+# 3. Настройте переменные окружения в каждом сервисе
+# 4. Используйте Neon.tech для PostgreSQL
+#
+# Преимущества ручного создания:
+# - Полный контроль над каждым сервисом
+# - Бесплатные планы доступны для всех сервисов
+# - Простота и гибкость настройки
