@@ -42,11 +42,16 @@
    - **Значение**: `24`
    - **Описание**: Время кулдауна для использованных ключей
 
-7. **ENVIRONMENT**
+7. **GEMINI_API_RESET_TIMEZONE**
+   - **Значение**: `America/Los_Angeles`
+   - **Описание**: Часовой пояс для сброса лимитов (Mountain View, CA)
+   - **Примечание**: Лимиты сбрасываются в полночь по времени Mountain View
+
+8. **ENVIRONMENT**
    - **Значение**: `production`
    - **Описание**: Окружение приложения
 
-8. **ALLOWED_ORIGINS**
+9. **ALLOWED_ORIGINS**
    - **Значение**: `https://lightnovel-frontend.onrender.com`
    - **Описание**: Разрешенные CORS origins
    - **Примечание**: Замените на ваш реальный frontend URL
