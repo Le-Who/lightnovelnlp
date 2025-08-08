@@ -1,8 +1,9 @@
 services:
-  # Backend API
+  # Backend API (бесплатный)
   - type: web
     name: lightnovel-backend
     env: python
+    plan: free
     buildCommand: |
       cd backend
       pip install -r requirements.txt
@@ -32,10 +33,11 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://lightnovel-frontend.onrender.com
 
-  # Frontend
+  # Frontend (бесплатный)
   - type: web
     name: lightnovel-frontend
     env: static
+    plan: free
     buildCommand: |
       cd frontend
       npm install
@@ -45,7 +47,7 @@ services:
       - key: VITE_API_URL
         value: https://lightnovel-backend.onrender.com
 
-  # Celery Worker
+  # Celery Worker (бесплатный)
   - type: worker
     name: lightnovel-worker
     env: python
@@ -81,6 +83,6 @@ services:
     plan: free
     ipAllowList: [] # только внутренние соединения
 
-# Примечание: DATABASE_URL и GEMINI_API_KEYS должны быть настроены вручную в переменных окружения
+# ПРИМЕЧАНИЕ: Все сервисы теперь бесплатные!
 # Используйте Neon.tech для PostgreSQL базы данных
 # Render Free Postgres истекает через 30 дней
