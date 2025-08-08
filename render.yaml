@@ -1,52 +1,4 @@
 services:
-  # Backend API (бесплатный)
-  - type: web
-    name: lightnovel-backend
-    env: python
-    plan: free
-    buildCommand: |
-      cd backend
-      pip install -r requirements.txt
-      python init_db.py
-    startCommand: |
-      cd backend
-      uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
-    envVars:
-      - key: DATABASE_URL
-        generateValue: true
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: lightnovel-redis
-          property: connectionString
-      - key: GEMINI_API_KEYS
-        generateValue: true
-      - key: GEMINI_API_LIMIT_PER_KEY
-        value: 1000
-      - key: GEMINI_API_LIMIT_THRESHOLD_PERCENT
-        value: 95
-      - key: GEMINI_API_COOLDOWN_HOURS
-        value: 24
-      - key: ENVIRONMENT
-        value: production
-      - key: ALLOWED_ORIGINS
-        value: https://lightnovel-frontend.onrender.com
-
-  # Frontend (бесплатный)
-  - type: web
-    name: lightnovel-frontend
-    env: static
-    plan: free
-    buildCommand: |
-      cd frontend
-      npm install
-      npm run build
-    staticPublishPath: ./frontend/dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://lightnovel-backend.onrender.com
-
   # Celery Worker (бесплатный)
   - type: worker
     name: lightnovel-worker
@@ -83,6 +35,11 @@ services:
     plan: free
     ipAllowList: [] # только внутренние соединения
 
-# ПРИМЕЧАНИЕ: Все сервисы теперь бесплатные!
-# Используйте Neon.tech для PostgreSQL базы данных
-# Render Free Postgres истекает через 30 дней
+# ПРИМЕЧАНИЕ: Web сервисы (backend и frontend) нужно создать вручную в Render Dashboard
+# так как они не поддерживают plan: free в Blueprint
+# 
+# Для бесплатного деплоймента:
+# 1. Запустите этот Blueprint для worker и redis (бесплатно)
+# 2. Создайте backend и frontend вручную в Render Dashboard с plan: free
+# 3. Используйте Neon.tech для PostgreSQL базы данных
+# 4. Настройте переменные окружения вручную
