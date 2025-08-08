@@ -4,9 +4,9 @@ from datetime import datetime
 from typing import List
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from . import Base
 
 
 class Project(Base):

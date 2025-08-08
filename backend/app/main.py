@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from app.db import engine, Base
+    from app.models import *  # Импортируем все модели для регистрации
     from app.api import projects, glossary, processing, translation, batch
     from app.core.config import settings
     

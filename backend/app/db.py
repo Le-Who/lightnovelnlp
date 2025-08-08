@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.models import Base
 
 # Создаем движок базы данных
 engine = create_engine(
@@ -14,6 +14,3 @@ engine = create_engine(
 
 # Создаем фабрику сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Базовый класс для моделей
-Base = declarative_base()

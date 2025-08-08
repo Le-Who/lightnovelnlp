@@ -5,9 +5,9 @@ from enum import Enum
 from typing import List
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, JSON
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from . import Base
 
 
 class TermStatus(str, Enum):

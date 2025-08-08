@@ -12,14 +12,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 from app.db import engine, Base
-from app.models.project import Project, Chapter
-from app.models.glossary import (
-    GlossaryTerm, 
-    TermRelationship, 
-    GlossaryVersion, 
-    BatchJob, 
-    BatchJobItem
-)
+from app.models import *  # Импортируем все модели для регистрации
 from app.core.config import settings
 
 
