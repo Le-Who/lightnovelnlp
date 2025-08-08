@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Light Novel NLP - API Tools</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .response {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .error {
+            border-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        .api-url {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 15px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-links a {
+            color: #3498db;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border: 1px solid #3498db;
+            border-radius: 5px;
+        }
+        .nav-links a:hover {
+            background-color: #3498db;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Главная</a>
+        <a href="/api-tools.html">API Tools</a>
+        <a href="/docs" target="_blank">Swagger Docs</a>
+    </div>
+
+    <h1>🔧 Light Novel NLP - API Tools</h1>
+
+    <div class="container">
+        <h2>📊 Системная информация</h2>
+        <div class="api-url" id="apiUrl">API URL: <span id="currentUrl">Загрузка...</span></div>
+        <button onclick="checkHealth()">Проверить здоровье API</button>
+        <button onclick="getInfo()">Получить информацию</button>
+        <div id="systemResponse" class="response" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>📁 Управление проектами</h2>
+        <div class="grid">
+            <div>
+                <h3>Создать проект</h3>
+                <div class="form-group">
+                    <label for="projectName">Название проекта:</label>
+                    <input type="text" id="projectName" placeholder="Мой первый проект">
+                </div>
+                <button onclick="createProject()">Создать проект</button>
+            </div>
+            <div>
+                <h3>Получить проекты</h3>
+                <button onclick="getProjects()">Получить все проекты</button>
+            </div>
+        </div>
+        <div id="projectsResponse" class="response" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>📖 Управление главами</h2>
+        <div class="grid">
+            <div>
+                <h3>Создать главу</h3>
+                <div class="form-group">
+                    <label for="chapterProjectId">ID проекта:</label>
+                    <input type="number" id="chapterProjectId" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label for="chapterTitle">Название главы:</label>
+                    <input type="text" id="chapterTitle" placeholder="Глава 1">
+                </div>
+                <div class="form-group">
+                    <label for="chapterText">Оригинальный текст:</label>
+                    <textarea id="chapterText" placeholder="Введите оригинальный текст главы..."></textarea>
+                </div>
+                <button onclick="createChapter()">Создать главу</button>
+            </div>
+            <div>
+                <h3>Получить главы проекта</h3>
+                <div class="form-group">
+                    <label for="getChaptersProjectId">ID проекта:</label>
+                    <input type="number" id="getChaptersProjectId" placeholder="1">
+                </div>
+                <button onclick="getChapters()">Получить главы</button>
+            </div>
+        </div>
+        <div id="chaptersResponse" class="response" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>📚 Управление глоссарием</h2>
+        <div class="grid">
+            <div>
+                <h3>Создать термин</h3>
+                <div class="form-group">
+                    <label for="termProjectId">ID проекта:</label>
+                    <input type="number" id="termProjectId" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label for="sourceTerm">Исходный термин:</label>
+                    <input type="text" id="sourceTerm" placeholder="主人公">
+                </div>
+                <div class="form-group">
+                    <label for="translatedTerm">Переведенный термин:</label>
+                    <input type="text" id="translatedTerm" placeholder="Главный герой">
+                </div>
+                <div class="form-group">
+                    <label for="termCategory">Категория:</label>
+                    <select id="termCategory">
+                        <option value="character">Персонаж</option>
+                        <option value="location">Локация</option>
+                        <option value="skill">Навык</option>
+                        <option value="artifact">Артефакт</option>
+                        <option value="other">Другое</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="termContext">Контекст:</label>
+                    <textarea id="termContext" placeholder="Дополнительная информация о термине..."></textarea>
+                </div>
+                <button onclick="createTerm()">Создать термин</button>
+            </div>
+            <div>
+                <h3>Получить термины проекта</h3>
+                <div class="form-group">
+                    <label for="getTermsProjectId">ID проекта:</label>
+                    <input type="number" id="getTermsProjectId" placeholder="1">
+                </div>
+                <button onclick="getTerms()">Получить термины</button>
+            </div>
+        </div>
+        <div id="glossaryResponse" class="response" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔍 Обработка и перевод</h2>
+        <div class="grid">
+            <div>
+                <h3>Анализ главы</h3>
+                <div class="form-group">
+                    <label for="analyzeChapterId">ID главы:</label>
+                    <input type="number" id="analyzeChapterId" placeholder="1">
+                </div>
+                <button onclick="analyzeChapter()">Анализировать главу</button>
+            </div>
+            <div>
+                <h3>Перевод главы</h3>
+                <div class="form-group">
+                    <label for="translateChapterId">ID главы:</label>
+                    <input type="number" id="translateChapterId" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useGlossary" checked> Использовать глоссарий
+                    </label>
+                </div>
+                <button onclick="translateChapter()">Перевести главу</button>
+            </div>
+        </div>
+        <div id="processingResponse" class="response" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>📈 Мониторинг</h2>
+        <div class="grid">
+            <div>
+                <button onclick="getApiUsage()">Статистика API</button>
+            </div>
+            <div>
+                <button onclick="getCacheStats()">Статистика кэша</button>
+            </div>
+        </div>
+        <div id="monitoringResponse" class="response" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Определяем базовый URL API
+        const API_BASE_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8000' 
+            : window.location.origin.replace('lightnovel-frontend', 'lightnovel-backend');
+
+        document.getElementById('currentUrl').textContent = API_BASE_URL;
+
+        // Общие функции
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, data: { error: error.message }, status: 0 };
+            }
+        }
+
+        function showResponse(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${result.success ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(result.data, null, 2);
+        }
+
+        // Системные функции
+        async function checkHealth() {
+            const result = await makeRequest(`${API_BASE_URL}/health`);
+            showResponse('systemResponse', result);
+        }
+
+        async function getInfo() {
+            const result = await makeRequest(`${API_BASE_URL}/info`);
+            showResponse('systemResponse', result);
+        }
+
+        // Проекты
+        async function createProject() {
+            const name = document.getElementById('projectName').value;
+            if (!name) {
+                alert('Введите название проекта');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/`, {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            });
+            showResponse('projectsResponse', result);
+        }
+
+        async function getProjects() {
+            const result = await makeRequest(`${API_BASE_URL}/projects/`);
+            showResponse('projectsResponse', result);
+        }
+
+        // Главы
+        async function createChapter() {
+            const projectId = document.getElementById('chapterProjectId').value;
+            const title = document.getElementById('chapterTitle').value;
+            const text = document.getElementById('chapterText').value;
+
+            if (!projectId || !title || !text) {
+                alert('Заполните все поля');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`, {
+                method: 'POST',
+                body: JSON.stringify({ title, original_text: text })
+            });
+            showResponse('chaptersResponse', result);
+        }
+
+        async function getChapters() {
+            const projectId = document.getElementById('getChaptersProjectId').value;
+            if (!projectId) {
+                alert('Введите ID проекта');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+            showResponse('chaptersResponse', result);
+        }
+
+        // Глоссарий
+        async function createTerm() {
+            const projectId = document.getElementById('termProjectId').value;
+            const sourceTerm = document.getElementById('sourceTerm').value;
+            const translatedTerm = document.getElementById('translatedTerm').value;
+            const category = document.getElementById('termCategory').value;
+            const context = document.getElementById('termContext').value;
+
+            if (!projectId || !sourceTerm || !translatedTerm) {
+                alert('Заполните обязательные поля');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    project_id: parseInt(projectId),
+                    source_term: sourceTerm,
+                    translated_term: translatedTerm,
+                    category,
+                    context
+                })
+            });
+            showResponse('glossaryResponse', result);
+        }
+
+        async function getTerms() {
+            const projectId = document.getElementById('getTermsProjectId').value;
+            if (!projectId) {
+                alert('Введите ID проекта');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms?project_id=${projectId}`);
+            showResponse('glossaryResponse', result);
+        }
+
+        // Обработка
+        async function analyzeChapter() {
+            const chapterId = document.getElementById('analyzeChapterId').value;
+            if (!chapterId) {
+                alert('Введите ID главы');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/processing/analyze`, {
+                method: 'POST',
+                body: JSON.stringify({ chapter_id: parseInt(chapterId) })
+            });
+            showResponse('processingResponse', result);
+        }
+
+        async function translateChapter() {
+            const chapterId = document.getElementById('translateChapterId').value;
+            const useGlossary = document.getElementById('useGlossary').checked;
+
+            if (!chapterId) {
+                alert('Введите ID главы');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/translation/translate`, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    chapter_id: parseInt(chapterId),
+                    use_glossary: useGlossary
+                })
+            });
+            showResponse('processingResponse', result);
+        }
+
+        // Мониторинг
+        async function getApiUsage() {
+            const result = await makeRequest(`${API_BASE_URL}/glossary/api-usage`);
+            showResponse('monitoringResponse', result);
+        }
+
+        async function getCacheStats() {
+            const result = await makeRequest(`${API_BASE_URL}/glossary/cache-stats`);
+            showResponse('monitoringResponse', result);
+        }
+
+        // Автоматически проверяем здоровье API при загрузке
+        window.addEventListener('load', () => {
+            checkHealth();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,446 @@
+{
+	"info": {
+		"_postman_id": "light-novel-nlp-api",
+		"name": "Light Novel NLP API",
+		"description": "API для системы перевода лайт-новел с динамическим глоссарием",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Info",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					}
+				},
+				{
+					"name": "API Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/info",
+							"host": ["{{base_url}}"],
+							"path": ["info"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Projects",
+			"item": [
+				{
+					"name": "Get All Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/projects/",
+							"host": ["{{base_url}}"],
+							"path": ["projects", ""]
+						}
+					}
+				},
+				{
+					"name": "Create Project",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Мой первый проект\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/projects/",
+							"host": ["{{base_url}}"],
+							"path": ["projects", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Project by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/projects/{{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["projects", "{{project_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Project",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/projects/{{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["projects", "{{project_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Chapters",
+			"item": [
+				{
+					"name": "Get Project Chapters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/projects/{{project_id}}/chapters",
+							"host": ["{{base_url}}"],
+							"path": ["projects", "{{project_id}}", "chapters"]
+						}
+					}
+				},
+				{
+					"name": "Create Chapter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Глава 1\",\n  \"original_text\": \"Это оригинальный текст главы на японском языке.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/projects/{{project_id}}/chapters",
+							"host": ["{{base_url}}"],
+							"path": ["projects", "{{project_id}}", "chapters"]
+						}
+					}
+				},
+				{
+					"name": "Get Chapter by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/chapters/{{chapter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["chapters", "{{chapter_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Chapter",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Обновленная глава 1\",\n  \"original_text\": \"Обновленный оригинальный текст.\",\n  \"translated_text\": \"Updated translated text.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/chapters/{{chapter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["chapters", "{{chapter_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Chapter",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/chapters/{{chapter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["chapters", "{{chapter_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Glossary",
+			"item": [
+				{
+					"name": "Get Project Terms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/glossary/terms?project_id={{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "terms"],
+							"query": [
+								{
+									"key": "project_id",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Term",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"project_id\": {{project_id}},\n  \"source_term\": \"主人公\",\n  \"translated_term\": \"Главный герой\",\n  \"category\": \"character\",\n  \"context\": \"Main character of the story\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/glossary/terms",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "terms"]
+						}
+					}
+				},
+				{
+					"name": "Update Term",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source_term\": \"主人公\",\n  \"translated_term\": \"Протагонист\",\n  \"category\": \"character\",\n  \"status\": \"approved\",\n  \"context\": \"Updated context\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/glossary/terms/{{term_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "terms", "{{term_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Term",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/glossary/terms/{{term_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "terms", "{{term_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Term Relationships",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/glossary/relationships?project_id={{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "relationships"],
+							"query": [
+								{
+									"key": "project_id",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Relationship",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"project_id\": {{project_id}},\n  \"source_term_id\": {{term_id_1}},\n  \"target_term_id\": {{term_id_2}},\n  \"relation_type\": \"friends\",\n  \"confidence\": 85,\n  \"context\": \"Characters are friends\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/glossary/relationships",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "relationships"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Processing",
+			"item": [
+				{
+					"name": "Analyze Chapter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"chapter_id\": {{chapter_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/processing/analyze",
+							"host": ["{{base_url}}"],
+							"path": ["processing", "analyze"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Translation",
+			"item": [
+				{
+					"name": "Translate Chapter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"chapter_id\": {{chapter_id}},\n  \"use_glossary\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/translation/translate",
+							"host": ["{{base_url}}"],
+							"path": ["translation", "translate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Batch Processing",
+			"item": [
+				{
+					"name": "Start Batch Analysis",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"project_id\": {{project_id}},\n  \"job_type\": \"analyze\",\n  \"chapter_ids\": [{{chapter_id_1}}, {{chapter_id_2}}]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/batch/start",
+							"host": ["{{base_url}}"],
+							"path": ["batch", "start"]
+						}
+					}
+				},
+				{
+					"name": "Get Batch Job Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/batch/{{batch_job_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["batch", "{{batch_job_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Monitoring",
+			"item": [
+				{
+					"name": "API Usage Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/glossary/api-usage",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "api-usage"]
+						}
+					}
+				},
+				{
+					"name": "Cache Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/glossary/cache-stats",
+							"host": ["{{base_url}}"],
+							"path": ["glossary", "cache-stats"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://your-backend-url.onrender.com",
+			"type": "string"
+		},
+		{
+			"key": "project_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "chapter_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "term_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "batch_job_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
