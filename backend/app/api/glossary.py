@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
-from app.models.glossary import GlossaryTerm, TermStatus, TermCategory
+from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship
 from app.schemas.glossary import (
     GlossaryTermCreate, 
     GlossaryTermRead, 
-    GlossaryTermUpdate
+    GlossaryTermUpdate,
+    TermRelationshipRead
 )
 
 router = APIRouter()
@@ -114,3 +115,73 @@ def approve_term(term_id: int, db: Session = Depends(get_db)) -> GlossaryTerm:
     db.commit()
     db.refresh(term)
     return term
+
+
+# API для связей между терминами
+@router.get("/{project_id}/relationships", response_model=List[TermRelationshipRead])
+def list_term_relationships(project_id: int, db: Session = Depends(get_db)) -> List[TermRelationship]:
+    """Получить все связи между терминами для проекта."""
+    relationships = db.query(TermRelationship).filter(
+        TermRelationship.project_id == project_id
+    ).all()
+    return relationships
+
+
+@router.get("/terms/{term_id}/relationships", response_model=List[TermRelationshipRead])
+def get_term_relationships(term_id: int, db: Session = Depends(get_db)) -> List[TermRelationship]:
+    """Получить все связи для конкретного термина."""
+    # Проверяем, что термин существует
+    term = db.get(GlossaryTerm, term_id)
+    if not term:
+        raise HTTPException(status_code=404, detail="Term not found")
+    
+    # Получаем связи где термин является источником или целью
+    relationships = db.query(TermRelationship).filter(
+        (TermRelationship.source_term_id == term_id) | 
+        (TermRelationship.target_term_id == term_id)
+    ).all()
+    
+    return relationships
+
+
+@router.get("/{project_id}/relationships/graph")
+def get_relationships_graph(project_id: int, db: Session = Depends(get_db)) -> dict:
+    """Получить граф связей для визуализации."""
+    # Получаем все термины проекта
+    terms = db.query(GlossaryTerm).filter(
+        GlossaryTerm.project_id == project_id
+    ).all()
+    
+    # Получаем все связи
+    relationships = db.query(TermRelationship).filter(
+        TermRelationship.project_id == project_id
+    ).all()
+    
+    # Формируем данные для графа
+    nodes = []
+    edges = []
+    
+    # Узлы (термины)
+    for term in terms:
+        nodes.append({
+            "id": term.id,
+            "label": term.source_term,
+            "translated": term.translated_term,
+            "category": term.category.value,
+            "status": term.status.value
+        })
+    
+    # Ребра (связи)
+    for rel in relationships:
+        edges.append({
+            "source": rel.source_term_id,
+            "target": rel.target_term_id,
+            "type": rel.relation_type,
+            "confidence": rel.confidence,
+            "context": rel.context
+        })
+    
+    return {
+        "nodes": nodes,
+        "edges": edges
+    }

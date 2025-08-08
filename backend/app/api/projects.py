@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.deps import get_db
 from app.models.project import Project, Chapter
 from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead
+from app.core.nlp_pipeline.context_summarizer import context_summarizer
 
 router = APIRouter()
 
@@ -96,3 +97,52 @@ def delete_chapter(chapter_id: int, db: Session = Depends(get_db)) -> None:
     db.delete(chapter)
     db.commit()
     return None
+
+
+# API для создания общего саммари проекта
+@router.post("/{project_id}/generate-summary")
+def generate_project_summary(project_id: int, db: Session = Depends(get_db)) -> dict:
+    """Создать общее саммари проекта на основе всех глав."""
+    # Проверяем, что проект существует
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Получаем все главы проекта с саммари
+    chapters = db.query(Chapter).filter(
+        Chapter.project_id == project_id,
+        Chapter.summary.isnot(None)
+    ).order_by(Chapter.id).all()
+    
+    if not chapters:
+        raise HTTPException(
+            status_code=400, 
+            detail="No chapters with summaries found. Please analyze chapters first."
+        )
+    
+    try:
+        # Подготавливаем данные для создания саммари
+        chapters_data = [
+            {
+                "title": chapter.title,
+                "summary": chapter.summary,
+                "original_text": chapter.original_text
+            }
+            for chapter in chapters
+        ]
+        
+        # Создаем общее саммари
+        project_summary = context_summarizer.create_project_summary(chapters_data)
+        
+        return {
+            "project_id": project_id,
+            "summary": project_summary,
+            "chapters_used": len(chapters),
+            "message": "Project summary generated successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate project summary: {str(e)}"
+        )

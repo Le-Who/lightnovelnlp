@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.post("/chapters/{chapter_id}/translate", status_code=status.HTTP_200_OK)
 def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
-    """Перевести главу с использованием утвержденного глоссария."""
+    """Перевести главу с использованием утвержденного глоссария и контекста."""
     # Получаем главу
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
@@ -30,11 +30,32 @@ def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         )
     
     try:
+        # Получаем общее саммари проекта (если есть)
+        project_summary = None
+        project_chapters = db.query(Chapter).filter(
+            Chapter.project_id == chapter.project_id,
+            Chapter.summary.isnot(None)
+        ).order_by(Chapter.id).all()
+        
+        if len(project_chapters) > 1:  # Если есть несколько глав с саммари
+            # Создаем краткое общее саммари
+            from app.core.nlp_pipeline.context_summarizer import context_summarizer
+            chapters_data = [
+                {
+                    "title": ch.title,
+                    "summary": ch.summary,
+                    "original_text": ch.original_text
+                }
+                for ch in project_chapters[:5]  # Берем первые 5 глав
+            ]
+            project_summary = context_summarizer.create_project_summary(chapters_data)
+        
         # Переводим текст
         translated_text = translation_engine.translate_with_glossary(
             text=chapter.original_text,
             glossary_terms=glossary_terms,
-            context_summary=chapter.summary
+            context_summary=chapter.summary,
+            project_summary=project_summary
         )
         
         # Сохраняем перевод в БД
@@ -45,6 +66,8 @@ def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
             "chapter_id": chapter_id,
             "translated_text": translated_text,
             "glossary_terms_used": len(glossary_terms),
+            "context_used": bool(chapter.summary),
+            "project_context_used": bool(project_summary),
             "message": "Translation completed successfully"
         }
         
@@ -79,11 +102,31 @@ def preview_translation(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         }
     
     try:
+        # Получаем общее саммари проекта (если есть)
+        project_summary = None
+        project_chapters = db.query(Chapter).filter(
+            Chapter.project_id == chapter.project_id,
+            Chapter.summary.isnot(None)
+        ).order_by(Chapter.id).all()
+        
+        if len(project_chapters) > 1:
+            from app.core.nlp_pipeline.context_summarizer import context_summarizer
+            chapters_data = [
+                {
+                    "title": ch.title,
+                    "summary": ch.summary,
+                    "original_text": ch.original_text
+                }
+                for ch in project_chapters[:5]
+            ]
+            project_summary = context_summarizer.create_project_summary(chapters_data)
+        
         # Создаем предварительный перевод
         translated_text = translation_engine.translate_with_glossary(
             text=chapter.original_text,
             glossary_terms=glossary_terms,
-            context_summary=chapter.summary
+            context_summary=chapter.summary,
+            project_summary=project_summary
         )
         
         return {
@@ -92,6 +135,8 @@ def preview_translation(chapter_id: int, db: Session = Depends(get_db)) -> dict:
             "original_text": chapter.original_text,
             "translated_text": translated_text,
             "glossary_terms_count": len(glossary_terms),
+            "context_used": bool(chapter.summary),
+            "project_context_used": bool(project_summary),
             "glossary_terms": [
                 {
                     "source_term": term.source_term,

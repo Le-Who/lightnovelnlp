@@ -4,12 +4,13 @@ import api from '../services/apiClient'
 import ChapterManager from '../components/ChapterManager'
 import GlossaryEditor from '../components/GlossaryEditor'
 import ChapterViewer from '../components/ChapterViewer'
+import RelationshipsViewer from '../components/RelationshipsViewer'
 
 export default function ProjectPage() {
   const { projectId } = useParams()
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('chapters') // 'chapters', 'glossary', или 'translations'
+  const [activeTab, setActiveTab] = useState('chapters') // 'chapters', 'glossary', 'translations', или 'relationships'
 
   const loadProject = async () => {
     setLoading(true)
@@ -55,13 +56,14 @@ export default function ProjectPage() {
         <button
           onClick={() => setActiveTab('chapters')}
           style={{
-            padding: '12px 24px',
+            padding: '12px 16px',
             border: 'none',
             backgroundColor: activeTab === 'chapters' ? '#2196F3' : '#f5f5f5',
             color: activeTab === 'chapters' ? 'white' : '#333',
             cursor: 'pointer',
             borderTopLeftRadius: 8,
-            borderBottomLeftRadius: 8
+            borderBottomLeftRadius: 8,
+            fontSize: '0.9em'
           }}
         >
           Главы
@@ -69,25 +71,40 @@ export default function ProjectPage() {
         <button
           onClick={() => setActiveTab('glossary')}
           style={{
-            padding: '12px 24px',
+            padding: '12px 16px',
             border: 'none',
             backgroundColor: activeTab === 'glossary' ? '#2196F3' : '#f5f5f5',
             color: activeTab === 'glossary' ? 'white' : '#333',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontSize: '0.9em'
           }}
         >
           Глоссарий
         </button>
         <button
+          onClick={() => setActiveTab('relationships')}
+          style={{
+            padding: '12px 16px',
+            border: 'none',
+            backgroundColor: activeTab === 'relationships' ? '#2196F3' : '#f5f5f5',
+            color: activeTab === 'relationships' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '0.9em'
+          }}
+        >
+          Связи
+        </button>
+        <button
           onClick={() => setActiveTab('translations')}
           style={{
-            padding: '12px 24px',
+            padding: '12px 16px',
             border: 'none',
             backgroundColor: activeTab === 'translations' ? '#2196F3' : '#f5f5f5',
             color: activeTab === 'translations' ? 'white' : '#333',
             cursor: 'pointer',
             borderTopRightRadius: 8,
-            borderBottomRightRadius: 8
+            borderBottomRightRadius: 8,
+            fontSize: '0.9em'
           }}
         >
           Переводы
@@ -97,6 +114,7 @@ export default function ProjectPage() {
       {/* Контент табов */}
       {activeTab === 'chapters' && <ChapterManager projectId={projectId} />}
       {activeTab === 'glossary' && <GlossaryEditor projectId={projectId} />}
+      {activeTab === 'relationships' && <RelationshipsViewer projectId={projectId} />}
       {activeTab === 'translations' && <ChapterViewer projectId={projectId} />}
     </div>
   )

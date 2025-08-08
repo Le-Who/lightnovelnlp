@@ -15,20 +15,22 @@ class TranslationEngine:
         self, 
         text: str, 
         glossary_terms: List[GlossaryTerm],
-        context_summary: str | None = None
+        context_summary: str | None = None,
+        project_summary: str | None = None
     ) -> str:
         """
-        Переводит текст с использованием утвержденного глоссария.
+        Переводит текст с использованием утвержденного глоссария и контекста.
         
         Args:
             text: Оригинальный текст для перевода
             glossary_terms: Список утвержденных терминов глоссария
-            context_summary: Краткое саммари контекста (опционально)
+            context_summary: Саммари текущей главы (опционально)
+            project_summary: Общее саммари проекта (опционально)
             
         Returns:
             str: Переведенный текст
         """
-        prompt = self._build_translation_prompt(text, glossary_terms, context_summary)
+        prompt = self._build_translation_prompt(text, glossary_terms, context_summary, project_summary)
         
         try:
             response = self.client.complete(prompt)
@@ -41,9 +43,10 @@ class TranslationEngine:
         self, 
         text: str, 
         glossary_terms: List[GlossaryTerm],
-        context_summary: str | None = None
+        context_summary: str | None = None,
+        project_summary: str | None = None
     ) -> str:
-        """Строит промпт для перевода с учетом глоссария."""
+        """Строит промпт для перевода с учетом глоссария и контекста."""
         
         # Формируем глоссарий для промпта
         glossary_text = self._format_glossary_for_prompt(glossary_terms)
@@ -59,10 +62,18 @@ class TranslationEngine:
 
 """
         
-        # Добавляем контекст, если есть
+        # Добавляем общее саммари проекта, если есть
+        if project_summary:
+            prompt += f"""
+ОБЩИЙ КОНТЕКСТ ПРОИЗВЕДЕНИЯ:
+{project_summary}
+
+"""
+        
+        # Добавляем контекст текущей главы, если есть
         if context_summary:
             prompt += f"""
-КОНТЕКСТ ПРОИЗВЕДЕНИЯ:
+КОНТЕКСТ ТЕКУЩЕЙ ГЛАВЫ:
 {context_summary}
 
 """
@@ -77,7 +88,9 @@ class TranslationEngine:
 3. Если в тексте встречается термин из глоссария, используй ТОЛЬКО указанный перевод
 4. Сохраняй структуру предложений и абзацев
 5. Переводи естественно, как будто это оригинальный русский текст
-6. Не добавляй комментарии или пояснения в перевод
+6. Учитывай контекст произведения и главы для более точного перевода
+7. Не добавляй комментарии или пояснения в перевод
+8. Сохраняй эмоциональную окраску и тон повествования
 
 ПЕРЕВОД:
 """
