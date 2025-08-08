@@ -4,7 +4,7 @@
 
 ## 🚀 Быстрый старт
 
-### Локальная разработка
+### Локальная разработка с Docker
 
 ```bash
 # Клонируйте репозиторий
@@ -14,11 +14,22 @@ cd lightnovelnlp
 # Запустите с Docker Compose
 docker-compose up -d
 
-# Или запустите локально
+# Проверьте статус
+docker-compose ps
+
+# Просмотрите логи
+docker-compose logs -f backend
+```
+
+### Локальная разработка без Docker
+
+```bash
+# Backend
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 
+# Frontend
 cd frontend
 npm install
 npm run dev

@@ -1,12 +1,11 @@
-# ПРИМЕЧАНИЕ: Для бесплатного деплоймента используем Upstash.com для Redis!
+# ПРИМЕЧАНИЕ: Docker деплоймент для упрощения процесса!
 # 
 # Этот Blueprint НЕ создает Redis. Создайте Redis на Upstash.com:
 #
 # 1. Backend (Web Service):
-#    - New → Web Service → Python
+#    - New → Web Service → Docker
 #    - Plan: Free
-#    - Build Command: cd backend && pip install -r requirements.txt && python init_db.py
-#    - Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+#    - Docker Image: будет собран автоматически из Dockerfile
 #    - Health Check Path: /health
 #
 # 2. Frontend (Static Site):
@@ -23,8 +22,9 @@
 # 4. Настройте переменные окружения в каждом сервисе
 # 5. Используйте Neon.tech для PostgreSQL
 #
-# Преимущества Upstash Redis:
-# - 256MB data size (больше чем Render)
-# - 500K commands per month
-# - Более стабильный сервис
-# - Лучшая производительность
+# Преимущества Docker деплоймента:
+# - Решает проблемы компиляции (psycopg2-binary, Rust)
+# - Предустановленные системные зависимости
+# - Изолированная среда
+# - Воспроизводимые сборки
+# - Лучшая отладка

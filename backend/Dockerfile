@@ -1,17 +1,34 @@
+# Используем официальный Python образ
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# Устанавливаем системные зависимости
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+# Копируем файлы зависимостей
+COPY requirements.txt .
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Устанавливаем Python зависимости
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
+# Копируем код приложения
+COPY . .
 
+# Создаем пользователя для безопасности
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app
+USER app
+
+# Открываем порт
 EXPOSE 8000
 
+# Команда запуска
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -113,10 +113,9 @@
 2. **Настройка сервиса**
    ```
    Name: lightnovel-backend
-   Environment: Python
+   Environment: Docker
    Plan: Free
-   Build Command: cd backend && pip install -r requirements.txt && python init_db.py
-   Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+   Docker Image: будет собран автоматически из Dockerfile
    ```
 
 3. **Настройка переменных окружения**
@@ -139,7 +138,7 @@
 
 5. **Создание сервиса**
    - Нажмите "Create Web Service"
-   - Дождитесь завершения деплоймента (5-10 минут)
+   - Дождитесь завершения деплоймента (10-15 минут для Docker сборки)
 
 ### 3.3 Создание Frontend (Static Site)
 
