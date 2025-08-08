@@ -19,6 +19,7 @@ class GlossaryTermCreate(GlossaryTermBase):
 
 
 class GlossaryTermUpdate(BaseModel):
+    source_term: Optional[str] = None
     translated_term: Optional[str] = None
     category: Optional[str] = None
     status: Optional[str] = None

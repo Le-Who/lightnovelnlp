@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.deps import get_db
 from app.models.project import Project, Chapter
-from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead
+from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead, ChapterUpdate
 from fastapi import File, UploadFile, Form
 import io
 try:
@@ -70,8 +70,13 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 # Главы
 @router.get("/{project_id}/chapters", response_model=List[ChapterRead])
 def list_chapters(project_id: int, db: Session = Depends(get_db)) -> List[Chapter]:
-    """Получить все главы проекта."""
-    chapters = db.query(Chapter).filter(Chapter.project_id == project_id).all()
+    """Получить все главы проекта, отсортированные по времени создания (возрастание ID)."""
+    chapters = (
+        db.query(Chapter)
+        .filter(Chapter.project_id == project_id)
+        .order_by(Chapter.id.asc())
+        .all()
+    )
     return chapters
 
 
@@ -225,6 +230,22 @@ def delete_chapter(chapter_id: int, db: Session = Depends(get_db)):
     
     db.delete(chapter)
     db.commit()
+
+
+@router.put("/chapters/{chapter_id}", response_model=ChapterRead)
+def update_chapter(chapter_id: int, payload: ChapterUpdate, db: Session = Depends(get_db)) -> Chapter:
+    """Обновить поля главы (название, тексты)."""
+    chapter = db.get(Chapter, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+
+    updates = payload.dict(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(chapter, field, value)
+
+    db.commit()
+    db.refresh(chapter)
+    return chapter
 
 
 # API для создания общего саммари проекта

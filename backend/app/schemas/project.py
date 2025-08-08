@@ -31,6 +31,12 @@ class ChapterCreate(ChapterBase):
     pass
 
 
+class ChapterUpdate(BaseModel):
+    title: Optional[str] = None
+    original_text: Optional[str] = None
+    translated_text: Optional[str] = None
+
+
 class ChapterRead(ChapterBase):
     id: int
     project_id: int
