@@ -12,17 +12,16 @@ services:
       cd backend
       uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    healthCheckTimeout: 300
     envVars:
       - key: DATABASE_URL
-        sync: false  # Используйте внешнюю Neon базу данных
+        generateValue: true
       - key: REDIS_URL
         fromService:
           type: redis
           name: lightnovel-redis
           property: connectionString
       - key: GEMINI_API_KEYS
-        sync: false
+        generateValue: true
       - key: GEMINI_API_LIMIT_PER_KEY
         value: 1000
       - key: GEMINI_API_LIMIT_THRESHOLD_PERCENT
@@ -61,14 +60,14 @@ services:
       celery -A app.tasks.celery_app worker --loglevel=info
     envVars:
       - key: DATABASE_URL
-        sync: false  # Используйте внешнюю Neon базу данных
+        generateValue: true
       - key: REDIS_URL
         fromService:
           type: redis
           name: lightnovel-redis
           property: connectionString
       - key: GEMINI_API_KEYS
-        sync: false
+        generateValue: true
       - key: GEMINI_API_LIMIT_PER_KEY
         value: 1000
       - key: GEMINI_API_LIMIT_THRESHOLD_PERCENT
@@ -82,8 +81,7 @@ services:
   - type: redis
     name: lightnovel-redis
     plan: free
-    maxmemoryPolicy: allkeys-lru
 
-# Примечание: DATABASE_URL должен быть настроен вручную в переменных окружения
+# Примечание: DATABASE_URL и GEMINI_API_KEYS должны быть настроены вручную в переменных окружения
 # Используйте Neon.tech для PostgreSQL базы данных
 # Render Free Postgres истекает через 30 дней
