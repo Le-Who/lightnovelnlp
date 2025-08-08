@@ -81,6 +81,7 @@ services:
   - type: redis
     name: lightnovel-redis
     plan: free
+    ipAllowList: [] # только внутренние соединения
 
 # Примечание: DATABASE_URL и GEMINI_API_KEYS должны быть настроены вручную в переменных окружения
 # Используйте Neon.tech для PostgreSQL базы данных
