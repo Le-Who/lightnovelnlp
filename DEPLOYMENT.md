@@ -224,6 +224,10 @@
    -- Миграция 2: Добавление genre в projects
    ALTER TABLE projects 
    ADD COLUMN IF NOT EXISTS genre VARCHAR(50) DEFAULT 'other' NOT NULL;
+   
+   -- Миграция 3: Добавление processed_at в chapters
+   ALTER TABLE chapters 
+   ADD COLUMN IF NOT EXISTS processed_at TIMESTAMP;
    ```
 
 3. **Проверка миграции**
@@ -238,6 +242,11 @@
    FROM information_schema.columns 
    WHERE table_name = 'projects' 
    AND column_name = 'genre';
+   
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'chapters' 
+   AND column_name = 'processed_at';
    ```
 
 ## 🔧 Шаг 5: Настройка и тестирование
