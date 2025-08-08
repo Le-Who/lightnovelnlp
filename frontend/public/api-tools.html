@@ -420,8 +420,13 @@
                     ...options
                 });
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
                 const data = await response.json();
-                return { success: response.ok, data, status: response.status };
+                return { success: true, data, status: response.status };
             } catch (error) {
                 return { success: false, data: { error: error.message }, status: 0 };
             }
@@ -433,6 +438,25 @@
             element.className = `response ${result.success ? 'success' : 'error'}`;
             element.textContent = JSON.stringify(result.data, null, 2);
         }
+
+        function showLoading(elementId, message = 'Обработка...') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">
+                <div style="margin-bottom: 10px;">${message}</div>
+                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            </div>`;
+            element.style.display = 'block';
+        }
+
+        // CSS для анимации загрузки
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
 
         // Системные функции
         async function checkHealth() {
@@ -454,6 +478,7 @@
                 return;
             }
 
+            showLoading('projectsResponse', 'Создаем проект...');
             const result = await makeRequest(`${API_BASE_URL}/projects/`, {
                 method: 'POST',
                 body: JSON.stringify({ name, genre })
@@ -496,6 +521,7 @@
             }
             const confirmed = confirm('Удалить проект и все связанные данные? Это действие необратимо.');
             if (!confirmed) return;
+            showLoading('projectsResponse', 'Удаляем проект...');
             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}`, { method: 'DELETE' });
             showResponse('projectsResponse', result);
             if (result.success) {
@@ -514,6 +540,7 @@
                      return;
                  }
      
+                 showLoading('chaptersResponse', 'Создаем главу...');
                  const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`, {
                      method: 'POST',
                      body: JSON.stringify({ title, original_text: text })
@@ -543,6 +570,7 @@
             const formData = new FormData();
             formData.append('title', title);
             formData.append('file', fileInput.files[0]);
+            showLoading('chaptersResponse', 'Загружаем файл главы...');
             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters/upload`, {
                 method: 'POST',
                 body: formData,
@@ -564,6 +592,7 @@
                      return;
                  }
      
+                 showLoading('glossaryResponse', 'Создаем термин...');
                  const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
                      method: 'POST',
                      body: JSON.stringify({
@@ -758,6 +787,7 @@
                 return;
             }
 
+            showLoading('processingResponse', 'Анализируем главу...');
             const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${parsedChapterId}/analyze`, {
                 method: 'POST'
             });
@@ -779,6 +809,7 @@
                 return;
             }
 
+            showLoading('processingResponse', 'Переводим главу...');
             const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${parsedChapterId}/translate`, {
                 method: 'POST'
             });

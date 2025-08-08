@@ -88,13 +88,18 @@ def process_chapter_sync(chapter_id: int, db: Session):
                 ).first()
                 
                 if source_term_obj and target_term_obj:
+                    # Безопасно получаем relation_type, используя relation_type или relationType
+                    relation_type = rel_data.get("relation_type") or rel_data.get("relationType") or "other"
+                    confidence = rel_data.get("confidence", 50)  # По умолчанию 50%
+                    context = rel_data.get("context", "")
+                    
                     relationship = TermRelationship(
                         project_id=chapter.project_id,
                         source_term_id=source_term_obj.id,
                         target_term_id=target_term_obj.id,
-                        relation_type=rel_data["relationship_type"],
-                        confidence=rel_data.get("confidence", 0.5),
-                        context=rel_data.get("context", "")
+                        relation_type=relation_type,
+                        confidence=confidence,
+                        context=context
                     )
                     db.add(relationship)
         
