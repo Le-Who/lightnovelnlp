@@ -4,13 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
-from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship
+from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, GlossaryVersion
 from app.schemas.glossary import (
     GlossaryTermCreate, 
     GlossaryTermRead, 
     GlossaryTermUpdate,
-    TermRelationshipRead
+    TermRelationshipRead,
+    GlossaryVersionCreate,
+    GlossaryVersionRead,
+    GlossaryVersionInfo
 )
+from app.services.cache_service import cache_service
 
 router = APIRouter()
 
@@ -18,7 +22,16 @@ router = APIRouter()
 @router.get("/{project_id}/terms", response_model=List[GlossaryTermRead])
 def list_glossary_terms(project_id: int, db: Session = Depends(get_db)) -> List[GlossaryTerm]:
     """Получить все термины глоссария для проекта."""
+    # Проверяем кэш
+    cached_glossary = cache_service.get_cached_glossary(project_id)
+    if cached_glossary:
+        return cached_glossary
+    
     terms = db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).all()
+    
+    # Кэшируем результат
+    cache_service.cache_glossary(project_id, terms)
+    
     return terms
 
 
@@ -65,6 +78,10 @@ def create_glossary_term(
     db.add(term)
     db.commit()
     db.refresh(term)
+    
+    # Инвалидируем кэш глоссария
+    cache_service.invalidate_glossary_cache(project_id)
+    
     return term
 
 
@@ -89,6 +106,10 @@ def update_glossary_term(
     
     db.commit()
     db.refresh(term)
+    
+    # Инвалидируем кэш глоссария
+    cache_service.invalidate_glossary_cache(term.project_id)
+    
     return term
 
 
@@ -99,8 +120,14 @@ def delete_glossary_term(term_id: int, db: Session = Depends(get_db)) -> None:
     if not term:
         raise HTTPException(status_code=404, detail="Term not found")
     
+    project_id = term.project_id
+    
     db.delete(term)
     db.commit()
+    
+    # Инвалидируем кэш глоссария
+    cache_service.invalidate_glossary_cache(project_id)
+    
     return None
 
 
@@ -114,6 +141,10 @@ def approve_term(term_id: int, db: Session = Depends(get_db)) -> GlossaryTerm:
     term.status = TermStatus.APPROVED
     db.commit()
     db.refresh(term)
+    
+    # Инвалидируем кэш глоссария
+    cache_service.invalidate_glossary_cache(term.project_id)
+    
     return term
 
 
@@ -121,9 +152,18 @@ def approve_term(term_id: int, db: Session = Depends(get_db)) -> GlossaryTerm:
 @router.get("/{project_id}/relationships", response_model=List[TermRelationshipRead])
 def list_term_relationships(project_id: int, db: Session = Depends(get_db)) -> List[TermRelationship]:
     """Получить все связи между терминами для проекта."""
+    # Проверяем кэш
+    cached_relationships = cache_service.get_cached_relationships(project_id)
+    if cached_relationships:
+        return cached_relationships
+    
     relationships = db.query(TermRelationship).filter(
         TermRelationship.project_id == project_id
     ).all()
+    
+    # Кэшируем результат
+    cache_service.cache_relationships(project_id, relationships)
+    
     return relationships
 
 
@@ -167,8 +207,8 @@ def get_relationships_graph(project_id: int, db: Session = Depends(get_db)) -> d
             "id": term.id,
             "label": term.source_term,
             "translated": term.translated_term,
-            "category": term.category.value,
-            "status": term.status.value
+            "category": term.category,
+            "status": term.status
         })
     
     # Ребра (связи)
@@ -185,3 +225,147 @@ def get_relationships_graph(project_id: int, db: Session = Depends(get_db)) -> d
         "nodes": nodes,
         "edges": edges
     }
+
+
+# API для версионирования глоссария
+@router.post("/{project_id}/versions", response_model=GlossaryVersionRead, status_code=status.HTTP_201_CREATED)
+def create_glossary_version(
+    project_id: int,
+    payload: GlossaryVersionCreate,
+    db: Session = Depends(get_db)
+) -> GlossaryVersion:
+    """Создать новую версию глоссария."""
+    # Проверяем, что проект существует
+    from app.models.project import Project
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Получаем текущие термины
+    terms = db.query(GlossaryTerm).filter(
+        GlossaryTerm.project_id == project_id
+    ).all()
+    
+    if not terms:
+        raise HTTPException(
+            status_code=400, 
+            detail="No terms found in glossary. Cannot create version."
+        )
+    
+    # Определяем номер версии
+    latest_version = db.query(GlossaryVersion).filter(
+        GlossaryVersion.project_id == project_id
+    ).order_by(GlossaryVersion.version_number.desc()).first()
+    
+    version_number = (latest_version.version_number + 1) if latest_version else 1
+    
+    # Создаем снимок терминов
+    terms_snapshot = []
+    for term in terms:
+        terms_snapshot.append({
+            "id": term.id,
+            "source_term": term.source_term,
+            "translated_term": term.translated_term,
+            "category": term.category,
+            "status": term.status,
+            "context": term.context,
+            "created_at": term.created_at.isoformat()
+        })
+    
+    # Создаем версию
+    version = GlossaryVersion(
+        project_id=project_id,
+        version_number=version_number,
+        name=payload.name,
+        description=payload.description,
+        terms_snapshot=terms_snapshot,
+        created_by="system"  # В будущем можно добавить аутентификацию
+    )
+    
+    db.add(version)
+    db.commit()
+    db.refresh(version)
+    
+    return version
+
+
+@router.get("/{project_id}/versions", response_model=List[GlossaryVersionInfo])
+def list_glossary_versions(project_id: int, db: Session = Depends(get_db)) -> List[GlossaryVersionInfo]:
+    """Получить список версий глоссария."""
+    versions = db.query(GlossaryVersion).filter(
+        GlossaryVersion.project_id == project_id
+    ).order_by(GlossaryVersion.version_number.desc()).all()
+    
+    version_infos = []
+    for version in versions:
+        # Подсчитываем статистику
+        terms_count = len(version.terms_snapshot)
+        approved_terms_count = sum(
+            1 for term in version.terms_snapshot 
+            if term.get("status") == TermStatus.APPROVED
+        )
+        
+        version_infos.append(GlossaryVersionInfo(
+            version_id=version.id,
+            version_number=version.version_number,
+            name=version.name,
+            description=version.description,
+            created_at=version.created_at,
+            terms_count=terms_count,
+            approved_terms_count=approved_terms_count
+        ))
+    
+    return version_infos
+
+
+@router.get("/versions/{version_id}", response_model=GlossaryVersionRead)
+def get_glossary_version(version_id: int, db: Session = Depends(get_db)) -> GlossaryVersion:
+    """Получить конкретную версию глоссария."""
+    version = db.get(GlossaryVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    return version
+
+
+@router.post("/versions/{version_id}/restore", status_code=status.HTTP_200_OK)
+def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> dict:
+    """Восстановить глоссарий из версии."""
+    version = db.get(GlossaryVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    try:
+        # Удаляем текущие термины
+        db.query(GlossaryTerm).filter(
+            GlossaryTerm.project_id == version.project_id
+        ).delete()
+        
+        # Восстанавливаем термины из снимка
+        for term_data in version.terms_snapshot:
+            term = GlossaryTerm(
+                project_id=version.project_id,
+                source_term=term_data["source_term"],
+                translated_term=term_data["translated_term"],
+                category=term_data["category"],
+                status=term_data["status"],
+                context=term_data.get("context")
+            )
+            db.add(term)
+        
+        db.commit()
+        
+        # Инвалидируем кэш
+        cache_service.invalidate_glossary_cache(version.project_id)
+        
+        return {
+            "message": f"Glossary restored from version {version.version_number}",
+            "restored_terms": len(version.terms_snapshot)
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to restore glossary: {str(e)}"
+        )

@@ -5,12 +5,14 @@ import ChapterManager from '../components/ChapterManager'
 import GlossaryEditor from '../components/GlossaryEditor'
 import ChapterViewer from '../components/ChapterViewer'
 import RelationshipsViewer from '../components/RelationshipsViewer'
+import GlossaryVersionManager from '../components/GlossaryVersionManager'
+import BatchProcessor from '../components/BatchProcessor'
 
 export default function ProjectPage() {
   const { projectId } = useParams()
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('chapters') // 'chapters', 'glossary', 'translations', или 'relationships'
+  const [activeTab, setActiveTab] = useState('chapters') // 'chapters', 'glossary', 'relationships', 'translations', 'versions', или 'batch'
 
   const loadProject = async () => {
     setLoading(true)
@@ -52,7 +54,7 @@ export default function ProjectPage() {
       </div>
 
       {/* Табы */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('chapters')}
           style={{
@@ -102,12 +104,38 @@ export default function ProjectPage() {
             backgroundColor: activeTab === 'translations' ? '#2196F3' : '#f5f5f5',
             color: activeTab === 'translations' ? 'white' : '#333',
             cursor: 'pointer',
+            fontSize: '0.9em'
+          }}
+        >
+          Переводы
+        </button>
+        <button
+          onClick={() => setActiveTab('versions')}
+          style={{
+            padding: '12px 16px',
+            border: 'none',
+            backgroundColor: activeTab === 'versions' ? '#2196F3' : '#f5f5f5',
+            color: activeTab === 'versions' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '0.9em'
+          }}
+        >
+          Версии
+        </button>
+        <button
+          onClick={() => setActiveTab('batch')}
+          style={{
+            padding: '12px 16px',
+            border: 'none',
+            backgroundColor: activeTab === 'batch' ? '#2196F3' : '#f5f5f5',
+            color: activeTab === 'batch' ? 'white' : '#333',
+            cursor: 'pointer',
             borderTopRightRadius: 8,
             borderBottomRightRadius: 8,
             fontSize: '0.9em'
           }}
         >
-          Переводы
+          Пакетная обработка
         </button>
       </div>
 
@@ -116,6 +144,8 @@ export default function ProjectPage() {
       {activeTab === 'glossary' && <GlossaryEditor projectId={projectId} />}
       {activeTab === 'relationships' && <RelationshipsViewer projectId={projectId} />}
       {activeTab === 'translations' && <ChapterViewer projectId={projectId} />}
+      {activeTab === 'versions' && <GlossaryVersionManager projectId={projectId} />}
+      {activeTab === 'batch' && <BatchProcessor projectId={projectId} />}
     </div>
   )
 }

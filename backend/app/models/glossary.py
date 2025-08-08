@@ -1,19 +1,21 @@
+from __future__ import annotations
+
 from datetime import datetime
+from enum import Enum
 from typing import List
 
-from sqlalchemy import Integer, String, Text, ForeignKey, DateTime, Enum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-import enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, JSON
+from sqlalchemy.orm import relationship, declarative_base
 
-from app.db import Base
+Base = declarative_base()
 
 
-class TermStatus(enum.Enum):
+class TermStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
 
 
-class TermCategory(enum.Enum):
+class TermCategory(str, Enum):
     CHARACTER = "character"
     LOCATION = "location"
     SKILL = "skill"
@@ -24,50 +26,90 @@ class TermCategory(enum.Enum):
 class GlossaryTerm(Base):
     __tablename__ = "glossary_terms"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    source_term: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    translated_term: Mapped[str] = mapped_column(String(255), nullable=False)
-    category: Mapped[TermCategory] = mapped_column(Enum(TermCategory), nullable=False)
-    status: Mapped[TermStatus] = mapped_column(Enum(TermStatus), default=TermStatus.PENDING, nullable=False)
-    context: Mapped[str | None] = mapped_column(Text, nullable=True)  # Контекст извлечения
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    source_term = Column(String(255), nullable=False)
+    translated_term = Column(String(255), nullable=False)
+    category = Column(String(50), nullable=False)
+    status = Column(String(20), default=TermStatus.PENDING)
+    context = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
     # Связи
-    project: Mapped["Project"] = relationship("Project", back_populates="glossary_terms")
-    source_relationships: Mapped[List["TermRelationship"]] = relationship(
-        "TermRelationship", 
-        foreign_keys="TermRelationship.source_term_id",
-        back_populates="source_term"
-    )
-    target_relationships: Mapped[List["TermRelationship"]] = relationship(
-        "TermRelationship", 
-        foreign_keys="TermRelationship.target_term_id",
-        back_populates="target_term"
-    )
+    project = relationship("Project", back_populates="glossary_terms")
+    source_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.source_term_id", back_populates="source_term")
+    target_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.target_term_id", back_populates="target_term")
 
 
 class TermRelationship(Base):
     __tablename__ = "term_relationships"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    source_term_id: Mapped[int] = mapped_column(ForeignKey("glossary_terms.id", ondelete="CASCADE"), index=True)
-    target_term_id: Mapped[int] = mapped_column(ForeignKey("glossary_terms.id", ondelete="CASCADE"), index=True)
-    relation_type: Mapped[str] = mapped_column(String(100), nullable=False)  # "friend", "enemy", "location", etc.
-    confidence: Mapped[float] = mapped_column(Integer, nullable=True)  # Уверенность в связи (0-100)
-    context: Mapped[str | None] = mapped_column(Text, nullable=True)  # Контекст связи
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    source_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False)
+    target_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False)
+    relation_type = Column(String(50), nullable=False)
+    confidence = Column(Integer, nullable=True)  # 0-100
+    context = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
     # Связи
-    project: Mapped["Project"] = relationship("Project")
-    source_term: Mapped[GlossaryTerm] = relationship(
-        "GlossaryTerm", 
-        foreign_keys=[source_term_id],
-        back_populates="source_relationships"
-    )
-    target_term: Mapped[GlossaryTerm] = relationship(
-        "GlossaryTerm", 
-        foreign_keys=[target_term_id],
-        back_populates="target_relationships"
-    )
+    project = relationship("Project", back_populates="term_relationships")
+    source_term = relationship("GlossaryTerm", foreign_keys=[source_term_id], back_populates="source_relationships")
+    target_term = relationship("GlossaryTerm", foreign_keys=[target_term_id], back_populates="target_relationships")
+
+
+class GlossaryVersion(Base):
+    __tablename__ = "glossary_versions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    version_number = Column(Integer, nullable=False)
+    name = Column(String(255), nullable=True)  # Опциональное название версии
+    description = Column(Text, nullable=True)  # Описание изменений
+    terms_snapshot = Column(JSON, nullable=False)  # Снимок терминов в JSON
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(100), nullable=True)  # Кто создал версию
+    
+    # Связи
+    project = relationship("Project", back_populates="glossary_versions")
+
+
+class BatchJob(Base):
+    __tablename__ = "batch_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    job_type = Column(String(50), nullable=False)  # 'analyze', 'translate', 'process'
+    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    total_items = Column(Integer, default=0)
+    processed_items = Column(Integer, default=0)
+    failed_items = Column(Integer, default=0)
+    progress_percentage = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Дополнительные данные для разных типов задач
+    job_data = Column(JSON, nullable=True)  # Дополнительные параметры
+    
+    # Связи
+    project = relationship("Project", back_populates="batch_jobs")
+
+
+class BatchJobItem(Base):
+    __tablename__ = "batch_job_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    batch_job_id = Column(Integer, ForeignKey("batch_jobs.id"), nullable=False)
+    item_type = Column(String(50), nullable=False)  # 'chapter', 'term', etc.
+    item_id = Column(Integer, nullable=False)  # ID элемента (главы, термина и т.д.)
+    status = Column(String(20), default="pending")  # pending, processing, completed, failed
+    result = Column(JSON, nullable=True)  # Результат обработки
+    error_message = Column(Text, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Связи
+    batch_job = relationship("BatchJob", back_populates="items")
