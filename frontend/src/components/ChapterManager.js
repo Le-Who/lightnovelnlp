@@ -5,7 +5,9 @@ export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
   const [loading, setLoading] = useState(false)
   const [analyzing, setAnalyzing] = useState({})
+  const [translating, setTranslating] = useState({})
   const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
+  const [previewData, setPreviewData] = useState(null)
 
   const loadChapters = async () => {
     setLoading(true)
@@ -79,6 +81,39 @@ export default function ChapterManager({ projectId }) {
     }
   }
 
+  const translateChapter = async (chapterId) => {
+    setTranslating(prev => ({ ...prev, [chapterId]: true }))
+    
+    try {
+      const res = await api.post(`/translation/chapters/${chapterId}/translate`)
+      alert(`Перевод завершен! Использовано терминов: ${res.data.glossary_terms_used}`)
+      loadChapters() // Перезагружаем для обновления перевода
+    } catch (e) {
+      console.error('Error translating chapter:', e)
+      if (e.response?.data?.detail) {
+        alert(`Ошибка перевода: ${e.response.data.detail}`)
+      } else {
+        alert('Ошибка перевода')
+      }
+    } finally {
+      setTranslating(prev => ({ ...prev, [chapterId]: false }))
+    }
+  }
+
+  const previewTranslation = async (chapterId) => {
+    try {
+      const res = await api.get(`/translation/chapters/${chapterId}/translation-preview`)
+      setPreviewData(res.data)
+    } catch (e) {
+      console.error('Error getting preview:', e)
+      alert('Ошибка получения предварительного просмотра')
+    }
+  }
+
+  const closePreview = () => {
+    setPreviewData(null)
+  }
+
   if (loading) return <div>Загрузка глав...</div>
 
   return (
@@ -127,6 +162,11 @@ export default function ChapterManager({ projectId }) {
                   <h4 style={{ margin: '0 0 8px 0' }}>{chapter.title}</h4>
                   <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
                     Символов: {chapter.original_text.length}
+                    {chapter.translated_text && (
+                      <span style={{ marginLeft: 16, color: '#4CAF50' }}>
+                        ✓ Переведено
+                      </span>
+                    )}
                   </div>
                   <div style={{ 
                     maxHeight: 100, 
@@ -139,7 +179,7 @@ export default function ChapterManager({ projectId }) {
                   </div>
                 </div>
                 
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
                   <button 
                     onClick={() => analyzeChapter(chapter.id)}
                     disabled={analyzing[chapter.id]}
@@ -154,10 +194,113 @@ export default function ChapterManager({ projectId }) {
                   >
                     {analyzing[chapter.id] ? 'Анализ...' : 'Анализировать'}
                   </button>
+                  
+                  <button 
+                    onClick={() => previewTranslation(chapter.id)}
+                    style={{ 
+                      padding: '8px 16px', 
+                      fontSize: '0.9em',
+                      backgroundColor: '#FF9800',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4
+                    }}
+                  >
+                    Предварительный просмотр
+                  </button>
+                  
+                  <button 
+                    onClick={() => translateChapter(chapter.id)}
+                    disabled={translating[chapter.id]}
+                    style={{ 
+                      padding: '8px 16px', 
+                      fontSize: '0.9em',
+                      backgroundColor: translating[chapter.id] ? '#ccc' : '#4CAF50',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4
+                    }}
+                  >
+                    {translating[chapter.id] ? 'Перевод...' : 'Перевести'}
+                  </button>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Модальное окно предварительного просмотра */}
+      {previewData && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: 24,
+            borderRadius: 8,
+            maxWidth: '80%',
+            maxHeight: '80%',
+            overflow: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3>Предварительный просмотр перевода</h3>
+              <button onClick={closePreview} style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f44336', color: 'white', borderRadius: 4 }}>
+                ✕
+              </button>
+            </div>
+            
+            {previewData.preview_available ? (
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <strong>Использовано терминов глоссария:</strong> {previewData.glossary_terms_count}
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <h4>Оригинал</h4>
+                    <div style={{ 
+                      border: '1px solid #ddd', 
+                      padding: 16, 
+                      borderRadius: 4,
+                      maxHeight: 400,
+                      overflow: 'auto',
+                      fontSize: '0.9em'
+                    }}>
+                      {previewData.original_text}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4>Перевод</h4>
+                    <div style={{ 
+                      border: '1px solid #ddd', 
+                      padding: 16, 
+                      borderRadius: 4,
+                      maxHeight: 400,
+                      overflow: 'auto',
+                      fontSize: '0.9em'
+                    }}>
+                      {previewData.translated_text}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ color: '#f44336' }}>
+                {previewData.message}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

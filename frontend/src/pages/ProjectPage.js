@@ -3,12 +3,13 @@ import { useParams, Link } from 'react-router-dom'
 import api from '../services/apiClient'
 import ChapterManager from '../components/ChapterManager'
 import GlossaryEditor from '../components/GlossaryEditor'
+import ChapterViewer from '../components/ChapterViewer'
 
 export default function ProjectPage() {
   const { projectId } = useParams()
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('chapters') // 'chapters' или 'glossary'
+  const [activeTab, setActiveTab] = useState('chapters') // 'chapters', 'glossary', или 'translations'
 
   const loadProject = async () => {
     setLoading(true)
@@ -72,21 +73,31 @@ export default function ProjectPage() {
             border: 'none',
             backgroundColor: activeTab === 'glossary' ? '#2196F3' : '#f5f5f5',
             color: activeTab === 'glossary' ? 'white' : '#333',
+            cursor: 'pointer'
+          }}
+        >
+          Глоссарий
+        </button>
+        <button
+          onClick={() => setActiveTab('translations')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: activeTab === 'translations' ? '#2196F3' : '#f5f5f5',
+            color: activeTab === 'translations' ? 'white' : '#333',
             cursor: 'pointer',
             borderTopRightRadius: 8,
             borderBottomRightRadius: 8
           }}
         >
-          Глоссарий
+          Переводы
         </button>
       </div>
 
       {/* Контент табов */}
-      {activeTab === 'chapters' ? (
-        <ChapterManager projectId={projectId} />
-      ) : (
-        <GlossaryEditor projectId={projectId} />
-      )}
+      {activeTab === 'chapters' && <ChapterManager projectId={projectId} />}
+      {activeTab === 'glossary' && <GlossaryEditor projectId={projectId} />}
+      {activeTab === 'translations' && <ChapterViewer projectId={projectId} />}
     </div>
   )
 }
