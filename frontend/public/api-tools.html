@@ -1196,7 +1196,8 @@
              }
 
             startProgress('processingResponse', 'Переводим главу...');
-            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate`, {
+            const useGlossary = document.getElementById('useGlossary').checked;
+            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate?use_glossary=${useGlossary}`, {
                  method: 'POST'
              });
             finishProgress('processingResponse', result);

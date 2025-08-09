@@ -64,7 +64,7 @@ class TranslationEngine:
         normalized_text = "\n".join(compact_lines)
 
         # Формируем глоссарий для промпта
-        glossary_text = self._format_glossary_for_prompt(glossary_terms)
+        glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(нет утвержденных терминов)"
         
         # Базовый промпт
         prompt = f"""

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
@@ -11,24 +11,22 @@ router = APIRouter()
 
 
 @router.post("/chapters/{chapter_id}/translate", status_code=status.HTTP_200_OK)
-def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
+def translate_chapter(
+    chapter_id: int,
+    db: Session = Depends(get_db),
+    use_glossary: bool = Query(default=True)
+) -> dict:
     """Перевести главу с использованием утвержденного глоссария и контекста."""
     # Получаем главу
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
     
-    # Получаем утвержденные термины глоссария для проекта
+    # Получаем утвержденные термины глоссария для проекта (pending не блокируют перевод)
     glossary_terms = db.query(GlossaryTerm).filter(
         GlossaryTerm.project_id == chapter.project_id,
         GlossaryTerm.status == TermStatus.APPROVED
     ).all()
-    
-    if not glossary_terms:
-        raise HTTPException(
-            status_code=400, 
-            detail="No approved glossary terms found. Please approve some terms first."
-        )
     
     try:
         # Получаем общее саммари проекта (если есть)
@@ -54,7 +52,7 @@ def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         # Переводим текст
         translated_text = translation_engine.translate_with_glossary(
             text=chapter.original_text,
-            glossary_terms=glossary_terms,
+            glossary_terms=glossary_terms if use_glossary else [],
             context_summary=chapter.summary,
             project_summary=project_summary
         )
@@ -69,7 +67,7 @@ def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         return {
             "chapter_id": chapter_id,
             "translated_text": translated_text,
-            "glossary_terms_used": len(glossary_terms),
+            "glossary_terms_used": len(glossary_terms) if use_glossary else 0,
             "context_used": bool(chapter.summary),
             "project_context_used": bool(project_summary),
             "message": "Translation completed successfully"
