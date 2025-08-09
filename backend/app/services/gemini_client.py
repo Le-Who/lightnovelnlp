@@ -132,7 +132,7 @@ class GeminiClient:
                     self._rotate_key()
                     continue
 
-                # Выполняем запрос
+                # Выполняем запрос с повтором при временных ошибках
                 model = genai.GenerativeModel('gemini-2.5-pro')
                 response = model.generate_content(prompt)
 
@@ -142,6 +142,7 @@ class GeminiClient:
                 return response.text
 
             except Exception as e:
+                # Логируем, переводим ключ в кулдаун и пробуем следующий
                 print(f"Error with key {self.current_key_index}: {e}")
 
                 # Помещаем текущий ключ в кулдаун при ошибке

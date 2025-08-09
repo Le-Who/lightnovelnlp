@@ -76,9 +76,13 @@ def translate_chapter(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         }
         
     except Exception as e:
-        db.rollback()
+        # В случае проблем с внешним API или кэшем избегаем краха транзакции
+        try:
+            db.rollback()
+        except Exception:
+            pass
         raise HTTPException(
-            status_code=500, 
+            status_code=502,
             detail=f"Translation failed: {str(e)}"
         )
 

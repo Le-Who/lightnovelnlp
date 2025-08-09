@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
 from typing import Any, Optional
 from datetime import datetime, timedelta
 
@@ -13,6 +14,7 @@ class CacheService:
     def __init__(self):
         self.redis_client = redis.from_url(settings.REDIS_URL)
         self.default_ttl = 3600  # 1 час по умолчанию
+        self.logger = logging.getLogger("cache_service")
 
     def _generate_key(self, prefix: str, *args) -> str:
         """Генерирует ключ кэша на основе префикса и аргументов."""
@@ -29,16 +31,26 @@ class CacheService:
         try:
             self._reconnect_if_needed()
             value = self.redis_client.get(key)
-            if value:
-                # Для числовых значений возвращаем как int, для остальных как JSON
-                try:
-                    return int(value.decode())
-                except (ValueError, AttributeError):
-                    return json.loads(value)
-            return None
         except Exception as e:
-            print(f"Cache get error: {e}")
-            return None
+            # Пытаемся переподключиться и повторить один раз
+            self.logger.warning(f"Cache get error (will retry): {e}")
+            self._reconnect_if_needed()
+            try:
+                value = self.redis_client.get(key)
+            except Exception as e2:
+                self.logger.error(f"Cache get failed after retry: {e2}")
+                return None
+
+        if value:
+            # Для числовых значений возвращаем как int, для остальных как JSON
+            try:
+                return int(value.decode())
+            except (ValueError, AttributeError):
+                try:
+                    return json.loads(value)
+                except Exception:
+                    return value
+        return None
 
     def _reconnect_if_needed(self):
         """Переподключиться к Redis если соединение потеряно."""
@@ -61,19 +73,28 @@ class CacheService:
                 serialized_value = str(value)
             else:
                 serialized_value = json.dumps(value, default=str)
-                
-            return self.redis_client.setex(key, ttl, serialized_value)
+            return bool(self.redis_client.setex(key, ttl, serialized_value))
         except Exception as e:
-            print(f"Cache set error: {e}")
-            return False
+            self.logger.warning(f"Cache set error (will retry): {e}")
+            self._reconnect_if_needed()
+            try:
+                return bool(self.redis_client.setex(key, ttl or self.default_ttl, serialized_value))
+            except Exception as e2:
+                self.logger.error(f"Cache set failed after retry: {e2}")
+                return False
 
     def delete(self, key: str) -> bool:
         """Удалить значение из кэша."""
         try:
             return bool(self.redis_client.delete(key))
         except Exception as e:
-            print(f"Cache delete error: {e}")
-            return False
+            self.logger.warning(f"Cache delete error (will retry): {e}")
+            self._reconnect_if_needed()
+            try:
+                return bool(self.redis_client.delete(key))
+            except Exception as e2:
+                self.logger.error(f"Cache delete failed after retry: {e2}")
+                return False
 
     def delete_pattern(self, pattern: str) -> int:
         """Удалить все ключи по паттерну."""

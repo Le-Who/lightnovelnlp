@@ -233,9 +233,9 @@ def get_cache_stats():
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        # Попробуем получить несколько ключей для проверки
+        # Попробуем получить несколько ключей для проверки (с мягкими ретраями уже в сервисе)
         test_key = "cache_test"
-        cache_service.set(test_key, "test_value", ttl=60)
+        cache_service.set(test_key, "test_value", ttl=15)
         test_value = cache_service.get(test_key)
         cache_service.delete(test_key)
         
