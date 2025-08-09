@@ -19,6 +19,8 @@ class GeminiClient:
         self.cooldown_hours = settings.GEMINI_API_COOLDOWN_HOURS
         self.reset_timezone = pytz.timezone(settings.GEMINI_API_RESET_TIMEZONE)
         self.current_key_index = 0
+        # Глобальный минутный лимит (10 запросов/мин по всем ключам)
+        self.per_minute_limit = 10
 
         if not self.api_keys:
             raise ValueError("No Gemini API keys provided")
@@ -117,6 +119,14 @@ class GeminiClient:
 
         for attempt in range(max_retries):
             try:
+                # Глобальный троттлинг по минутному окну
+                minute_key = f"gemini_rate:minute:{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+                current_minute_count = cache_service.increment_counter(minute_key, ttl=65)
+                if current_minute_count > self.per_minute_limit:
+                    # Превышен лимит – подождем до следующей минуты
+                    # На free-tier Render спать в потоках ок, но избежим длинных пауз: бросаем понятную ошибку
+                    raise Exception("Rate limit exceeded: 10 req/min. Please retry shortly.")
+
                 # Проверяем доступность текущего ключа
                 current_key = self.api_keys[self.current_key_index]
 
@@ -158,7 +168,7 @@ class GeminiClient:
                 self._rotate_key()
 
                 if attempt == max_retries - 1:
-                    raise Exception(f"All API keys failed after {max_retries} attempts")
+                    raise Exception(f"All API keys failed after {max_retries} attempts: {e}")
 
         raise Exception("Failed to complete request with any available key")
 

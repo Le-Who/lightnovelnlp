@@ -259,7 +259,42 @@
                 <button onclick="translateChapter()" id="translateBtn" disabled>Перевести главу</button>
             </div>
         </div>
+        <div class="grid full-width" style="margin-top: 20px;">
+            <div>
+                <h3>Пакетный анализ глав</h3>
+                <div class="form-group">
+                    <label for="batchAnalyzeProjectId">Проект:</label>
+                    <select id="batchAnalyzeProjectId" onchange="loadChaptersForBatch('analyze')">
+                        <option value="">Выберите проект...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Выберите главы:</label>
+                    <div id="batchAnalyzeChapters" style="max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fafafa;">
+                        <p style="color:#777;">Сначала выберите проект...</p>
+                    </div>
+                </div>
+                <button onclick="startBatchAnalyze()" id="batchAnalyzeBtn" disabled>Запустить пакетный анализ</button>
+            </div>
+            <div>
+                <h3>Пакетный перевод глав</h3>
+                <div class="form-group">
+                    <label for="batchTranslateProjectId">Проект:</label>
+                    <select id="batchTranslateProjectId" onchange="loadChaptersForBatch('translate')">
+                        <option value="">Выберите проект...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Выберите главы:</label>
+                    <div id="batchTranslateChapters" style="max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fafafa;">
+                        <p style="color:#777;">Сначала выберите проект...</p>
+                    </div>
+                </div>
+                <button onclick="startBatchTranslate()" id="batchTranslateBtn" disabled>Запустить пакетный перевод</button>
+            </div>
+        </div>
         <div id="processingResponse" class="response" style="display: none;"></div>
+        <div id="batchResponse" class="response" style="display: none;"></div>
     </div>
 
     <!-- Блок Управление глоссарием перемещен ниже, после Редактирование терминов -->
@@ -1066,7 +1101,7 @@
                  const projects = result.data;
                  
                  // Заполняем все селекты проектов
-                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId', 'manageChaptersProjectId'];
+                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId', 'manageChaptersProjectId', 'batchAnalyzeProjectId', 'batchTranslateProjectId'];
                  projectSelects.forEach(selectId => {
                      const select = document.getElementById(selectId);
                      select.innerHTML = '<option value="">Выберите проект...</option>';
@@ -1079,6 +1114,108 @@
                      });
                  });
              }
+         }
+         // Загрузка глав для пакетной обработки
+         async function loadChaptersForBatch(mode) {
+             const projectId = document.getElementById(mode === 'analyze' ? 'batchAnalyzeProjectId' : 'batchTranslateProjectId').value;
+             const containerId = mode === 'analyze' ? 'batchAnalyzeChapters' : 'batchTranslateChapters';
+             const btnId = mode === 'analyze' ? 'batchAnalyzeBtn' : 'batchTranslateBtn';
+             const container = document.getElementById(containerId);
+             const btn = document.getElementById(btnId);
+             if (!projectId) {
+                 container.innerHTML = '<p style="color:#777;">Сначала выберите проект...</p>';
+                 btn.disabled = true;
+                 return;
+             }
+             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+             if (result.success) {
+                 const chapters = result.data;
+                 if (!chapters.length) {
+                     container.innerHTML = '<p style="color:#777;">В проекте нет глав</p>';
+                     btn.disabled = true;
+                     return;
+                 }
+                 const list = document.createElement('div');
+                 chapters.forEach(ch => {
+                     const row = document.createElement('label');
+                     row.style.display = 'block';
+                     row.style.marginBottom = '6px';
+                     const cb = document.createElement('input');
+                     cb.type = 'checkbox';
+                     cb.value = ch.id;
+                     cb.style.marginRight = '8px';
+                     row.appendChild(cb);
+                     const status = mode === 'analyze' ? (ch.summary ? '✓ проанализирована' : '○ не проанализирована') : (ch.translated_text ? '✓ переведена' : '○ не переведена');
+                     row.appendChild(document.createTextNode(`${ch.title} (${status})`));
+                     list.appendChild(row);
+                 });
+                 container.innerHTML = '';
+                 container.appendChild(list);
+                 btn.disabled = false;
+             } else {
+                 container.innerHTML = '<p style="color:#777;">Ошибка загрузки глав</p>';
+                 btn.disabled = true;
+             }
+         }
+
+         function getSelectedBatchChapterIds(mode) {
+             const containerId = mode === 'analyze' ? 'batchAnalyzeChapters' : 'batchTranslateChapters';
+             const container = document.getElementById(containerId);
+             const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+             return Array.from(checkboxes).map(cb => parseInt(cb.value, 10)).filter(n => !isNaN(n));
+         }
+
+         async function startBatchAnalyze() {
+             const ids = getSelectedBatchChapterIds('analyze');
+             if (!ids.length) { alert('Выберите хотя бы одну главу'); return; }
+             startProgress('batchResponse', 'Создаем пакетный анализ...');
+             const result = await makeRequest(`${API_BASE_URL}/batch/analyze`, {
+                 method: 'POST',
+                 body: JSON.stringify(ids)
+             });
+             if (!result.success) { return finishProgress('batchResponse', result); }
+             const jobId = result.data.batch_job_id;
+             // Поллинг статуса
+             pollBatchStatus(jobId);
+         }
+
+         async function startBatchTranslate() {
+             const ids = getSelectedBatchChapterIds('translate');
+             if (!ids.length) { alert('Выберите хотя бы одну главу'); return; }
+             startProgress('batchResponse', 'Создаем пакетный перевод...');
+             const result = await makeRequest(`${API_BASE_URL}/batch/translate`, {
+                 method: 'POST',
+                 body: JSON.stringify(ids)
+             });
+             if (!result.success) { return finishProgress('batchResponse', result); }
+             const jobId = result.data.batch_job_id;
+             pollBatchStatus(jobId);
+         }
+
+         async function pollBatchStatus(jobId) {
+             try {
+                 const res = await makeRequest(`${API_BASE_URL}/batch/jobs/${jobId}`);
+                 if (res.success) {
+                     const job = res.data;
+                     // Простой расчет прогресса
+                     const total = job.result?.total_items || job.items?.length || 0;
+                     const processed = job.result?.processed_items || (job.items?.filter(i => i.status === 'completed').length || 0);
+                     const percent = total ? Math.min(100, Math.floor((processed / total) * 100)) : 0;
+                     // Обновляем прогресс-бар вручную
+                     const bar = document.getElementById('batchResponse-bar');
+                     const label = document.getElementById('batchResponse-percent');
+                     if (bar && label) {
+                         bar.style.width = `${percent}%`;
+                         label.textContent = `${percent}%`;
+                     }
+                     // Завершение
+                     if (job.status === 'completed' || job.status === 'failed') {
+                         return finishProgress('batchResponse', res);
+                     }
+                 }
+             } catch (_) {}
+             // Повторный поллинг
+             setTimeout(() => pollBatchStatus(jobId), 1500);
          }
 
          async function loadChaptersForAnalysis() {

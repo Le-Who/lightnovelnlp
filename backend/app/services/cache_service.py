@@ -174,6 +174,43 @@ class CacheService:
                 self.logger.warning(f"Cache set failed after retry: {e2}")
                 return False
 
+    def increment_counter(self, key: str, ttl: int = 60) -> int:
+        """Атомарно инкрементирует счетчик и устанавливает TTL при первом инкременте.
+        Возвращает текущее значение счетчика.
+        Предпочтительно использует Upstash REST, при ошибке – TCP fallback.
+        """
+        # Пытаемся через REST
+        if self.rest_client:
+            try:
+                value = int(self.rest_client.incr(key))  # type: ignore[attr-defined]
+                if value == 1:
+                    # Устанавливаем TTL только при первом инкременте окна
+                    try:
+                        _ = self.rest_client.expire(key, ttl)  # type: ignore[attr-defined]
+                    except Exception:
+                        # Если нет expire, попробуем переустановить значение с ex
+                        try:
+                            _ = self.rest_client.set(key, str(value), ex=ttl)
+                        except Exception:
+                            pass
+                return value
+            except Exception as e:
+                self.logger.warning(f"REST cache incr error, fallback to TCP: {e}")
+
+        # TCP fallback
+        try:
+            self._reconnect_if_needed()
+            value = int(self.redis_client.incr(key))
+            if value == 1:
+                try:
+                    self.redis_client.expire(key, ttl)
+                except Exception:
+                    pass
+            return value
+        except Exception as e:
+            self.logger.warning(f"Cache incr error: {e}")
+            return 0
+
     def delete(self, key: str) -> bool:
         """Удалить значение из кэша."""
         # REST сначала
