@@ -170,7 +170,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
         # Обновляем статус задачи
         batch_job.status = "completed"
         batch_job.completed_at = datetime.utcnow()
-        batch_job.result = {
+        batch_job.job_data = {
             "total_items": total_items,
             "processed_items": processed_items,
             "failed_items": failed_items,
@@ -317,7 +317,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
         # Обновляем статус задачи
         batch_job.status = "completed"
         batch_job.completed_at = datetime.utcnow()
-        batch_job.result = {
+        batch_job.job_data = {
             "total_items": total_items,
             "processed_items": processed_items,
             "failed_items": failed_items
@@ -468,7 +468,7 @@ def get_batch_job_status(job_id: int, db: Session = Depends(get_db)) -> dict:
         "started_at": batch_job.started_at,
         "completed_at": batch_job.completed_at,
         "error": batch_job.error_message,
-        "result": batch_job.result,
+        "result": batch_job.job_data,
         "items": [
             {
                 "item_id": item.item_id,
