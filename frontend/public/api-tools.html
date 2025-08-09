@@ -1034,48 +1034,7 @@
             }
         }
 
-        // Обработка
-        async function analyzeChapter() {
-            const chapterId = document.getElementById('analyzeChapterId').value;
-            if (!chapterId) {
-                alert('Введите ID главы');
-                return;
-            }
-            
-            const parsedChapterId = parseInt(chapterId);
-            if (isNaN(parsedChapterId)) {
-                alert('ID главы должен быть числом');
-                return;
-            }
-
-            showLoading('processingResponse', 'Анализируем главу...');
-            const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${parsedChapterId}/analyze`, {
-                method: 'POST'
-            });
-            showResponse('processingResponse', result);
-        }
-
-        async function translateChapter() {
-            const chapterId = document.getElementById('translateChapterId').value;
-            const useGlossary = document.getElementById('useGlossary').checked;
-
-            if (!chapterId) {
-                alert('Введите ID главы');
-                return;
-            }
-            
-            const parsedChapterId = parseInt(chapterId);
-            if (isNaN(parsedChapterId)) {
-                alert('ID главы должен быть числом');
-                return;
-            }
-
-            showLoading('processingResponse', 'Переводим главу...');
-            const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${parsedChapterId}/translate`, {
-                method: 'POST'
-            });
-            showResponse('processingResponse', result);
-        }
+        // Обработка (обновлённые функции ниже)
 
         // Мониторинг
         async function getApiUsage() {
@@ -1196,7 +1155,6 @@
              }
 
             startProgress('processingResponse', 'Переводим главу...');
-            const useGlossary = document.getElementById('useGlossary').checked;
             const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate?use_glossary=${useGlossary}`, {
                  method: 'POST'
              });
