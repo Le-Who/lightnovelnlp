@@ -1,7 +1,7 @@
 """add indexes and unique constraints
 
-Revision ID: 006_indexes_and_unique
-Revises: 005_update_batch_tables
+Revision ID: 006
+Revises: 005
 Create Date: 2025-08-09 00:00:00.000000
 """
 
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '006_indexes_and_unique'
-down_revision = '005_update_batch_tables'
+revision = '006'
+down_revision = '005'
 branch_labels = None
 depends_on = None
 
