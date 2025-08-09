@@ -288,25 +288,20 @@ def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> 
 @router.get("/api-usage")
 def get_gemini_api_usage():
     """Получить статистику использования Gemini API ключей."""
-    # Не трогаем Redis напрямую; только агрегированная статистика клиента
+    # Не дергаем Redis напрямую из ручки; статистика берется у клиента
     stats = gemini_client.get_usage_stats()
-    return {
-        "success": True,
-        "data": stats
-    }
+    return {"success": True, "data": stats}
 
 
 @router.get("/cache-stats")
 def get_cache_stats():
     """Получить статистику кэширования."""
-    # Упростим проверку, чтобы исключить лавинообразные обращения при проблемах сети
-    cache_info = {
-        "cache_service_available": True,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    cache_info = {"cache_service_available": True, "timestamp": datetime.utcnow().isoformat()}
     test_key = "cache_ping"
     ok_set = cache_service.set(test_key, "1", ttl=10)
-    ok_get = cache_service.get(test_key) == "1"
+    # 'тихий' get, без логов даже при отвале
+    val = cache_service.get_quiet(test_key)
+    ok_get = (val == 1) or (val == "1")
     ok_del = cache_service.delete(test_key)
     cache_info["cache_working"] = bool(ok_set and ok_get and ok_del)
     return {"success": True, "data": cache_info}

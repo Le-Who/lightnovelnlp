@@ -95,6 +95,44 @@ class CacheService:
                     return value
         return None
 
+    def get_quiet(self, key: str) -> Optional[Any]:
+        """Получить значение без логов (для статистики/проверок)."""
+        # REST сначала
+        if self.rest_client:
+            try:
+                value = self.rest_client.get(key)
+                if value is None:
+                    return None
+                if isinstance(value, (bytes, bytearray)):
+                    value = value.decode()
+                # Попробуем int/JSON
+                try:
+                    return int(value)
+                except Exception:
+                    try:
+                        return json.loads(value)
+                    except Exception:
+                        return value
+            except Exception:
+                pass
+        # TCP fallback без логирования
+        try:
+            self._reconnect_if_needed()
+            value = self.redis_client.get(key)
+            if value is None:
+                return None
+            if isinstance(value, (bytes, bytearray)):
+                value = value.decode()
+            try:
+                return int(value)
+            except Exception:
+                try:
+                    return json.loads(value)
+                except Exception:
+                    return value
+        except Exception:
+            return None
+
     def _reconnect_if_needed(self):
         """Переподключиться к Redis если соединение потеряно."""
         try:

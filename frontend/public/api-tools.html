@@ -217,70 +217,7 @@
         <div id="chaptersResponse" class="response" style="display: none;"></div>
     </div>
 
-    <div class="container">
-        <h2>📚 Управление глоссарием</h2>
-        <div class="grid">
-            <div>
-                <h3>Создать термин</h3>
-                <div class="form-group">
-                    <label for="termProjectId">Проект:</label>
-                    <select id="termProjectId">
-                        <option value="">Выберите проект...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="sourceTerm">Исходный термин:</label>
-                    <input type="text" id="sourceTerm" placeholder="主人公">
-                </div>
-                <div class="form-group">
-                    <label for="translatedTerm">Переведенный термин:</label>
-                    <input type="text" id="translatedTerm" placeholder="Главный герой">
-                </div>
-                <div class="form-group">
-                    <label for="termCategory">Категория:</label>
-                    <select id="termCategory">
-                        <option value="character">Персонаж</option>
-                        <option value="location">Локация</option>
-                        <option value="skill">Навык</option>
-                        <option value="artifact">Артефакт</option>
-                        <option value="other">Другое</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="termContext">Контекст:</label>
-                    <textarea id="termContext" placeholder="Дополнительная информация о термине..."></textarea>
-                </div>
-                <button onclick="createTerm()">Создать термин</button>
-            </div>
-                         <div>
-                 <h3>Получить термины проекта</h3>
-                 <div class="form-group">
-                     <label for="getTermsProjectId">Проект:</label>
-                     <select id="getTermsProjectId">
-                         <option value="">Выберите проект...</option>
-                     </select>
-                 </div>
-                 <button onclick="getTerms()">Получить термины</button>
-             </div>
-             <div>
-                 <h3>Скачать переведенную главу</h3>
-                 <div class="form-group">
-                     <label for="downloadProjectId">Проект:</label>
-                     <select id="downloadProjectId" onchange="loadChaptersForDownload()">
-                         <option value="">Выберите проект...</option>
-                     </select>
-                 </div>
-                 <div class="form-group">
-                     <label for="downloadChapterId">Глава:</label>
-                     <select id="downloadChapterId" disabled>
-                         <option value="">Сначала выберите проект...</option>
-                     </select>
-                 </div>
-                 <button onclick="downloadChapter()" id="downloadBtn" disabled>📥 Скачать главу</button>
-             </div>
-        </div>
-        <div id="glossaryResponse" class="response" style="display: none;"></div>
-    </div>
+    <!-- Блок Управление глоссарием перемещен ниже, после Редактирование терминов -->
 
     <div class="container">
         <h2>✅ Управление терминами</h2>
@@ -380,49 +317,7 @@
         <div id="editTermsResponse" class="response" style="display: none;"></div>
     </div>
 
-         <div class="container">
-         <h2>🔍 Обработка и перевод</h2>
-         <div class="grid">
-             <div>
-                 <h3>Анализ главы</h3>
-                 <div class="form-group">
-                     <label for="analyzeProjectId">Проект:</label>
-                     <select id="analyzeProjectId" onchange="loadChaptersForAnalysis()">
-                         <option value="">Выберите проект...</option>
-                     </select>
-                 </div>
-                 <div class="form-group">
-                     <label for="analyzeChapterId">Глава:</label>
-                     <select id="analyzeChapterId" disabled>
-                         <option value="">Сначала выберите проект...</option>
-                     </select>
-                 </div>
-                 <button onclick="analyzeChapter()" id="analyzeBtn" disabled>Анализировать главу</button>
-             </div>
-             <div>
-                 <h3>Перевод главы</h3>
-                 <div class="form-group">
-                     <label for="translateProjectId">Проект:</label>
-                     <select id="translateProjectId" onchange="loadChaptersForTranslation()">
-                         <option value="">Выберите проект...</option>
-                     </select>
-                 </div>
-                 <div class="form-group">
-                     <label for="translateChapterId">Глава:</label>
-                     <select id="translateChapterId" disabled>
-                         <option value="">Сначала выберите проект...</option>
-                     </select>
-                 </div>
-                 <div class="form-group">
-                     <label>
-                         <input type="checkbox" id="useGlossary" checked> Использовать глоссарий
-                     </label>
-                 </div>
-                 <button onclick="translateChapter()" id="translateBtn" disabled>Перевести главу</button>
-             </div>
-         </div>
-         <div id="processingResponse" class="response" style="display: none;"></div>
-     </div>
+    <!-- Блок Обработка и перевод перемещен вверх, сразу после Управление главами -->
 
       <div class="container">
          <h2>📝 Редактирование и удаление глав</h2>
