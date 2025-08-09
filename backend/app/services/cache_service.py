@@ -9,12 +9,27 @@ from datetime import datetime, timedelta
 import os
 import redis
 from app.core.config import settings
-from typing import Optional
+try:
+    from upstash_redis import Redis as UpstashRedis
+except Exception:
+    UpstashRedis = None  # type: ignore
 
 
 class CacheService:
     def __init__(self):
-        # Попробуем стандартный клиент Redis TCP
+        # Инициализация REST-клиента Upstash (предпочтительно на free-tier)
+        self.rest_client = None
+        if UpstashRedis and settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
+            try:
+                self.rest_client = UpstashRedis(
+                    url=settings.UPSTASH_REDIS_REST_URL,
+                    token=settings.UPSTASH_REDIS_REST_TOKEN,
+                )
+            except Exception as e:
+                # Если REST недоступен, перейдем на TCP
+                print(f"Upstash REST init failed, falling back to TCP: {e}")
+
+        # TCP-клиент как запасной вариант
         self.redis_client = self._make_tcp_client()
         self.default_ttl = 3600  # 1 час по умолчанию
         self.logger = logging.getLogger("cache_service")
@@ -39,25 +54,42 @@ class CacheService:
 
     def get(self, key: str) -> Optional[Any]:
         """Получить значение из кэша."""
-        try:
-            self._reconnect_if_needed()
-            value = self.redis_client.get(key)
-        except Exception as e:
-            # Пытаемся переподключиться и повторить один раз
-            self.logger.warning(f"Cache get error (will retry): {e}")
-            self._reconnect_if_needed()
+        # Сначала пробуем REST, если он доступен
+        if self.rest_client:
             try:
-                value = self.redis_client.get(key)
-            except Exception as e2:
-                self.logger.error(f"Cache get failed after retry: {e2}")
-                return None
+                value = self.rest_client.get(key)
+            except Exception as e:
+                self.logger.warning(f"REST cache get error, fallback to TCP: {e}")
+                value = None
+        else:
+            value = None
 
-        if value:
+        if value is None:
+            # Fallback: TCP
+            try:
+                self._reconnect_if_needed()
+                value = self.redis_client.get(key)
+            except Exception as e:
+                # Пытаемся переподключиться и повторить один раз
+                self.logger.warning(f"Cache get error (will retry): {e}")
+                self._reconnect_if_needed()
+                try:
+                    value = self.redis_client.get(key)
+                except Exception as e2:
+                    self.logger.warning(f"Cache get failed after retry: {e2}")
+                    return None
+
+        if value is not None:
             # Для числовых значений возвращаем как int, для остальных как JSON
             try:
-                return int(value.decode())
-            except (ValueError, AttributeError):
+                # TCP вернет bytes, REST вернет str
+                if isinstance(value, (bytes, bytearray)):
+                    value = value.decode()
+                return int(value)
+            except (ValueError, TypeError):
                 try:
+                    if isinstance(value, (bytes, bytearray)):
+                        value = value.decode()
                     return json.loads(value)
                 except Exception:
                     return value
@@ -75,27 +107,45 @@ class CacheService:
 
     def set(self, key: str, value: Any, ttl: int = None) -> bool:
         """Установить значение в кэш."""
+        ttl = ttl or self.default_ttl
+        # Подготовка значения
+        if isinstance(value, (int, float)):
+            serialized_value = str(value)
+        else:
+            serialized_value = json.dumps(value, default=str)
+
+        # REST приоритетно
+        if self.rest_client:
+            try:
+                # upstash-redis: ex = ttl (секунды)
+                res = self.rest_client.set(key, serialized_value, ex=ttl)
+                return bool(res)
+            except Exception as e:
+                self.logger.warning(f"REST cache set error, fallback to TCP: {e}")
+
+        # TCP fallback
         try:
             self._reconnect_if_needed()
-            ttl = ttl or self.default_ttl
-            
-            # Для числовых значений сохраняем как строку, для остальных как JSON
-            if isinstance(value, (int, float)):
-                serialized_value = str(value)
-            else:
-                serialized_value = json.dumps(value, default=str)
             return bool(self.redis_client.setex(key, ttl, serialized_value))
         except Exception as e:
             self.logger.warning(f"Cache set error (will retry): {e}")
             self._reconnect_if_needed()
             try:
-                return bool(self.redis_client.setex(key, ttl or self.default_ttl, serialized_value))
+                return bool(self.redis_client.setex(key, ttl, serialized_value))
             except Exception as e2:
-                self.logger.error(f"Cache set failed after retry: {e2}")
+                self.logger.warning(f"Cache set failed after retry: {e2}")
                 return False
 
     def delete(self, key: str) -> bool:
         """Удалить значение из кэша."""
+        # REST сначала
+        if self.rest_client:
+            try:
+                res = self.rest_client.delete(key)
+                return bool(res)
+            except Exception as e:
+                self.logger.warning(f"REST cache delete error, fallback to TCP: {e}")
+        # TCP fallback
         try:
             return bool(self.redis_client.delete(key))
         except Exception as e:
@@ -104,15 +154,24 @@ class CacheService:
             try:
                 return bool(self.redis_client.delete(key))
             except Exception as e2:
-                self.logger.error(f"Cache delete failed after retry: {e2}")
+                self.logger.warning(f"Cache delete failed after retry: {e2}")
                 return False
 
     def delete_pattern(self, pattern: str) -> int:
         """Удалить все ключи по паттерну."""
+        # REST: попробуем KEYS, но Upstash может ограничивать
+        if self.rest_client:
+            try:
+                keys = self.rest_client.keys(pattern)  # type: ignore[attr-defined]
+                if keys:
+                    return int(self.rest_client.delete(*keys) or 0)
+            except Exception:
+                pass
+        # TCP fallback
         try:
             keys = self.redis_client.keys(pattern)
             if keys:
-                return self.redis_client.delete(*keys)
+                return int(self.redis_client.delete(*keys) or 0)
             return 0
         except Exception as e:
             print(f"Cache delete pattern error: {e}")
@@ -208,9 +267,18 @@ class CacheService:
 
     def get_cache_stats(self) -> dict:
         """Получить статистику кэша."""
+        # REST не поддерживает INFO. Вернем минимальную информацию
+        if self.rest_client:
+            return {
+                "rest_client": True,
+                "connected": True,
+                "note": "Using Upstash REST (no INFO available)"
+            }
+        # TCP INFO
         try:
             info = self.redis_client.info()
             return {
+                "rest_client": False,
                 "used_memory": info.get("used_memory_human", "N/A"),
                 "connected_clients": info.get("connected_clients", 0),
                 "total_commands_processed": info.get("total_commands_processed", 0),
@@ -219,7 +287,7 @@ class CacheService:
             }
         except Exception as e:
             print(f"Cache stats error: {e}")
-            return {}
+            return {"rest_client": False, "connected": False}
 
 
 cache_service = CacheService()
