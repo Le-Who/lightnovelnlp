@@ -163,7 +163,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 print(f"Error processing job item {job_item.id}: {e}")
                 job_item.status = "failed"
                 job_item.completed_at = datetime.utcnow()
-                job_item.error = str(e)
+                job_item.error_message = str(e)
                 failed_items += 1
                 db.commit()
         
@@ -195,7 +195,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
         if 'batch_job' in locals():
             batch_job.status = "failed"
             batch_job.completed_at = datetime.utcnow()
-            batch_job.error = str(e)
+            batch_job.error_message = str(e)
             db.commit()
         
         return {"error": str(e), "batch_job_id": batch_job_id}
@@ -310,7 +310,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
                 print(f"Error processing job item {job_item.id}: {e}")
                 job_item.status = "failed"
                 job_item.completed_at = datetime.utcnow()
-                job_item.error = str(e)
+                job_item.error_message = str(e)
                 failed_items += 1
                 db.commit()
         
@@ -336,7 +336,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
         if 'batch_job' in locals():
             batch_job.status = "failed"
             batch_job.completed_at = datetime.utcnow()
-            batch_job.error = str(e)
+            batch_job.error_message = str(e)
             db.commit()
         
         return {"error": str(e), "batch_job_id": batch_job_id}
@@ -378,8 +378,7 @@ def create_batch_analyze_job(
             batch_job_id=batch_job.id,
             item_type="chapter",
             item_id=chapter_id,
-            status="pending",
-            created_at=datetime.utcnow()
+            status="pending"
         )
         db.add(job_item)
     
@@ -432,8 +431,7 @@ def create_batch_translate_job(
             batch_job_id=batch_job.id,
             item_type="chapter",
             item_id=chapter_id,
-            status="pending",
-            created_at=datetime.utcnow()
+            status="pending"
         )
         db.add(job_item)
     
@@ -469,7 +467,7 @@ def get_batch_job_status(job_id: int, db: Session = Depends(get_db)) -> dict:
         "created_at": batch_job.created_at,
         "started_at": batch_job.started_at,
         "completed_at": batch_job.completed_at,
-        "error": batch_job.error,
+        "error": batch_job.error_message,
         "result": batch_job.result,
         "items": [
             {
@@ -477,7 +475,7 @@ def get_batch_job_status(job_id: int, db: Session = Depends(get_db)) -> dict:
                 "status": item.status,
                 "started_at": item.started_at,
                 "completed_at": item.completed_at,
-                "error": item.error,
+                "error": item.error_message,
                 "result": item.result
             }
             for item in job_items
