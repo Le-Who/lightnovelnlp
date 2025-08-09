@@ -133,7 +133,7 @@ class GeminiClient:
                     continue
 
                 # Выполняем запрос с повтором при временных ошибках
-                model = genai.GenerativeModel('gemini-2.5-pro')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 # Добавим краткий повтор при внутренних ошибках сервиса
                 try:
                     response = model.generate_content(prompt)
