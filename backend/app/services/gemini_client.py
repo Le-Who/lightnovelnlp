@@ -57,8 +57,15 @@ class GeminiClient:
         if not cooldown_until:
             return False
 
-        cooldown_time = datetime.fromisoformat(cooldown_until)
-        return datetime.now() < cooldown_time
+        try:
+            cooldown_time = datetime.fromisoformat(cooldown_until)
+        except Exception:
+            # Непредвиденный формат – считаем, что нет кулдауна
+            return False
+
+        # Сравниваем осознанно: приводим текущее время к той же таймзоне, что и cooldown_time
+        now_dt = datetime.now(cooldown_time.tzinfo) if cooldown_time.tzinfo else datetime.now(self.reset_timezone)
+        return now_dt < cooldown_time
 
     def _get_key_usage(self, key: str) -> int:
         """Получает количество использований ключа за текущий день (по времени Mountain View)."""
