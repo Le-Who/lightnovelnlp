@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api from '../services/apiClient'
-import ProjectList from '../components/ProjectList'
+import ProjectList from '../components/ProjectList.js'
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState([])

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import api from '../services/apiClient'
-import ChapterManager from '../components/ChapterManager'
-import GlossaryEditor from '../components/GlossaryEditor'
-import ChapterViewer from '../components/ChapterViewer'
-import RelationshipsViewer from '../components/RelationshipsViewer'
-import GlossaryVersionManager from '../components/GlossaryVersionManager'
-import BatchProcessor from '../components/BatchProcessor'
+import ChapterManager from '../components/ChapterManager.js'
+import GlossaryEditor from '../components/GlossaryEditor.js'
+import ChapterViewer from '../components/ChapterViewer.js'
+import RelationshipsViewer from '../components/RelationshipsViewer.js'
+import GlossaryVersionManager from '../components/GlossaryVersionManager.js'
+import BatchProcessor from '../components/BatchProcessor.js'
 
 export default function ProjectPage() {
   const { projectId } = useParams()
