@@ -288,45 +288,25 @@ def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> 
 @router.get("/api-usage")
 def get_gemini_api_usage():
     """Получить статистику использования Gemini API ключей."""
-    try:
-        stats = gemini_client.get_usage_stats()
-        return {
-            "success": True,
-            "data": stats
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "data": None
-        }
+    # Не трогаем Redis напрямую; только агрегированная статистика клиента
+    stats = gemini_client.get_usage_stats()
+    return {
+        "success": True,
+        "data": stats
+    }
 
 
 @router.get("/cache-stats")
 def get_cache_stats():
     """Получить статистику кэширования."""
-    try:
-        # Получаем базовую информацию о кэше
-        cache_info = {
-            "cache_service_available": True,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        # Попробуем получить несколько ключей для проверки (с мягкими ретраями уже в сервисе)
-        test_key = "cache_test"
-        cache_service.set(test_key, "test_value", ttl=15)
-        test_value = cache_service.get(test_key)
-        cache_service.delete(test_key)
-        
-        cache_info["cache_working"] = test_value == "test_value"
-        
-        return {
-            "success": True,
-            "data": cache_info
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "data": None
-        }
+    # Упростим проверку, чтобы исключить лавинообразные обращения при проблемах сети
+    cache_info = {
+        "cache_service_available": True,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    test_key = "cache_ping"
+    ok_set = cache_service.set(test_key, "1", ttl=10)
+    ok_get = cache_service.get(test_key) == "1"
+    ok_del = cache_service.delete(test_key)
+    cache_info["cache_working"] = bool(ok_set and ok_get and ok_del)
+    return {"success": True, "data": cache_info}

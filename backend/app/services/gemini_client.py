@@ -134,7 +134,12 @@ class GeminiClient:
 
                 # Выполняем запрос с повтором при временных ошибках
                 model = genai.GenerativeModel('gemini-2.5-pro')
-                response = model.generate_content(prompt)
+                # Добавим краткий повтор при внутренних ошибках сервиса
+                try:
+                    response = model.generate_content(prompt)
+                except Exception as inner_e:
+                    # Одна повторная попытка через этот же ключ
+                    response = model.generate_content(prompt)
 
                 # Увеличиваем счетчик использований
                 self._increment_key_usage(current_key)

@@ -6,13 +6,21 @@ import logging
 from typing import Any, Optional
 from datetime import datetime, timedelta
 
+import os
 import redis
 from app.core.config import settings
 
 
 class CacheService:
     def __init__(self):
-        self.redis_client = redis.from_url(settings.REDIS_URL)
+        # Поддержка Upstash Redis: принудительно выставляем короткие таймауты и автоповтор
+        # REDIS_URL должен быть в формате upstash или стандартном redis://
+        self.redis_client = redis.from_url(
+            settings.REDIS_URL,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+            retry_on_timeout=True
+        )
         self.default_ttl = 3600  # 1 час по умолчанию
         self.logger = logging.getLogger("cache_service")
 
@@ -58,7 +66,12 @@ class CacheService:
             self.redis_client.ping()
         except Exception:
             try:
-                self.redis_client = redis.from_url(settings.REDIS_URL)
+                self.redis_client = redis.from_url(
+                    settings.REDIS_URL,
+                    socket_timeout=5,
+                    socket_connect_timeout=5,
+                    retry_on_timeout=True
+                )
             except Exception as e:
                 print(f"Redis reconnection failed: {e}")
 
