@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import DashboardPage from './pages/DashboardPage.js'
-import ProjectPage from './pages/ProjectPage.js'
+import DashboardPage from './pages/DashboardPage.jsx'
+import ProjectPage from './pages/ProjectPage.jsx'
 
 export default function App() {
   return (
