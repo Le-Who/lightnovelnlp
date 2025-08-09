@@ -13,6 +13,9 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = Field(..., description="Redis connection string")
+    # Upstash REST (опционально)
+    UPSTASH_REDIS_REST_URL: str | None = Field(default=None, description="Upstash REST URL")
+    UPSTASH_REDIS_REST_TOKEN: str | None = Field(default=None, description="Upstash REST TOKEN")
 
     # Gemini API - храним как строку, парсим через computed_field
     GEMINI_API_KEYS_RAW: str = Field(..., description="Raw Gemini API keys string")
