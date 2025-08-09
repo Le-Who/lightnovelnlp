@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
@@ -69,15 +69,34 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 
 # Главы
 @router.get("/{project_id}/chapters", response_model=List[ChapterRead])
-def list_chapters(project_id: int, db: Session = Depends(get_db)) -> List[Chapter]:
-    """Получить все главы проекта, отсортированные по времени создания (возрастание ID)."""
-    chapters = (
-        db.query(Chapter)
-        .filter(Chapter.project_id == project_id)
-        .order_by(Chapter.id.asc())
-        .all()
-    )
-    return chapters
+def list_chapters(
+    project_id: int,
+    db: Session = Depends(get_db),
+    limit: int | None = Query(default=None, gt=0, le=1000),
+    offset: int = Query(default=0, ge=0),
+    search: str | None = None,
+    sort_by: str = Query(default="id"),
+    order: str = Query(default="asc")
+) -> List[Chapter]:
+    """Получить все главы проекта (пагинация/поиск/сортировка)."""
+    q = db.query(Chapter).filter(Chapter.project_id == project_id)
+    if search:
+        s = f"%{search}%"
+        from sqlalchemy import or_
+        q = q.filter(or_(Chapter.title.ilike(s), Chapter.original_text.ilike(s)))
+    sort_map = {
+        "id": Chapter.id,
+        "title": Chapter.title,
+        "created_at": Chapter.created_at,
+        "processed_at": Chapter.processed_at,
+    }
+    sort_col = sort_map.get(sort_by, Chapter.id)
+    q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())
+    if offset:
+        q = q.offset(offset)
+    if limit:
+        q = q.limit(limit)
+    return q.all()
 
 
 @router.post("/{project_id}/chapters", response_model=ChapterRead, status_code=status.HTTP_201_CREATED)

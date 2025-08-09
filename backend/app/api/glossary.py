@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
@@ -24,20 +24,68 @@ router = APIRouter()
 
 
 @router.get("/terms/{project_id}", response_model=List[GlossaryTermRead])
-def get_glossary_terms(project_id: int, db: Session = Depends(get_db)) -> List[GlossaryTerm]:
-    """Получить все термины глоссария для проекта."""
-    terms = db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).all()
-    return terms
+def get_glossary_terms(
+    project_id: int,
+    db: Session = Depends(get_db),
+    limit: int | None = Query(default=None, gt=0, le=1000),
+    offset: int = Query(default=0, ge=0),
+    search: str | None = None,
+    sort_by: str = Query(default="id"),
+    order: str = Query(default="asc")
+) -> List[GlossaryTerm]:
+    """Получить все термины глоссария для проекта с пагинацией/поиском/сортировкой."""
+    q = db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id)
+    if search:
+        s = f"%{search}%"
+        q = q.filter((GlossaryTerm.source_term.ilike(s)) | (GlossaryTerm.translated_term.ilike(s)))
+    # Сортировка
+    sort_map = {
+        "id": GlossaryTerm.id,
+        "source_term": GlossaryTerm.source_term,
+        "translated_term": GlossaryTerm.translated_term,
+        "created_at": GlossaryTerm.created_at,
+        "status": GlossaryTerm.status,
+    }
+    sort_col = sort_map.get(sort_by, GlossaryTerm.id)
+    q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())
+    if offset:
+        q = q.offset(offset)
+    if limit:
+        q = q.limit(limit)
+    return q.all()
 
 
 @router.get("/terms/{project_id}/pending", response_model=List[GlossaryTermRead])
-def get_pending_glossary_terms(project_id: int, db: Session = Depends(get_db)) -> List[GlossaryTerm]:
-    """Получить термины глоссария в ожидании утверждения для проекта."""
-    terms = db.query(GlossaryTerm).filter(
+def get_pending_glossary_terms(
+    project_id: int,
+    db: Session = Depends(get_db),
+    limit: int | None = Query(default=None, gt=0, le=1000),
+    offset: int = Query(default=0, ge=0),
+    search: str | None = None,
+    sort_by: str = Query(default="created_at"),
+    order: str = Query(default="asc")
+) -> List[GlossaryTerm]:
+    """Получить термины глоссария в ожидании утверждения для проекта (с пагинацией/поиском/сортировкой)."""
+    q = db.query(GlossaryTerm).filter(
         GlossaryTerm.project_id == project_id,
         GlossaryTerm.status == TermStatus.PENDING
-    ).all()
-    return terms
+    )
+    if search:
+        s = f"%{search}%"
+        q = q.filter((GlossaryTerm.source_term.ilike(s)) | (GlossaryTerm.translated_term.ilike(s)))
+    sort_map = {
+        "id": GlossaryTerm.id,
+        "source_term": GlossaryTerm.source_term,
+        "translated_term": GlossaryTerm.translated_term,
+        "created_at": GlossaryTerm.created_at,
+    }
+    sort_col = sort_map.get(sort_by, GlossaryTerm.created_at)
+    q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())
+    if offset:
+        q = q.offset(offset)
+    if limit:
+        q = q.limit(limit)
+    return q.all()
 
 
 @router.get("/terms/{term_id}/details", response_model=GlossaryTermRead)
@@ -78,7 +126,19 @@ def update_glossary_term(term_id: int, term: GlossaryTermUpdate, db: Session = D
     if not db_term:
         raise HTTPException(status_code=404, detail="Term not found")
     
-    for field, value in term.dict(exclude_unset=True).items():
+    # Проверка уникальности source_term в рамках проекта, если меняется
+    updates = term.dict(exclude_unset=True)
+    new_source = updates.get("source_term")
+    if new_source and new_source != db_term.source_term:
+        conflict = db.query(GlossaryTerm).filter(
+            GlossaryTerm.project_id == db_term.project_id,
+            GlossaryTerm.source_term == new_source,
+            GlossaryTerm.id != term_id,
+        ).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail=f"Term '{new_source}' already exists in this project")
+    
+    for field, value in updates.items():
         setattr(db_term, field, value)
     
     db.commit()
@@ -143,10 +203,29 @@ def create_term_relationship(relationship: TermRelationshipCreate, db: Session =
 
 
 @router.get("/versions/{project_id}", response_model=List[GlossaryVersionRead])
-def get_glossary_versions(project_id: int, db: Session = Depends(get_db)) -> List[GlossaryVersion]:
-    """Получить версии глоссария для проекта."""
-    versions = db.query(GlossaryVersion).filter(GlossaryVersion.project_id == project_id).all()
-    return versions
+def get_glossary_versions(
+    project_id: int,
+    db: Session = Depends(get_db),
+    limit: int | None = Query(default=None, gt=0, le=1000),
+    offset: int = Query(default=0, ge=0),
+    sort_by: str = Query(default="id"),
+    order: str = Query(default="desc")
+) -> List[GlossaryVersion]:
+    """Получить версии глоссария для проекта (с пагинацией/сортировкой)."""
+    from app.models.glossary import GlossaryVersion  # локальный импорт для типов
+    q = db.query(GlossaryVersion).filter(GlossaryVersion.project_id == project_id)
+    sort_map = {
+        "id": GlossaryVersion.id,
+        "created_at": GlossaryVersion.created_at,
+        "version_name": GlossaryVersion.version_name,
+    }
+    sort_col = sort_map.get(sort_by, GlossaryVersion.id)
+    q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())
+    if offset:
+        q = q.offset(offset)
+    if limit:
+        q = q.limit(limit)
+    return q.all()
 
 
 @router.post("/versions/{project_id}", response_model=GlossaryVersionRead, status_code=status.HTTP_201_CREATED)

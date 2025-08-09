@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, JSON, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from . import Base
@@ -41,6 +41,11 @@ class GlossaryTerm(Base):
     project = relationship("Project", back_populates="glossary_terms")
     source_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.source_term_id", back_populates="source_term")
     target_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.target_term_id", back_populates="target_term")
+
+    __table_args__ = (
+        Index("ix_glossary_terms_project_id", "project_id"),
+        UniqueConstraint("project_id", "source_term", name="uq_glossary_term_per_project"),
+    )
 
 
 class TermRelationship(Base):

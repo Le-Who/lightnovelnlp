@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 from enum import Enum
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Index
 from sqlalchemy.orm import relationship
 
 from . import Base
@@ -53,3 +53,7 @@ class Chapter(Base):
     
     # Связи
     project = relationship("Project", back_populates="chapters")
+
+    __table_args__ = (
+        Index("ix_chapters_project_id", "project_id"),
+    )
