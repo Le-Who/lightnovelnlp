@@ -1101,9 +1101,16 @@
                  const projects = result.data;
                  
                  // Заполняем все селекты проектов
-                 const projectSelects = ['analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId', 'manageChaptersProjectId', 'batchAnalyzeProjectId', 'batchTranslateProjectId'];
+                 const projectSelects = [
+                     'analyzeProjectId', 'translateProjectId', 'manageTermsProjectId',
+                     'chapterProjectId', 'getChaptersProjectId', 'termProjectId',
+                     'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId',
+                     'manageChaptersProjectId', 'batchAnalyzeProjectId', 'batchTranslateProjectId',
+                     'uploadChapterProjectId', 'deleteProjectId'
+                 ];
                  projectSelects.forEach(selectId => {
                      const select = document.getElementById(selectId);
+                     if (!select) return;
                      select.innerHTML = '<option value="">Выберите проект...</option>';
                      projects.forEach(project => {
                          const option = document.createElement('option');
@@ -1380,10 +1387,20 @@
           }
 
           // Автоматически загружаем проекты и проверяем здоровье API при загрузке
-          window.addEventListener('load', async () => {
-              await checkHealth();
-              await loadProjects();
-          });
+           window.addEventListener('load', async () => {
+               await checkHealth();
+               await loadProjects();
+               // Сброс контейнеров batch при старте
+               ['batchAnalyzeChapters','batchTranslateChapters'].forEach(id => {
+                   const c = document.getElementById(id);
+                   if (c) c.innerHTML = '<p style="color:#777;">Сначала выберите проект...</p>';
+               });
+               // Явно дизейблим кнопки запуска батча до выбора проектов
+               const ba = document.getElementById('batchAnalyzeBtn');
+               const bt = document.getElementById('batchTranslateBtn');
+               if (ba) ba.disabled = true;
+               if (bt) bt.disabled = true;
+           });
     </script>
 </body>
 </html>
