@@ -5,11 +5,18 @@ export default function GlossaryEditor({ projectId }) {
   const [terms, setTerms] = useState([])
   const [loading, setLoading] = useState(false)
   const [editingTerm, setEditingTerm] = useState(null)
+  const [sortBy, setSortBy] = useState('id')
+  const [sortOrder, setSortOrder] = useState('asc')
 
   const loadTerms = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/glossary/${projectId}/terms`)
+      const res = await api.get(`/glossary/${projectId}/terms`, {
+        params: {
+          sort_by: sortBy,
+          order: sortOrder
+        }
+      })
       setTerms(res.data)
     } catch (e) {
       console.error('Error loading terms:', e)
@@ -22,7 +29,7 @@ export default function GlossaryEditor({ projectId }) {
     if (projectId) {
       loadTerms()
     }
-  }, [projectId])
+  }, [projectId, sortBy, sortOrder])
 
   const approveTerm = async (termId) => {
     try {
@@ -77,6 +84,36 @@ export default function GlossaryEditor({ projectId }) {
   return (
     <div>
       <h3>Глоссарий проекта</h3>
+      
+      {/* Панель сортировки */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label>Сортировка по:</label>
+          <select 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ddd' }}
+          >
+            <option value="id">ID</option>
+            <option value="source_term">Название</option>
+            <option value="frequency">Частота</option>
+            <option value="created_at">Дата создания</option>
+          </select>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label>Порядок:</label>
+          <select 
+            value={sortOrder} 
+            onChange={(e) => setSortOrder(e.target.value)}
+            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ddd' }}
+          >
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+          </select>
+        </div>
+      </div>
+      
       {terms.length === 0 ? (
         <p>Термины отсутствуют. Запустите анализ главы для извлечения терминов.</p>
       ) : (
@@ -115,6 +152,7 @@ export default function GlossaryEditor({ projectId }) {
                     <span style={{ color: getStatusColor(term.status) }}>
                       Статус: {term.status === 'approved' ? 'Утвержден' : 'Ожидает'}
                     </span>
+                    <span>Частота: {term.frequency || 1}</span>
                   </div>
                   
                   {term.context && (

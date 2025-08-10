@@ -15,7 +15,12 @@ export default function ChapterManager({ projectId }) {
   const loadChapters = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/chapters`)
+      const res = await api.get(`/projects/${projectId}/chapters`, {
+        params: {
+          sort_by: 'order',
+          order: 'asc'
+        }
+      })
       setChapters(res.data)
     } catch (e) {
       console.error('Error loading chapters:', e)

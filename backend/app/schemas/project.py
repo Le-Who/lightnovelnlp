@@ -40,6 +40,7 @@ class ChapterUpdate(BaseModel):
 class ChapterRead(ChapterBase):
     id: int
     project_id: int
+    order: int
     translated_text: Optional[str] = None
     summary: Optional[str] = None
     created_at: datetime

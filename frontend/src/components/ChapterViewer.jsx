@@ -5,11 +5,18 @@ export default function ChapterViewer({ projectId }) {
   const [chapters, setChapters] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedChapter, setSelectedChapter] = useState(null)
+  const [reviewing, setReviewing] = useState({})
+  const [reviewData, setReviewData] = useState({})
 
   const loadChapters = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/chapters`)
+      const res = await api.get(`/projects/${projectId}/chapters`, {
+        params: {
+          sort_by: 'order',
+          order: 'asc'
+        }
+      })
       setChapters(res.data)
     } catch (e) {
       console.error('Error loading chapters:', e)
@@ -23,6 +30,24 @@ export default function ChapterViewer({ projectId }) {
       loadChapters()
     }
   }, [projectId])
+
+  const requestReview = async (chapterId) => {
+    setReviewing(prev => ({ ...prev, [chapterId]: true }))
+    try {
+      const res = await api.post(`/translation/chapters/${chapterId}/review`)
+      if (res.data.review_available) {
+        setReviewData(prev => ({ ...prev, [chapterId]: res.data.review_text }))
+        alert('Рецензирование завершено!')
+      } else {
+        alert('Ошибка рецензирования: ' + res.data.message)
+      }
+    } catch (e) {
+      console.error('Error requesting review:', e)
+      alert('Ошибка запроса рецензирования')
+    } finally {
+      setReviewing(prev => ({ ...prev, [chapterId]: false }))
+    }
+  }
 
   if (loading) return <div>Загрузка глав...</div>
 
@@ -50,6 +75,28 @@ export default function ChapterViewer({ projectId }) {
               <h4 style={{ margin: '0 0 8px 0' }}>{chapter.title}</h4>
               <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
                 Символов: {chapter.original_text.length} → {chapter.translated_text.length}
+              </div>
+              
+              {/* Кнопка рецензирования */}
+              <div style={{ marginBottom: 8 }}>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    requestReview(chapter.id)
+                  }}
+                  disabled={reviewing[chapter.id]}
+                  style={{ 
+                    padding: '6px 12px', 
+                    fontSize: '0.8em',
+                    backgroundColor: reviewing[chapter.id] ? '#ccc' : '#9C27B0',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: reviewing[chapter.id] ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {reviewing[chapter.id] ? 'Рецензирование...' : 'Рецензировать перевод'}
+                </button>
               </div>
               <div style={{ 
                 maxHeight: 100, 
@@ -130,6 +177,26 @@ export default function ChapterViewer({ projectId }) {
                 </div>
               </div>
             </div>
+            
+            {/* Рецензия перевода */}
+            {reviewData[selectedChapter.id] && (
+              <div style={{ marginTop: 24 }}>
+                <h4>Рецензия перевода</h4>
+                <div style={{ 
+                  border: '1px solid #ddd', 
+                  padding: 16, 
+                  borderRadius: 4,
+                  maxHeight: 400,
+                  overflow: 'auto',
+                  fontSize: '0.9em',
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap',
+                  backgroundColor: '#f9f9f9'
+                }}>
+                  {reviewData[selectedChapter.id]}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

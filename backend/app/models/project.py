@@ -48,6 +48,7 @@ class Chapter(Base):
     original_text = Column(Text, nullable=False)
     translated_text = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
+    order = Column(Integer, default=0, nullable=False)  # Порядок главы в проекте
     created_at = Column(DateTime, default=datetime.utcnow)
     processed_at = Column(DateTime, nullable=True)
     
@@ -56,4 +57,5 @@ class Chapter(Base):
 
     __table_args__ = (
         Index("ix_chapters_project_id", "project_id"),
+        Index("ix_chapters_order", "project_id", "order"),  # Индекс для сортировки
     )

@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.deps import get_db
 from app.models.project import Project, Chapter
@@ -87,6 +88,7 @@ def list_chapters(
     sort_map = {
         "id": Chapter.id,
         "title": Chapter.title,
+        "order": Chapter.order,
         "created_at": Chapter.created_at,
         "processed_at": Chapter.processed_at,
     }
@@ -111,10 +113,14 @@ def create_chapter(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
+    # Определяем порядок новой главы
+    max_order = db.query(func.max(Chapter.order)).filter(Chapter.project_id == project_id).scalar() or 0
+    
     chapter = Chapter(
         project_id=project_id,
         title=payload.title,
-        original_text=payload.original_text
+        original_text=payload.original_text,
+        order=max_order + 1
     )
     
     db.add(chapter)
@@ -160,10 +166,14 @@ def create_chapter_from_file(
     if not text.strip():
         raise HTTPException(status_code=400, detail="File has no extractable text")
 
+    # Определяем порядок новой главы
+    max_order = db.query(func.max(Chapter.order)).filter(Chapter.project_id == project_id).scalar() or 0
+    
     chapter = Chapter(
         project_id=project_id,
         title=title,
-        original_text=text
+        original_text=text,
+        order=max_order + 1
     )
     db.add(chapter)
     db.commit()
@@ -197,9 +207,10 @@ def upload_chapters_from_file(
         
         # Разделяем текст на главы по паттерну
         pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
-        chapters = pattern.split(content)
+        # Находим все совпадения с их позициями
+        matches = list(pattern.finditer(content))
         
-        if len(chapters) < 2:
+        if not matches:
             raise HTTPException(
                 status_code=400,
                 detail="No chapters found with the specified pattern"
@@ -207,33 +218,40 @@ def upload_chapters_from_file(
         
         created_chapters = []
         
-        # Первая часть - текст до первой главы
-        if chapters[0].strip():
-            # Создаем главу для вступительного текста
-            intro_chapter = Chapter(
-                project_id=project_id,
-                title="Введение",
-                original_text=chapters[0].strip(),
-                order=0
-            )
-            db.add(intro_chapter)
-            created_chapters.append(intro_chapter)
+        # Обрабатываем текст до первой главы
+        first_match = matches[0]
+        if first_match.start() > 0:
+            intro_text = content[:first_match.start()].strip()
+            if intro_text:
+                intro_chapter = Chapter(
+                    project_id=project_id,
+                    title="Введение",
+                    original_text=intro_text,
+                    order=0
+                )
+                db.add(intro_chapter)
+                created_chapters.append(intro_chapter)
         
         # Обрабатываем найденные главы
-        for i in range(1, len(chapters), 2):
-            if i + 1 < len(chapters):
-                chapter_title = chapters[i].strip()
-                chapter_content = chapters[i + 1].strip()
-                
-                if chapter_content:  # Пропускаем пустые главы
-                    chapter = Chapter(
-                        project_id=project_id,
-                        title=chapter_title,
-                        original_text=chapter_content,
-                        order=len(created_chapters)
-                    )
-                    db.add(chapter)
-                    created_chapters.append(chapter)
+        for i, match in enumerate(matches):
+            chapter_title = match.group(1)
+            
+            # Определяем конец главы (до следующей главы или до конца файла)
+            if i + 1 < len(matches):
+                next_match = matches[i + 1]
+                chapter_content = content[match.end():next_match.start()].strip()
+            else:
+                chapter_content = content[match.end():].strip()
+            
+            if chapter_content:  # Пропускаем пустые главы
+                chapter = Chapter(
+                    project_id=project_id,
+                    title=chapter_title,
+                    original_text=chapter_content,
+                    order=len(created_chapters)
+                )
+                db.add(chapter)
+                created_chapters.append(chapter)
         
         db.commit()
         
