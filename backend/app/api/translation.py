@@ -212,25 +212,25 @@ def review_translation(
         
         # Создаем промпт для рецензирования
         review_prompt = f"""
-        Пожалуйста, проведите стилистическую и грамматическую проверку перевода с русского на английский.
+        Please conduct a stylistic and grammatical review of the translation from Russian to English.
         
-        Оригинальный текст (русский):
+        Original text (Russian):
         {chapter.original_text[:1000]}...
         
-        Текущий перевод (английский):
+        Current translation (English):
         {chapter.translated_text}
         
-        Утвержденные термины глоссария:
+        Approved glossary terms:
         {chr(10).join([f"- {term.source_term} → {term.translated_term}" for term in glossary_terms[:10]])}
         
-        Пожалуйста, проанализируйте перевод и предоставьте:
-        1. Общую оценку качества перевода (1-10)
-        2. Список грамматических ошибок с исправлениями
-        3. Стилистические предложения по улучшению
-        4. Рекомендации по использованию терминов глоссария
-        5. Общие комментарии по улучшению
+        Please analyze the translation and provide:
+        1. Overall translation quality score (1-10)
+        2. List of grammatical errors with corrections
+        3. Stylistic suggestions for improvement
+        4. Recommendations for using glossary terms
+        5. General improvement comments
         
-        Ответ должен быть структурированным и конкретным.
+        The response should be structured and specific.
         """
         
         # Получаем рецензию от LLM

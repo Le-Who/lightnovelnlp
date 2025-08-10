@@ -178,6 +178,25 @@ export default function ChapterViewer({ projectId }) {
               </div>
             </div>
             
+            {/* Кнопки действий */}
+            <div style={{ marginTop: 24, display: 'flex', gap: 16 }}>
+              {!reviewData[selectedChapter.id] && (
+                <button 
+                  onClick={() => requestReview(selectedChapter.id)}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#2196F3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Запросить рецензию
+                </button>
+              )}
+            </div>
+            
             {/* Рецензия перевода */}
             {reviewData[selectedChapter.id] && (
               <div style={{ marginTop: 24 }}>

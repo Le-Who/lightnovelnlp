@@ -97,34 +97,21 @@ export default function ChapterManager({ projectId }) {
     
     try {
       const res = await api.post(`/processing/chapters/${chapterId}/analyze`)
-      const taskId = res.data.task_id
       
-      // Опрашиваем статус задачи
-      const checkStatus = async () => {
-        try {
-          const statusRes = await api.get(`/processing/tasks/${taskId}/status`)
-          const status = statusRes.data.status
-          
-          if (status === 'SUCCESS') {
-            alert(`Анализ завершен! Извлечено терминов: ${statusRes.data.result.saved_terms}`)
-            setAnalyzing(prev => ({ ...prev, [chapterId]: false }))
-          } else if (status === 'FAILURE') {
-            alert('Ошибка анализа главы')
-            setAnalyzing(prev => ({ ...prev, [chapterId]: false }))
-          } else {
-            // Продолжаем опрашивать
-            setTimeout(checkStatus, 2000)
-          }
-        } catch (e) {
-          console.error('Error checking task status:', e)
-          setAnalyzing(prev => ({ ...prev, [chapterId]: false }))
-        }
+      if (res.data.extracted_terms) {
+        alert(`Анализ завершен! Извлечено терминов: ${res.data.extracted_terms}, автоматически утверждено: ${res.data.auto_approved_terms}`)
+        loadChapters() // Перезагружаем список глав для обновления статуса
+      } else {
+        alert('Ошибка анализа главы')
       }
-      
-      checkStatus()
     } catch (e) {
       console.error('Error starting analysis:', e)
-      alert('Ошибка запуска анализа')
+      if (e.response?.data?.detail) {
+        alert(`Ошибка анализа: ${e.response.data.detail}`)
+      } else {
+        alert('Ошибка запуска анализа')
+      }
+    } finally {
       setAnalyzing(prev => ({ ...prev, [chapterId]: false }))
     }
   }
