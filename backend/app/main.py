@@ -23,7 +23,7 @@ except Exception as e:
     raise
 
 # Создаем таблицы
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)  # Убрано - используем Alembic для миграций
 
 app = FastAPI(
     title="Light Novel NLP API", 

@@ -34,6 +34,7 @@ class GlossaryTerm(Base):
     category = Column(String(50), nullable=False)
     status = Column(String(20), default=TermStatus.PENDING)
     context = Column(Text, nullable=True)
+    frequency = Column(Integer, default=1, server_default="1")  # Частота встречаемости
     created_at = Column(DateTime, default=datetime.utcnow)
     approved_at = Column(DateTime, nullable=True)  # When the term was approved/rejected
     

@@ -19,21 +19,25 @@ from app.services.cache_service import cache_service
 router = APIRouter()
 
 
-def process_batch_analyze_sync(batch_job_id: int, db: Session):
+def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
     """Синхронная пакетная обработка глав для извлечения терминов."""
+    # Открываем новую сессию для фоновой задачи
+    from app.db import SessionLocal
+    local_db = db or SessionLocal()
+    
     try:
         # Получаем задачу
-        batch_job = db.get(BatchJob, batch_job_id)
+        batch_job = local_db.get(BatchJob, batch_job_id)
         if not batch_job:
             return {"error": "Batch job not found", "batch_job_id": batch_job_id}
         
         # Обновляем статус
         batch_job.status = "running"
         batch_job.started_at = datetime.utcnow()
-        db.commit()
+        local_db.commit()
         
         # Получаем элементы задачи
-        job_items = db.query(BatchJobItem).filter(
+        job_items = local_db.query(BatchJobItem).filter(
             BatchJobItem.batch_job_id == batch_job_id
         ).all()
         
@@ -49,14 +53,14 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 # Обновляем статус элемента
                 job_item.status = "processing"
                 job_item.started_at = datetime.utcnow()
-                db.commit()
+                local_db.commit()
                 
                 # Получаем главу и проект
-                chapter = db.get(Chapter, job_item.item_id)
+                chapter = local_db.get(Chapter, job_item.item_id)
                 if not chapter:
                     raise Exception("Chapter not found")
                 
-                project = db.get(Project, chapter.project_id)
+                project = local_db.get(Project, chapter.project_id)
                 if not project:
                     raise Exception("Project not found")
                 
@@ -68,14 +72,14 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                         project_genre = ProjectGenre(project_genre)
                     except Exception:
                         project_genre = ProjectGenre.OTHER
-                extracted_terms = term_extractor.extract_terms(chapter.original_text, project_genre)
+                extracted_terms = term_extractor.extract_terms_with_frequency(chapter.original_text, project_genre)
                 
                 # Сохраняем термины с автоматическим утверждением
                 saved_terms = []
                 auto_approved_count = 0
                 
                 for term_data in extracted_terms:
-                    existing_term = db.query(GlossaryTerm).filter(
+                    existing_term = local_db.query(GlossaryTerm).filter(
                         GlossaryTerm.project_id == chapter.project_id,
                         GlossaryTerm.source_term == term_data["source_term"]
                     ).first()
@@ -95,9 +99,10 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                             category=term_data.get("category", TermCategory.OTHER),
                             status=initial_status,
                             context=term_data.get("context", ""),
+                            frequency=term_data.get("frequency", 1),
                             approved_at=datetime.utcnow() if auto_approve else None
                         )
-                        db.add(term)
+                        local_db.add(term)
                         saved_terms.append(term)
                 
                 # Анализируем связи
@@ -109,26 +114,31 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                     
                     for rel_data in relationships:
                         # Find the source and target terms by their source_term strings
-                        source_term_obj = db.query(GlossaryTerm).filter(
+                        source_term_obj = local_db.query(GlossaryTerm).filter(
                             GlossaryTerm.project_id == chapter.project_id,
                             GlossaryTerm.source_term == rel_data["source_term"]
                         ).first()
                         
-                        target_term_obj = db.query(GlossaryTerm).filter(
+                        target_term_obj = local_db.query(GlossaryTerm).filter(
                             GlossaryTerm.project_id == chapter.project_id,
                             GlossaryTerm.source_term == rel_data["target_term"]
                         ).first()
                         
                         if source_term_obj and target_term_obj:
+                            # Безопасно получаем relation_type, используя relation_type или relationType
+                            relation_type = rel_data.get("relation_type") or rel_data.get("relationType") or "other"
+                            confidence = rel_data.get("confidence", 50)  # По умолчанию 50%
+                            context = rel_data.get("context", "")
+                            
                             relationship = TermRelationship(
                                 project_id=chapter.project_id,
                                 source_term_id=source_term_obj.id,
                                 target_term_id=target_term_obj.id,
-                                relation_type=rel_data["relationship_type"],
-                                confidence=rel_data.get("confidence", 0.5),
-                                context=rel_data.get("context", "")
+                                relation_type=relation_type,
+                                confidence=confidence,
+                                context=context
                             )
-                            db.add(relationship)
+                            local_db.add(relationship)
                 
                 # Создаем саммари
                 chapter_summary = context_summarizer.summarize_context(
@@ -157,7 +167,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 }
                 
                 processed_items += 1
-                db.commit()
+                local_db.commit()
                 
             except Exception as e:
                 print(f"Error processing job item {job_item.id}: {e}")
@@ -165,7 +175,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
                 job_item.completed_at = datetime.utcnow()
                 job_item.error_message = str(e)
                 failed_items += 1
-                db.commit()
+                local_db.commit()
         
         # Обновляем статус задачи
         batch_job.status = "completed"
@@ -178,7 +188,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
             "total_auto_approved": total_auto_approved,
             "total_pending": total_pending
         }
-        db.commit()
+        local_db.commit()
         
         return {
             "batch_job_id": batch_job_id,
@@ -196,26 +206,34 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session):
             batch_job.status = "failed"
             batch_job.completed_at = datetime.utcnow()
             batch_job.error_message = str(e)
-            db.commit()
+            local_db.commit()
         
         return {"error": str(e), "batch_job_id": batch_job_id}
+    finally:
+        # Закрываем локальную сессию только если мы её создали
+        if not db:
+            local_db.close()
 
 
-def process_batch_translate_sync(batch_job_id: int, db: Session):
+def process_batch_translate_sync(batch_job_id: int, db: Session = None):
     """Синхронная пакетная обработка глав для перевода."""
+    # Открываем новую сессию для фоновой задачи
+    from app.db import SessionLocal
+    local_db = db or SessionLocal()
+    
     try:
         # Получаем задачу
-        batch_job = db.get(BatchJob, batch_job_id)
+        batch_job = local_db.get(BatchJob, batch_job_id)
         if not batch_job:
             return {"error": "Batch job not found", "batch_job_id": batch_job_id}
         
         # Обновляем статус
         batch_job.status = "running"
         batch_job.started_at = datetime.utcnow()
-        db.commit()
+        local_db.commit()
         
         # Получаем элементы задачи
-        job_items = db.query(BatchJobItem).filter(
+        job_items = local_db.query(BatchJobItem).filter(
             BatchJobItem.batch_job_id == batch_job_id
         ).all()
         
@@ -228,15 +246,15 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
                 # Обновляем статус элемента
                 job_item.status = "processing"
                 job_item.started_at = datetime.utcnow()
-                db.commit()
+                local_db.commit()
                 
                 # Получаем главу
-                chapter = db.get(Chapter, job_item.item_id)
+                chapter = local_db.get(Chapter, job_item.item_id)
                 if not chapter:
                     raise Exception("Chapter not found")
                 
                 # Получаем утвержденные термины глоссария
-                glossary_terms = db.query(GlossaryTerm).filter(
+                glossary_terms = local_db.query(GlossaryTerm).filter(
                     GlossaryTerm.project_id == chapter.project_id,
                     GlossaryTerm.status == TermStatus.APPROVED
                 ).all()
@@ -244,55 +262,46 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
                 if not glossary_terms:
                     raise Exception("No approved glossary terms found")
                 
-                # Генерируем хеш глоссария для кэширования
+                # Получаем общее саммари проекта (если есть)
+                project_summary = None
+                project_chapters = local_db.query(Chapter).filter(
+                    Chapter.project_id == chapter.project_id,
+                    Chapter.summary.isnot(None)
+                ).order_by(Chapter.id).all()
+                
+                if len(project_chapters) > 1:
+                    from app.core.nlp_pipeline.context_summarizer import context_summarizer
+                    chapters_data = [
+                        {
+                            "title": ch.title,
+                            "summary": ch.summary,
+                            "original_text": ch.original_text
+                        }
+                        for ch in project_chapters[:5]
+                    ]
+                    project_summary = context_summarizer.create_project_summary(chapters_data)
+                
+                # Переводим текст
+                translated_text = translation_engine.translate_with_glossary(
+                    text=chapter.original_text,
+                    glossary_terms=glossary_terms,
+                    context_summary=chapter.summary,
+                    project_summary=project_summary
+                )
+                
+                # Сохраняем перевод
+                chapter.translated_text = translated_text
+                
+                # Кэшируем перевод
                 glossary_hash = cache_service.generate_glossary_hash([
                     {
                         "source_term": term.source_term,
                         "translated_term": term.translated_term,
-                        "category": term.category,
-                        "status": term.status
+                        "category": term.category
                     }
                     for term in glossary_terms
                 ])
-                
-                # Проверяем кэш
-                cached_translation = cache_service.get_cached_translation(chapter.id, glossary_hash)
-                
-                if cached_translation:
-                    translated_text = cached_translation
-                else:
-                    # Получаем контекст (если есть)
-                    project_summary = None
-                    project_chapters = db.query(Chapter).filter(
-                        Chapter.project_id == chapter.project_id,
-                        Chapter.summary.isnot(None)
-                    ).order_by(Chapter.id).all()
-                    
-                    if len(project_chapters) > 1:
-                        chapters_data = [
-                            {
-                                "title": ch.title,
-                                "summary": ch.summary,
-                                "original_text": ch.original_text
-                            }
-                            for ch in project_chapters[:5]
-                        ]
-                        project_summary = context_summarizer.create_project_summary(chapters_data)
-                    
-                    # Выполняем перевод
-                    translated_text = translation_engine.translate_with_glossary(
-                        text=chapter.original_text,
-                        glossary_terms=glossary_terms,
-                        context_summary=chapter.summary,
-                        project_summary=project_summary
-                    )
-                    
-                    # Кэшируем результат
-                    cache_service.cache_translation(chapter.id, glossary_hash, translated_text)
-                
-                # Сохраняем перевод
-                chapter.translated_text = translated_text
-                db.commit()
+                cache_service.cache_translation(chapter.id, glossary_hash, translated_text)
                 
                 # Обновляем элемент задачи
                 job_item.status = "completed"
@@ -300,11 +309,12 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
                 job_item.result = {
                     "translated": True,
                     "glossary_terms_used": len(glossary_terms),
-                    "cached": bool(cached_translation)
+                    "context_used": bool(chapter.summary),
+                    "project_context_used": bool(project_summary)
                 }
                 
                 processed_items += 1
-                db.commit()
+                local_db.commit()
                 
             except Exception as e:
                 print(f"Error processing job item {job_item.id}: {e}")
@@ -312,7 +322,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
                 job_item.completed_at = datetime.utcnow()
                 job_item.error_message = str(e)
                 failed_items += 1
-                db.commit()
+                local_db.commit()
         
         # Обновляем статус задачи
         batch_job.status = "completed"
@@ -322,7 +332,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
             "processed_items": processed_items,
             "failed_items": failed_items
         }
-        db.commit()
+        local_db.commit()
         
         return {
             "batch_job_id": batch_job_id,
@@ -337,9 +347,13 @@ def process_batch_translate_sync(batch_job_id: int, db: Session):
             batch_job.status = "failed"
             batch_job.completed_at = datetime.utcnow()
             batch_job.error_message = str(e)
-            db.commit()
+            local_db.commit()
         
         return {"error": str(e), "batch_job_id": batch_job_id}
+    finally:
+        # Закрываем локальную сессию только если мы её создали
+        if not db:
+            local_db.close()
 
 
 @router.post("/analyze", status_code=status.HTTP_200_OK)
@@ -385,7 +399,7 @@ def create_batch_analyze_job(
     db.commit()
     
     # Запускаем обработку в фоне
-    background_tasks.add_task(process_batch_analyze_sync, batch_job.id, db)
+    background_tasks.add_task(process_batch_analyze_sync, batch_job.id)
     
     return {
         "batch_job_id": batch_job.id,
@@ -438,7 +452,7 @@ def create_batch_translate_job(
     db.commit()
     
     # Запускаем обработку в фоне
-    background_tasks.add_task(process_batch_translate_sync, batch_job.id, db)
+    background_tasks.add_task(process_batch_translate_sync, batch_job.id)
     
     return {
         "batch_job_id": batch_job.id,

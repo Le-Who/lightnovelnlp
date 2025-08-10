@@ -29,6 +29,29 @@ def translate_chapter(
     ).all()
     
     try:
+        # Проверяем кэш перевода
+        glossary_hash = cache_service.generate_glossary_hash([
+            {
+                "source_term": term.source_term,
+                "translated_term": term.translated_term,
+                "category": term.category
+            }
+            for term in glossary_terms
+        ])
+        
+        cached_translation = cache_service.get_cached_translation(chapter.id, glossary_hash)
+        if cached_translation:
+            # Возвращаем кэшированный перевод
+            return {
+                "chapter_id": chapter_id,
+                "translated_text": cached_translation,
+                "glossary_terms_used": len(glossary_terms) if use_glossary else 0,
+                "context_used": bool(chapter.summary),
+                "project_context_used": False,  # Кэш не содержит project context
+                "message": "Translation retrieved from cache",
+                "cached": True
+            }
+        
         # Получаем общее саммари проекта (если есть)
         project_summary = None
         project_chapters = db.query(Chapter).filter(
@@ -61,8 +84,8 @@ def translate_chapter(
         chapter.translated_text = translated_text
         db.commit()
         
-        # Инвалидируем кэш перевода для главы
-        cache_service.invalidate_translation_cache(chapter_id)
+        # Кэшируем результат перевода
+        cache_service.cache_translation(chapter.id, glossary_hash, translated_text)
         
         return {
             "chapter_id": chapter_id,
@@ -70,7 +93,8 @@ def translate_chapter(
             "glossary_terms_used": len(glossary_terms) if use_glossary else 0,
             "context_used": bool(chapter.summary),
             "project_context_used": bool(project_summary),
-            "message": "Translation completed successfully"
+            "message": "Translation completed successfully",
+            "cached": False
         }
         
     except Exception as e:
@@ -160,3 +184,96 @@ def preview_translation(chapter_id: int, db: Session = Depends(get_db)) -> dict:
             "message": f"Preview generation failed: {str(e)}",
             "glossary_terms_count": len(glossary_terms)
         }
+
+
+@router.post("/chapters/{chapter_id}/review")
+def review_translation(
+    chapter_id: int,
+    db: Session = Depends(get_db)
+) -> dict:
+    """Запросить рецензирование перевода главы у LLM."""
+    # Получаем главу
+    chapter = db.get(Chapter, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    
+    if not chapter.translated_text:
+        raise HTTPException(
+            status_code=400, 
+            detail="Chapter has no translation to review"
+        )
+    
+    try:
+        # Получаем утвержденные термины глоссария
+        glossary_terms = db.query(GlossaryTerm).filter(
+            GlossaryTerm.project_id == chapter.project_id,
+            GlossaryTerm.status == TermStatus.APPROVED
+        ).all()
+        
+        # Создаем промпт для рецензирования
+        review_prompt = f"""
+        Пожалуйста, проведите стилистическую и грамматическую проверку перевода с русского на английский.
+        
+        Оригинальный текст (русский):
+        {chapter.original_text[:1000]}...
+        
+        Текущий перевод (английский):
+        {chapter.translated_text}
+        
+        Утвержденные термины глоссария:
+        {chr(10).join([f"- {term.source_term} → {term.translated_term}" for term in glossary_terms[:10]])}
+        
+        Пожалуйста, проанализируйте перевод и предоставьте:
+        1. Общую оценку качества перевода (1-10)
+        2. Список грамматических ошибок с исправлениями
+        3. Стилистические предложения по улучшению
+        4. Рекомендации по использованию терминов глоссария
+        5. Общие комментарии по улучшению
+        
+        Ответ должен быть структурированным и конкретным.
+        """
+        
+        # Получаем рецензию от LLM
+        from app.services.gemini_client import gemini_client
+        review_text = gemini_client.complete(review_prompt)
+        
+        # Сохраняем рецензию в кэше (не в БД, так как это временные данные)
+        review_key = f"translation_review:{chapter_id}"
+        cache_service.set_cache(review_key, review_text, ttl=3600)  # 1 час
+        
+        return {
+            "chapter_id": chapter_id,
+            "review_available": True,
+            "review_text": review_text,
+            "glossary_terms_used": len(glossary_terms),
+            "message": "Translation review completed successfully"
+        }
+        
+    except Exception as e:
+        return {
+            "chapter_id": chapter_id,
+            "review_available": False,
+            "message": f"Review generation failed: {str(e)}"
+        }
+
+
+@router.get("/chapters/{chapter_id}/review")
+def get_translation_review(chapter_id: int) -> dict:
+    """Получить рецензию перевода главы."""
+    # Проверяем кэш на наличие рецензии
+    review_key = f"translation_review:{chapter_id}"
+    review_text = cache_service.get_cache(review_key)
+    
+    if not review_text:
+        return {
+            "chapter_id": chapter_id,
+            "review_available": False,
+            "message": "No review found. Please generate a review first."
+        }
+    
+    return {
+        "chapter_id": chapter_id,
+        "review_available": True,
+        "review_text": review_text,
+        "message": "Review retrieved from cache"
+    }

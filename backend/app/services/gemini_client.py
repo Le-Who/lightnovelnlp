@@ -130,9 +130,12 @@ class GeminiClient:
                 minute_key = f"gemini_rate:minute:{datetime.utcnow().strftime('%Y%m%d%H%M')}"
                 current_minute_count = cache_service.increment_counter(minute_key, ttl=65)
                 if current_minute_count > self.per_minute_limit:
-                    # Превышен лимит – подождем до следующей минуты
-                    # На free-tier Render спать в потоках ок, но избежим длинных пауз: бросаем понятную ошибку
-                    raise Exception("Rate limit exceeded: 10 req/min. Please retry shortly.")
+                    # Превышен лимит – возвращаем HTTP 429
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Rate limit exceeded: 10 req/min. Please retry shortly."
+                    )
 
                 # Проверяем доступность текущего ключа
                 current_key = self.api_keys[self.current_key_index]
@@ -163,6 +166,9 @@ class GeminiClient:
 
                 return response.text
 
+            except HTTPException:
+                # Пробрасываем HTTPException как есть
+                raise
             except Exception as e:
                 # Логируем, переводим ключ в кулдаун и пробуем следующий
                 print(f"Error with key {self.current_key_index}: {e}")

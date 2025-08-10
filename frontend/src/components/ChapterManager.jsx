@@ -8,6 +8,9 @@ export default function ChapterManager({ projectId }) {
   const [translating, setTranslating] = useState({})
   const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
   const [previewData, setPreviewData] = useState(null)
+  const [uploadingChapters, setUploadingChapters] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
 
   const loadChapters = async () => {
     setLoading(true)
@@ -38,6 +41,49 @@ export default function ChapterManager({ projectId }) {
     } catch (e) {
       console.error('Error creating chapter:', e)
       alert('Ошибка создания главы')
+    }
+  }
+
+  const uploadChaptersFromFile = async () => {
+    if (!selectedFile) {
+      alert('Пожалуйста, выберите файл')
+      return
+    }
+
+    setUploadingChapters(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('chapter_pattern', chapterPattern)
+
+      const res = await api.post(`/projects/${projectId}/upload_chapters`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+
+      alert(`Успешно загружено ${res.data.chapters_created} глав!`)
+      setSelectedFile(null)
+      loadChapters() // Перезагружаем список глав
+    } catch (e) {
+      console.error('Error uploading chapters:', e)
+      if (e.response?.data?.detail) {
+        alert(`Ошибка загрузки: ${e.response.data.detail}`)
+      } else {
+        alert('Ошибка загрузки глав')
+      }
+    } finally {
+      setUploadingChapters(false)
+    }
+  }
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0]
+    if (file && file.type === 'text/plain') {
+      setSelectedFile(file)
+    } else {
+      alert('Пожалуйста, выберите текстовый файл (.txt)')
+      e.target.value = ''
     }
   }
 
@@ -140,9 +186,55 @@ export default function ChapterManager({ projectId }) {
         </div>
       </form>
 
+      {/* Загрузка глав из файла */}
+      <div style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
+        <h4>Загрузить главы из файла</h4>
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: 'block', marginBottom: 5 }}>
+            Паттерн разделения глав:
+          </label>
+          <input
+            type="text"
+            value={chapterPattern}
+            onChange={(e) => setChapterPattern(e.target.value)}
+            placeholder="Глава \\d+"
+            style={{ 
+              width: '100%', 
+              padding: '8px', 
+              border: '1px solid #ddd', 
+              borderRadius: 4,
+              marginBottom: 10
+            }}
+          />
+          <small style={{ color: '#666' }}>
+            Используйте регулярное выражение для разделения глав (по умолчанию: "Глава \\d+")
+          </small>
+        </div>
+        <input
+          type="file"
+          accept=".txt"
+          onChange={handleFileSelect}
+          style={{ marginBottom: 10 }}
+        />
+        <button 
+          onClick={uploadChaptersFromFile} 
+          disabled={uploadingChapters || !selectedFile}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: uploadingChapters ? '#ccc' : '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: uploadingChapters ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {uploadingChapters ? 'Загрузка...' : 'Загрузить главы из файла'}
+        </button>
+      </div>
+
       {/* Список глав */}
       {chapters.length === 0 ? (
-        <p>Главы отсутствуют. Добавьте первую главу.</p>
+        <p>Главы отсутствуют. Добавьте первую главу или загрузите из файла.</p>
       ) : (
         <div style={{ display: 'grid', gap: 16 }}>
           {chapters.map((chapter) => (

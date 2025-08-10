@@ -45,6 +45,7 @@ def get_glossary_terms(
         "translated_term": GlossaryTerm.translated_term,
         "created_at": GlossaryTerm.created_at,
         "status": GlossaryTerm.status,
+        "frequency": GlossaryTerm.frequency,  # Добавляем сортировку по частоте
     }
     sort_col = sort_map.get(sort_by, GlossaryTerm.id)
     q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())
@@ -78,6 +79,7 @@ def get_pending_glossary_terms(
         "source_term": GlossaryTerm.source_term,
         "translated_term": GlossaryTerm.translated_term,
         "created_at": GlossaryTerm.created_at,
+        "frequency": GlossaryTerm.frequency,  # Добавляем сортировку по частоте
     }
     sort_col = sort_map.get(sort_by, GlossaryTerm.created_at)
     q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())

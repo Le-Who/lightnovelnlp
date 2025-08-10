@@ -1,12 +1,11 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
 from app.models.project import Project, Chapter
 from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead, ChapterUpdate
-from fastapi import File, UploadFile, Form
 import io
 try:
     import PyPDF2
@@ -14,6 +13,7 @@ except Exception:
     PyPDF2 = None
 
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
+import re
 
 router = APIRouter()
 
@@ -126,7 +126,7 @@ def create_chapter(
 @router.post("/{project_id}/chapters/upload", response_model=ChapterRead, status_code=status.HTTP_201_CREATED)
 def create_chapter_from_file(
     project_id: int,
-    title: str = Form(...),
+    title: str = "Глава 1", # Default title for uploaded chapters
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ) -> Chapter:
@@ -150,7 +150,6 @@ def create_chapter_from_file(
     elif filename.endswith(".rtf"):
         # Простейшее извлечение: удалим RTF теги
         raw = content_bytes.decode(errors="ignore")
-        import re
         text = re.sub(r"\\[a-zA-Z]+[0-9]* ?|[{}]", "", raw)
     elif filename.endswith(".doc"):
         # .doc без внешних зависимостей корректно не парсится; попытаемся как текст
@@ -170,6 +169,102 @@ def create_chapter_from_file(
     db.commit()
     db.refresh(chapter)
     return chapter
+
+
+@router.post("/{project_id}/upload_chapters")
+def upload_chapters_from_file(
+    project_id: int,
+    file: UploadFile = File(...),
+    chapter_pattern: str = "Глава \\d+",
+    db: Session = Depends(get_db)
+):
+    """Загрузить главы из текстового файла."""
+    # Проверяем существование проекта
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Проверяем тип файла
+    if not file.filename.endswith('.txt'):
+        raise HTTPException(
+            status_code=400, 
+            detail="Only .txt files are supported"
+        )
+    
+    try:
+        # Читаем содержимое файла
+        content = file.file.read().decode('utf-8')
+        
+        # Разделяем текст на главы по паттерну
+        pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
+        chapters = pattern.split(content)
+        
+        if len(chapters) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="No chapters found with the specified pattern"
+            )
+        
+        created_chapters = []
+        
+        # Первая часть - текст до первой главы
+        if chapters[0].strip():
+            # Создаем главу для вступительного текста
+            intro_chapter = Chapter(
+                project_id=project_id,
+                title="Введение",
+                original_text=chapters[0].strip(),
+                order=0
+            )
+            db.add(intro_chapter)
+            created_chapters.append(intro_chapter)
+        
+        # Обрабатываем найденные главы
+        for i in range(1, len(chapters), 2):
+            if i + 1 < len(chapters):
+                chapter_title = chapters[i].strip()
+                chapter_content = chapters[i + 1].strip()
+                
+                if chapter_content:  # Пропускаем пустые главы
+                    chapter = Chapter(
+                        project_id=project_id,
+                        title=chapter_title,
+                        original_text=chapter_content,
+                        order=len(created_chapters)
+                    )
+                    db.add(chapter)
+                    created_chapters.append(chapter)
+        
+        db.commit()
+        
+        return {
+            "project_id": project_id,
+            "chapters_created": len(created_chapters),
+            "total_chapters": len(created_chapters),
+            "pattern_used": chapter_pattern,
+            "chapters": [
+                {
+                    "title": ch.title,
+                    "order": ch.order,
+                    "content_length": len(ch.original_text)
+                }
+                for ch in created_chapters
+            ]
+        }
+        
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="File encoding error. Please use UTF-8 encoding."
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing file: {str(e)}"
+        )
+    finally:
+        file.file.close()
 
 
 @router.get("/{project_id}/chapters/{chapter_id}/download")

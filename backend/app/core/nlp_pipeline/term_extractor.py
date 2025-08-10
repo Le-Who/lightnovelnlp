@@ -36,6 +36,51 @@ class TermExtractor:
             print(f"Error extracting terms: {e}")
             return []
 
+    def count_term_frequency(self, text: str, terms: List[str]) -> Dict[str, int]:
+        """
+        Подсчитывает частоту встречаемости терминов в тексте.
+        
+        Args:
+            text: Текст для анализа
+            terms: Список терминов для подсчета
+            
+        Returns:
+            Dict[str, int]: Словарь {термин: частота}
+        """
+        frequency = {}
+        text_lower = text.lower()
+        
+        for term in terms:
+            # Простой подсчет вхождений (можно улучшить с помощью regex)
+            count = text_lower.count(term.lower())
+            frequency[term] = count
+        
+        return frequency
+
+    def extract_terms_with_frequency(self, text: str, project_genre: ProjectGenre = ProjectGenre.OTHER) -> List[Dict[str, Any]]:
+        """
+        Извлекает термины и подсчитывает их частоту встречаемости.
+        
+        Args:
+            text: Текст для анализа
+            project_genre: Жанр проекта для оптимизации промптов
+            
+        Returns:
+            List[Dict]: Список терминов с дополнительным полем frequency
+        """
+        # Извлекаем термины
+        terms = self.extract_terms(text, project_genre)
+        
+        # Подсчитываем частоту для каждого термина
+        term_texts = [term["source_term"] for term in terms]
+        frequencies = self.count_term_frequency(text, term_texts)
+        
+        # Добавляем частоту к каждому термину
+        for term in terms:
+            term["frequency"] = frequencies.get(term["source_term"], 1)
+        
+        return terms
+
     def _build_extraction_prompt(self, text: str, project_genre: ProjectGenre) -> str:
         """Строит промпт для извлечения терминов с учетом жанра."""
         

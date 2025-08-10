@@ -13,15 +13,19 @@ from app.services.cache_service import cache_service
 router = APIRouter()
 
 
-def process_chapter_sync(chapter_id: int, db: Session):
+def process_chapter_sync(chapter_id: int, db: Session = None):
     """Синхронная обработка главы для извлечения терминов."""
+    # Открываем новую сессию для фоновой задачи
+    from app.db import SessionLocal
+    local_db = db or SessionLocal()
+    
     try:
         # Получаем главу и проект
-        chapter = db.get(Chapter, chapter_id)
+        chapter = local_db.get(Chapter, chapter_id)
         if not chapter:
             return {"error": "Chapter not found", "chapter_id": chapter_id}
         
-        project = db.get(Project, chapter.project_id)
+        project = local_db.get(Project, chapter.project_id)
         if not project:
             return {"error": "Project not found", "chapter_id": chapter_id}
         
@@ -34,7 +38,7 @@ def process_chapter_sync(chapter_id: int, db: Session):
                 project_genre = ProjectGenre(project_genre)
             except Exception:
                 project_genre = ProjectGenre.OTHER
-        extracted_terms = term_extractor.extract_terms(chapter.original_text, project_genre)
+        extracted_terms = term_extractor.extract_terms_with_frequency(chapter.original_text, project_genre)
         
         # Сохраняем термины в БД с автоматическим утверждением
         saved_terms = []
@@ -42,7 +46,7 @@ def process_chapter_sync(chapter_id: int, db: Session):
         
         for term_data in extracted_terms:
             # Проверяем, не существует ли уже такой термин
-            existing_term = db.query(GlossaryTerm).filter(
+            existing_term = local_db.query(GlossaryTerm).filter(
                 GlossaryTerm.project_id == chapter.project_id,
                 GlossaryTerm.source_term == term_data["source_term"]
             ).first()
@@ -62,9 +66,10 @@ def process_chapter_sync(chapter_id: int, db: Session):
                     category=term_data.get("category", TermCategory.OTHER),
                     status=initial_status,
                     context=term_data.get("context", ""),
+                    frequency=term_data.get("frequency", 1),
                     approved_at=datetime.utcnow() if auto_approve else None
                 )
-                db.add(term)
+                local_db.add(term)
                 saved_terms.append(term)
         
         # 2. Анализируем связи между терминами
@@ -77,12 +82,12 @@ def process_chapter_sync(chapter_id: int, db: Session):
             
             for rel_data in relationships:
                 # Find the source and target terms by their source_term strings
-                source_term_obj = db.query(GlossaryTerm).filter(
+                source_term_obj = local_db.query(GlossaryTerm).filter(
                     GlossaryTerm.project_id == chapter.project_id,
                     GlossaryTerm.source_term == rel_data["source_term"]
                 ).first()
                 
-                target_term_obj = db.query(GlossaryTerm).filter(
+                target_term_obj = local_db.query(GlossaryTerm).filter(
                     GlossaryTerm.project_id == chapter.project_id,
                     GlossaryTerm.source_term == rel_data["target_term"]
                 ).first()
@@ -101,7 +106,7 @@ def process_chapter_sync(chapter_id: int, db: Session):
                         confidence=confidence,
                         context=context
                     )
-                    db.add(relationship)
+                    local_db.add(relationship)
         
         # 3. Создаем саммари главы (с нормализацией исходного текста)
         normalized_text = chapter.original_text.replace('\r\n', '\n')
@@ -118,7 +123,7 @@ def process_chapter_sync(chapter_id: int, db: Session):
         chapter.processed_at = datetime.utcnow()
         
         # Сохраняем все изменения
-        db.commit()
+        local_db.commit()
         
         # Инвалидируем кэш глоссария для проекта
         cache_service.invalidate_glossary_cache(chapter.project_id)
@@ -134,8 +139,12 @@ def process_chapter_sync(chapter_id: int, db: Session):
         }
         
     except Exception as e:
-        db.rollback()
+        local_db.rollback()
         return {"error": str(e), "chapter_id": chapter_id}
+    finally:
+        # Закрываем локальную сессию только если мы её создали
+        if not db:
+            local_db.close()
 
 
 @router.post("/chapters/{chapter_id}/analyze", status_code=status.HTTP_200_OK)
@@ -172,7 +181,7 @@ def analyze_chapter_async(
         raise HTTPException(status_code=404, detail="Chapter not found")
     
     # Добавляем задачу в фоновые задачи FastAPI
-    background_tasks.add_task(process_chapter_sync, chapter_id, db)
+    background_tasks.add_task(process_chapter_sync, chapter_id)
     
     return {
         "message": "Analysis started in background",
