@@ -196,8 +196,6 @@ class GeminiClient:
                 # Если все модели не сработали на этом ключе
                 raise last_error or Exception("All models failed")
 
-            except HTTPException:
-                raise
             except Exception as e:
                 # Логируем, переводим ключ в кулдаун и пробуем следующий
                 logger.error(f"Error with key {self.current_key_index}: {e}")

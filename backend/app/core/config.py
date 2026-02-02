@@ -3,11 +3,16 @@ from __future__ import annotations
 from typing import List
 import os
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, computed_field
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True
+    )
+
     # Database
     DATABASE_URL: str = Field(..., description="PostgreSQL connection string")
 
@@ -49,9 +54,7 @@ class Settings(BaseSettings):
             return ["http://localhost:3000", "http://localhost:5173"]
         return [origin.strip() for origin in self.ALLOWED_ORIGINS_RAW.split(',') if origin.strip()]
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+
 
     @property
     def is_production(self) -> bool:

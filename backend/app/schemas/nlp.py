@@ -1,9 +1,8 @@
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class NLPBaseModel(BaseModel):
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 class Term(NLPBaseModel):
     source_term: str = Field(..., description="Оригинальный термин")

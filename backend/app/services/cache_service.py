@@ -24,13 +24,17 @@ class CacheService:
         self.rest_client = None
         if UpstashRedis and settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
             try:
-                self.rest_client = UpstashRedis(
+                temp_client = UpstashRedis(
                     url=settings.UPSTASH_REDIS_REST_URL,
                     token=settings.UPSTASH_REDIS_REST_TOKEN,
                 )
+                # Quick health check
+                temp_client.ping()
+                self.rest_client = temp_client
             except Exception as e:
-                # Если REST недоступен, перейдем на TCP
-                self.logger.warning(f"Upstash REST init failed, falling back to TCP: {e}")
+                # Если REST недоступен, остаемся на TCP (self.rest_client = None)
+                self.logger.warning(f"Upstash REST unavailable, falling back to TCP: {e}")
+                self.rest_client = None
 
         # TCP-клиент как запасной вариант
         self.redis_client = self._make_tcp_client()
