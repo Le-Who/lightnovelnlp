@@ -6,11 +6,11 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import pytz
 
 logger = logging.getLogger(__name__)
-import pytz
 
 from app.core.config import settings
 from app.services.cache_service import cache_service
@@ -26,20 +26,20 @@ class GeminiClient:
         self.current_key_index = 0
         # Глобальный минутный лимит (10 запросов/мин по всем ключам)
         self.per_minute_limit = 10
-        self.models = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]  # Primary -> Fallback
+        self.models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]  # Primary -> Fallback
 
         if not self.api_keys:
             raise ValueError("No Gemini API keys provided")
 
-        # Инициализируем первый ключ
+        # Инициализируем первый клиент
         self._set_current_key()
 
     def _set_current_key(self):
-        """Устанавливает текущий API ключ."""
+        """Устанавливает текущий API ключ и создает клиент."""
         if not self.api_keys:
             raise ValueError("No API keys available")
 
-        genai.configure(api_key=self.api_keys[self.current_key_index])
+        self.client = genai.Client(api_key=self.api_keys[self.current_key_index])
 
     def _get_reset_date(self) -> str:
         """Получает дату сброса лимитов в формате YYYY-MM-DD по времени Mountain View."""
@@ -171,14 +171,17 @@ class GeminiClient:
                 
                 for model_name in self.models:
                     try:
-                        model = genai.GenerativeModel(model_name)
-                        
-                        # Подготавливаем конфиг
-                        config = generation_config or {}
+                        # Подготавливаем конфиг для нового SDK
+                        config_dict = generation_config.copy() if generation_config else {}
                         if max_tokens:
-                            config['max_output_tokens'] = max_tokens
-
-                        response = model.generate_content(prompt, generation_config=config)
+                            config_dict['max_output_tokens'] = max_tokens
+                        
+                        # Используем новый API: client.models.generate_content()
+                        response = self.client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(**config_dict) if config_dict else None
+                        )
                         
                         # Если успех - увеличиваем счетчик и возвращаем
                         self._increment_key_usage(current_key)
@@ -188,7 +191,7 @@ class GeminiClient:
                         last_error = model_e
                         logger.warning(f"Model {model_name} failed with key {self.current_key_index}: {model_e}")
                         # Если это rate limit (429), не пытаемся другие модели на этом ключе, меняем ключ
-                        if "429" in str(model_e):
+                        if "429" in str(model_e) or "RESOURCE_EXHAUSTED" in str(model_e):
                             break
                         # Иначе пробуем следующую модель (fallback)
                         continue
