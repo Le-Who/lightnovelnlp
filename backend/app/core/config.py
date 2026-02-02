@@ -24,10 +24,11 @@ class Settings(BaseSettings):
 
     # Gemini API - храним как строку, парсим через computed_field
     GEMINI_API_KEYS_RAW: str = Field(..., description="Raw Gemini API keys string")
-    GEMINI_API_LIMIT_PER_KEY: int = Field(default=1000, description="Daily limit per API key")
+    GEMINI_API_LIMIT_PER_KEY: str = Field(default="gemini-3-flash-preview=18, gemini-flash-latest=18, gemini-2.5-flash=18", description="Daily limits per model (e.g. 'model1=100, model2=50')")
     GEMINI_API_LIMIT_THRESHOLD_PERCENT: int = Field(default=95, description="Threshold percentage for key rotation")
     GEMINI_API_COOLDOWN_HOURS: int = Field(default=24, description="Cooldown hours for used keys")
     GEMINI_API_RESET_TIMEZONE: str = Field(default="America/Los_Angeles", description="Timezone for daily limit reset (Mountain View, CA)")
+    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=131072, description="Max output tokens for Gemini models")
 
     # Environment
     ENVIRONMENT: str = Field(default="development", description="Environment (development/production)")
@@ -53,6 +54,24 @@ class Settings(BaseSettings):
         if not self.ALLOWED_ORIGINS_RAW.strip():
             return ["http://localhost:3000", "http://localhost:5173"]
         return [origin.strip() for origin in self.ALLOWED_ORIGINS_RAW.split(',') if origin.strip()]
+
+    @computed_field
+    @property
+    def GEMINI_MODEL_LIMITS(self) -> dict[str, int]:
+        """Парсит GEMINI_API_LIMIT_PER_KEY в словарь {model: limit}"""
+        limits = {}
+        if not self.GEMINI_API_LIMIT_PER_KEY:
+            return limits
+        
+        parts = [p.strip() for p in self.GEMINI_API_LIMIT_PER_KEY.split(',') if p.strip()]
+        for part in parts:
+            if '=' in part:
+                model, limit = part.split('=', 1)
+                try:
+                    limits[model.strip()] = int(limit.strip())
+                except ValueError:
+                    continue
+        return limits
 
 
 

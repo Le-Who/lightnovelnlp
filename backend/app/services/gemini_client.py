@@ -3,12 +3,17 @@ from __future__ import annotations
 import json
 import logging
 import time
+import warnings
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
 from google import genai
 from google.genai import types
 import pytz
+
+# Suppress Pydantic warnings from google-genai types
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+logging.getLogger("google.genai.types").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +24,14 @@ from app.services.cache_service import cache_service
 class GeminiClient:
     def __init__(self):
         self.api_keys = settings.GEMINI_API_KEYS
-        self.limit_per_key = settings.GEMINI_API_LIMIT_PER_KEY
+        self.model_limits = settings.GEMINI_MODEL_LIMITS
         self.threshold_percent = settings.GEMINI_API_LIMIT_THRESHOLD_PERCENT
         self.cooldown_hours = settings.GEMINI_API_COOLDOWN_HOURS
         self.reset_timezone = pytz.timezone(settings.GEMINI_API_RESET_TIMEZONE)
         self.current_key_index = 0
         # Глобальный минутный лимит (10 запросов/мин по всем ключам)
         self.per_minute_limit = 10
-        self.models = ["gemini-flash-latest", "gemini-2.5-flash"]  # Primary -> Fallback
+        self.models = ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash"]  # Primary -> Fallback
 
         if not self.api_keys:
             raise ValueError("No Gemini API keys provided")
@@ -46,10 +51,10 @@ class GeminiClient:
         now_mv = datetime.now(self.reset_timezone)
         return now_mv.strftime("%Y-%m-%d")
 
-    def _get_key_usage_key(self, key: str) -> str:
-        """Генерирует ключ для хранения статистики использования."""
+    def _get_key_usage_key(self, key: str, model_name: str) -> str:
+        """Генерирует ключ для хранения статистики использования конкретной модели."""
         reset_date = self._get_reset_date()
-        return f"gemini_usage:{key}:{reset_date}"
+        return f"gemini_usage:{key}:{model_name}:{reset_date}"
 
     def _get_key_cooldown_key(self, key: str) -> str:
         """Генерирует ключ для хранения времени кулдауна."""
@@ -73,15 +78,15 @@ class GeminiClient:
         now_dt = datetime.now(cooldown_time.tzinfo) if cooldown_time.tzinfo else datetime.now(self.reset_timezone)
         return now_dt < cooldown_time
 
-    def _get_key_usage(self, key: str) -> int:
-        """Получает количество использований ключа за текущий день (по времени Mountain View)."""
-        usage_key = self._get_key_usage_key(key)
+    def _get_key_usage(self, key: str, model_name: str) -> int:
+        """Получает количество использований ключа для конкретной модели за текущий день."""
+        usage_key = self._get_key_usage_key(key, model_name)
         return cache_service.get(usage_key) or 0
 
-    def _increment_key_usage(self, key: str):
-        """Увеличивает счетчик использований ключа."""
-        usage_key = self._get_key_usage_key(key)
-        current_usage = self._get_key_usage(key)
+    def _increment_key_usage(self, key: str, model_name: str):
+        """Увеличивает счетчик использований ключа для конкретной модели."""
+        usage_key = self._get_key_usage_key(key, model_name)
+        current_usage = self._get_key_usage(key, model_name)
         
         # Рассчитываем TTL до следующего сброса
         now_mv = datetime.now(self.reset_timezone)
@@ -104,39 +109,40 @@ class GeminiClient:
         
         cache_service.set(cooldown_key, cooldown_until, ttl=ttl_seconds)
 
-    def _find_available_key(self) -> str | None:
-        """Находит доступный ключ для использования."""
+    def _is_model_at_limit(self, key: str, model_name: str) -> bool:
+        """Проверяет, достигнут ли лимит для конкретной модели на этом ключе."""
+        limit = self.model_limits.get(model_name, 0)
+        if limit <= 0:
+            return False  # Нет лимита или некорректно задан
+            
+        usage = self._get_key_usage(key, model_name)
+        threshold = int(limit * self.threshold_percent / 100)
+        return usage >= threshold
+
+    def _find_available_key(self, model_name: str) -> str | None:
+        """Находит доступный ключ для использования конкретной модели."""
         for i, key in enumerate(self.api_keys):
             if not self._is_key_in_cooldown(key):
-                usage = self._get_key_usage(key)
-                threshold = int(self.limit_per_key * self.threshold_percent / 100)
-
-                if usage < threshold:
+                if not self._is_model_at_limit(key, model_name):
                     self.current_key_index = i
                     return key
-
         return None
 
-    def _rotate_key(self):
-        """Переключается на следующий доступный ключ."""
-        available_key = self._find_available_key()
+    def _rotate_key(self, model_name: str):
+        """Переключается на следующий доступный ключ для данной модели."""
+        available_key = self._find_available_key(model_name)
 
         if not available_key:
-            raise Exception("No available API keys. All keys are either in cooldown or at limit.")
+            # Если для этой модели нет ключей, возможно они есть для других (но тут мы застряли)
+            raise Exception(f"No available API keys for model {model_name}. All keys are either in cooldown or at limit.")
 
         self._set_current_key()
 
-    def complete(self, prompt: str, max_tokens: int = 8192, generation_config: Dict[str, Any] = None, response_schema: Any = None) -> Any:
-        """
-        Выполняет запрос к Gemini API с автоматической ротацией ключей.
+    def complete(self, prompt: str, max_tokens: int | None = None, generation_config: Dict[str, Any] = None, response_schema: Any = None) -> Any:
+        # Если max_tokens не передан явно, берем из настроек
+        effective_max_tokens = max_tokens if max_tokens is not None else settings.GEMINI_MAX_OUTPUT_TOKENS
         
-        Args:
-            prompt: Текст запроса
-            max_tokens: Максимальное количество токенов
-            generation_config: Конфигурация генерации (например, {"response_mime_type": "application/json"})
-            response_schema: Схема для структурированного вывода (Pydantic класс или словарь)
-        """
-        max_retries = len(self.api_keys) * 2  # Даем больше попыток на случай временных сбоев моделей
+        max_retries = len(self.api_keys) * 2
 
         for attempt in range(max_retries):
             try:
@@ -144,41 +150,34 @@ class GeminiClient:
                 minute_key = f"gemini_rate:minute:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
                 current_minute_count = cache_service.increment_counter(minute_key, ttl=65)
                 if current_minute_count > self.per_minute_limit:
-                    # Превышен лимит – возвращаем HTTP 429
                     from fastapi import HTTPException
                     raise HTTPException(
                         status_code=429,
                         detail="Rate limit exceeded: 10 req/min. Please retry shortly."
                     )
 
-                # Проверяем доступность текущего ключа
-                current_key = self.api_keys[self.current_key_index]
-
-                if self._is_key_in_cooldown(current_key):
-                    self._rotate_key()
-                    continue
-
-                usage = self._get_key_usage(current_key)
-                threshold = int(self.limit_per_key * self.threshold_percent / 100)
-
-                if usage >= threshold:
-                    self._put_key_in_cooldown(current_key)
-                    self._rotate_key()
-                    continue
-
                 # Выполняем запрос с повтором при временных ошибках
-                # Пробуем модели по очереди (Flash -> Pro)
                 last_error = None
                 
                 for model_name in self.models:
+                    # Проверяем доступность текущего ключа ДЛЯ ЭТОЙ МОДЕЛИ
+                    current_key = self.api_keys[self.current_key_index]
+                    
+                    if self._is_key_in_cooldown(current_key) or self._is_model_at_limit(current_key, model_name):
+                        # Пробуем найти другой ключ для ЭТОЙ модели
+                        try:
+                            self._rotate_key(model_name)
+                            current_key = self.api_keys[self.current_key_index]
+                        except Exception:
+                            # Для этой модели нет ключей, пробуем следующую по списку fallback
+                            logger.warning(f"No keys available for model {model_name}, trying fallback...")
+                            continue
+
                     try:
-                        # Подготавливаем конфиг для нового SDK
                         config_dict = generation_config.copy() if generation_config else {}
-                        if max_tokens:
-                            config_dict['max_output_tokens'] = max_tokens
+                        if effective_max_tokens:
+                            config_dict['max_output_tokens'] = effective_max_tokens
                         
-                        # Используем новый API: client.models.generate_content()
-                        # Если передана схема, используем её
                         config_args = config_dict.copy()
                         if response_schema:
                             config_args['response_mime_type'] = 'application/json'
@@ -190,59 +189,63 @@ class GeminiClient:
                             config=types.GenerateContentConfig(**config_args) if config_args else None
                         )
                         
-                        # Проверяем причину остановки
-                        # В google-genai SDK ответ может содержать несколько кандидатов
                         candidate = response.candidates[0]
                         if candidate.finish_reason == 'MAX_TOKENS':
-                            logger.error(f"Response truncated due to MAX_TOKENS (limit {max_tokens})")
+                            logger.error(f"Response truncated due to MAX_TOKENS (limit {effective_max_tokens})")
                         elif candidate.finish_reason != 'STOP' and candidate.finish_reason != 'OTHER':
                             logger.warning(f"Unexpected finish reason: {candidate.finish_reason}")
 
-                        # Если успех - увеличиваем счетчик и возвращаем
-                        self._increment_key_usage(current_key)
+                        # Если успех - увеличиваем счетчик для ЭТОЙ МОДЕЛИ
+                        self._increment_key_usage(current_key, model_name)
                         
-                        # Если есть спарсенный объект, возвращаем его
                         if hasattr(response, 'parsed') and response.parsed:
                             return response.parsed
                         
-                        return response.text
+                        text_parts = []
+                        if candidate.content and candidate.content.parts:
+                            for part in candidate.content.parts:
+                                if hasattr(part, 'text') and part.text:
+                                    text_parts.append(part.text)
+                        
+                        result_text = "".join(text_parts)
+                        logger.info(f"Gemini response length: {len(result_text)} chars. Model: {model_name}")
+                        return result_text
                         
                     except Exception as model_e:
                         last_error = model_e
-                        logger.warning(f"Model {model_name} failed with key {self.current_key_index}: {model_e}")
+                        logger.warning(f"Model {model_name} failed with key index {self.current_key_index}: {model_e}")
                         # Если это rate limit (429), не пытаемся другие модели на этом ключе, меняем ключ
                         if "429" in str(model_e) or "RESOURCE_EXHAUSTED" in str(model_e):
+                            # Можно пометить ключ как временно недоступный для этой модели
                             break
                         # Иначе пробуем следующую модель (fallback)
                         continue
 
-                # Если все модели не сработали на этом ключе
                 raise last_error or Exception("All models failed")
 
             except Exception as e:
-                # Логируем, переводим ключ в кулдаун и пробуем следующий
                 logger.error(f"Error with key {self.current_key_index}: {e}")
-
-                # Помещаем текущий ключ в кулдаун при ошибке
                 current_key = self.api_keys[self.current_key_index]
                 self._put_key_in_cooldown(current_key)
 
-                # Переключаемся на следующий ключ c задержкой (Backoff)
-                self._rotate_key()
+                # Переключаемся на следующий ключ перед повтором всей попытки
+                try:
+                    # Пытаемся найти ключ хоть для какой-то модели (flash-preview)
+                    self._rotate_key(self.models[0])
+                except Exception:
+                    # Если уж совсем нет ключей
+                    pass
                 
-                # Exponential backoff: 1s, 2s, 4s...
                 sleep_time = min(2 ** attempt, 10)
                 time.sleep(sleep_time)
 
                 if attempt == max_retries - 1:
                     raise Exception(f"All API keys failed after {max_retries} attempts: {e}")
 
-
-
         raise Exception("Failed to complete request with any available key")
 
     def get_usage_stats(self) -> Dict[str, Any]:
-        """Получает статистику использования всех ключей."""
+        """Получает статистику использования всех ключей по всем моделям."""
         stats = {
             "total_keys": len(self.api_keys),
             "current_key_index": self.current_key_index,
@@ -253,11 +256,17 @@ class GeminiClient:
         }
 
         for i, key in enumerate(self.api_keys):
+            model_usages = {}
+            for model in self.models:
+                model_usages[model] = {
+                    "usage": self._get_key_usage(key, model),
+                    "limit": self.model_limits.get(model, 0),
+                    "at_limit": self._is_model_at_limit(key, model)
+                }
+
             key_stats = {
                 "index": i,
-                "usage_today": self._get_key_usage(key),
-                "limit": self.limit_per_key,
-                "threshold": int(self.limit_per_key * self.threshold_percent / 100),
+                "models": model_usages,
                 "in_cooldown": self._is_key_in_cooldown(key),
                 "is_current": i == self.current_key_index
             }
