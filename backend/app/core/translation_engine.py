@@ -19,7 +19,9 @@ class TranslationEngine:
         text: str, 
         glossary_terms: List[GlossaryTerm],
         context_summary: str | None = None,
-        project_summary: str | None = None
+        project_summary: str | None = None,
+        relationships: List[Dict[str, Any]] | None = None,
+        genre: str | None = None
     ) -> str:
         """
         Переводит текст с использованием утвержденного глоссария и контекста.
@@ -29,11 +31,13 @@ class TranslationEngine:
             glossary_terms: Список утвержденных терминов глоссария
             context_summary: Саммари текущей главы (опционально)
             project_summary: Общее саммари проекта (опционально)
+            relationships: Список связей между терминами (опционально)
+            genre: Жанр проекта для настройки стиля (Wuxia, Sci-Fi, Romance...)
             
         Returns:
             str: Переведенный текст
         """
-        prompt = self._build_translation_prompt(text, glossary_terms, context_summary, project_summary)
+        prompt = self._build_translation_prompt(text, glossary_terms, context_summary, project_summary, relationships, genre)
         
         try:
             response = self.client.complete(prompt)
@@ -47,7 +51,9 @@ class TranslationEngine:
         text: str, 
         glossary_terms: List[GlossaryTerm],
         context_summary: str | None = None,
-        project_summary: str | None = None
+        project_summary: str | None = None,
+        relationships: List[Dict[str, Any]] | None = None,
+        genre: str | None = None
     ) -> str:
         """Строит промпт для перевода с учетом глоссария и контекста."""
         # Нормализуем входной текст: приводим переводы строк к \n и убираем лишние пустые
@@ -69,14 +75,38 @@ class TranslationEngine:
         # Формируем глоссарий для промпта
         glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(нет утвержденных терминов)"
         
+        genre_instruction = ""
+        if genre:
+            genre = str(genre).lower()
+            if "wuxia" in genre or "xianxia" in genre:
+                genre_instruction = "Стиль: Используй терминологию культивации, возвышенный тон, архаизмы где уместно."
+            elif "scifi" in genre or "sci-fi" in genre:
+                genre_instruction = "Стиль: Технически точный язык, футуристическая терминология."
+            elif "romance" in genre:
+                genre_instruction = "Стиль: Акцент на эмоциональные оттенки и чувства персонажей."
+            elif "litrpg" in genre:
+                genre_instruction = "Стиль: Игровая терминология, четкие описания навыков и статов."
+        
         # Базовый промпт
         prompt = f"""
 Ты - профессиональный переводчик ранобэ с английского на русский язык. 
+Цель: Создать литературный, художественный перевод, сохраняющий стиль оригинала.
+{genre_instruction}
 
 ВАЖНО: Ты ДОЛЖЕН строго следовать предоставленному глоссарию для перевода всех терминов.
 
 ГЛОССАРИЙ (обязательно использовать эти переводы):
 {glossary_text}
+"""""
+        # Добавляем связи между терминами
+        if relationships:
+            rels_text = "\n".join([
+                f"- {r['source']} и {r['target']}: {r['type']} ({r.get('description', '')})"
+                for r in relationships
+            ])
+            prompt += f"""
+СВЯЗИ МЕЖДУ ПЕРСОНАЖАМИ (учитывать при выборе тона диалогов):
+{rels_text}
 
 """
         

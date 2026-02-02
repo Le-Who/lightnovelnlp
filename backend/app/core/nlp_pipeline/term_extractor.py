@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 
 from app.services.gemini_client import gemini_client
 from app.models.project import ProjectGenre
+from app.schemas.nlp import TermExtractionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +31,12 @@ class TermExtractor:
                 - context: контекст извлечения
                 - auto_approve: флаг автоматического утверждения
         """
+        # JSON Mode configuration
+        generation_config = {"response_mime_type": "application/json"}
         prompt = self._build_extraction_prompt(text, project_genre)
         
         try:
-            response = self.client.complete(prompt)
+            response = self.client.complete(prompt, generation_config=generation_config)
             return self._parse_response(response)
         except Exception as e:
             logger.error(f"Error extracting terms: {e}")
@@ -240,37 +243,28 @@ class TermExtractor:
         return instructions.get(key, instructions[ProjectGenre.OTHER])
 
     def _parse_response(self, response: str) -> List[Dict[str, Any]]:
-        """Парсит JSON-ответ от Gemini API."""
+        """Парсит JSON-ответ от Gemini API (Native JSON Mode)."""
         try:
-            # Ищем JSON в ответе
-            start = response.find('{')
-            end = response.rfind('}') + 1
+            # В JSON mode ответ всегда валидный JSON
+            data = json.loads(response)
             
-            if start == -1 or end == 0:
-                return []
-                
-            json_str = response[start:end]
-            data = json.loads(json_str)
+            # Поддержка обоих форматов: список терминов или объект с ключом terms
+            if isinstance(data, list):
+                payload = {"terms": data}
+            else:
+                payload = data
             
-            terms = data.get('terms', [])
+            # Pydantic validation
+            validated = TermExtractionResponse.model_validate(payload)
             
-            # Добавляем auto_approve если его нет
-            for term in terms:
-                if 'auto_approve' not in term:
-                    # Автоматически утверждаем персонажей и основные термины
-                    category = term.get('category', 'other')
-                    confidence = term.get('confidence', 50)
-                    
-                    if category == 'character' or confidence >= 80:
-                        term['auto_approve'] = True
-                    else:
-                        term['auto_approve'] = False
+            # Возвращаем список словарей
+            return [term.model_dump() for term in validated.terms]
             
-            return terms
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Error parsing response: {e}")
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Error parsing/validating JSON response: {e}")
             logger.debug(f"Raw response: {response}")
             return []
+
 
 
 term_extractor = TermExtractor()

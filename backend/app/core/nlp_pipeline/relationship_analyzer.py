@@ -5,6 +5,7 @@ import logging
 from typing import List, Dict, Any
 
 from app.services.gemini_client import gemini_client
+from app.schemas.nlp import RelationshipResponse
 from app.models.glossary import GlossaryTerm
 
 logger = logging.getLogger(__name__)
@@ -39,8 +40,11 @@ class RelationshipAnalyzer:
             
         prompt = self._build_relationship_prompt(text, terms)
         
+        # JSON Mode configuration
+        generation_config = {"response_mime_type": "application/json"}
+        
         try:
-            response = self.client.complete(prompt)
+            response = self.client.complete(prompt, generation_config=generation_config)
             return self._parse_relationship_response(response)
         except Exception as e:
             logger.error(f"Error analyzing relationships: {e}")
@@ -99,21 +103,23 @@ class RelationshipAnalyzer:
 """
 
     def _parse_relationship_response(self, response: str) -> List[Dict[str, Any]]:
-        """Парсит JSON-ответ от Gemini API."""
+        """Парсит JSON-ответ от Gemini API (Native JSON Mode + Pydantic)."""
         try:
-            # Ищем JSON в ответе
-            start = response.find('{')
-            end = response.rfind('}') + 1
+            data = json.loads(response)
             
-            if start == -1 or end == 0:
-                return []
+            # Поддержка обоих форматов
+            if isinstance(data, list):
+                payload = {"relationships": data}
+            else:
+                payload = data
                 
-            json_str = response[start:end]
-            data = json.loads(json_str)
+            # Валидация
+            validated = RelationshipResponse.model_validate(payload)
             
-            return data.get('relationships', [])
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Error parsing relationship response: {e}")
+            return [rel.model_dump() for rel in validated.relationships]
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Error parsing relationship JSON response: {e}")
             logger.debug(f"Raw response: {response}")
             return []
 

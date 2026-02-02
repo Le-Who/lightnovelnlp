@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
@@ -25,6 +26,7 @@ class GeminiClient:
         self.current_key_index = 0
         # Глобальный минутный лимит (10 запросов/мин по всем ключам)
         self.per_minute_limit = 10
+        self.models = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]  # Primary -> Fallback
 
         if not self.api_keys:
             raise ValueError("No Gemini API keys provided")
@@ -124,8 +126,15 @@ class GeminiClient:
 
         self._set_current_key()
 
-    def complete(self, prompt: str, max_tokens: int = 4000) -> str:
-        """Выполняет запрос к Gemini API с автоматической ротацией ключей."""
+    def complete(self, prompt: str, max_tokens: int = 4000, generation_config: Dict[str, Any] = None) -> str:
+        """
+        Выполняет запрос к Gemini API с автоматической ротацией ключей.
+        
+        Args:
+            prompt: Текст запроса
+            max_tokens: Максимальное количество токенов
+            generation_config: Конфигурация генерации (например, {"response_mime_type": "application/json"})
+        """
         max_retries = len(self.api_keys)
 
         for attempt in range(max_retries):
@@ -157,21 +166,37 @@ class GeminiClient:
                     continue
 
                 # Выполняем запрос с повтором при временных ошибках
-                model = genai.GenerativeModel('gemini-2.5-flash')
-                # Добавим краткий повтор при внутренних ошибках сервиса
-                try:
-                    response = model.generate_content(prompt)
-                except Exception as inner_e:
-                    # Одна повторная попытка через этот же ключ
-                    response = model.generate_content(prompt)
+                # Пробуем модели по очереди (Flash -> Pro)
+                last_error = None
+                
+                for model_name in self.models:
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        
+                        # Подготавливаем конфиг
+                        config = generation_config or {}
+                        if max_tokens:
+                            config['max_output_tokens'] = max_tokens
 
-                # Увеличиваем счетчик использований
-                self._increment_key_usage(current_key)
+                        response = model.generate_content(prompt, generation_config=config)
+                        
+                        # Если успех - увеличиваем счетчик и возвращаем
+                        self._increment_key_usage(current_key)
+                        return response.text
+                        
+                    except Exception as model_e:
+                        last_error = model_e
+                        logger.warning(f"Model {model_name} failed with key {self.current_key_index}: {model_e}")
+                        # Если это rate limit (429), не пытаемся другие модели на этом ключе, меняем ключ
+                        if "429" in str(model_e):
+                            break
+                        # Иначе пробуем следующую модель (fallback)
+                        continue
 
-                return response.text
+                # Если все модели не сработали на этом ключе
+                raise last_error or Exception("All models failed")
 
             except HTTPException:
-                # Пробрасываем HTTPException как есть
                 raise
             except Exception as e:
                 # Логируем, переводим ключ в кулдаун и пробуем следующий
@@ -181,11 +206,17 @@ class GeminiClient:
                 current_key = self.api_keys[self.current_key_index]
                 self._put_key_in_cooldown(current_key)
 
-                # Переключаемся на следующий ключ
+                # Переключаемся на следующий ключ c задержкой (Backoff)
                 self._rotate_key()
+                
+                # Exponential backoff: 1s, 2s, 4s...
+                sleep_time = min(2 ** attempt, 10)
+                time.sleep(sleep_time)
 
                 if attempt == max_retries - 1:
                     raise Exception(f"All API keys failed after {max_retries} attempts: {e}")
+
+
 
         raise Exception("Failed to complete request with any available key")
 

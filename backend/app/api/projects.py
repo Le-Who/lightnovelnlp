@@ -17,6 +17,7 @@ except Exception:
     PyPDF2 = None
 
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
+from app.services.project_service import ProjectService
 import re
 
 router = APIRouter()
@@ -24,26 +25,17 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ProjectRead])
 def list_projects(db: Session = Depends(get_db)) -> List[Project]:
-    return db.query(Project).order_by(Project.created_at.desc()).all()
+    return ProjectService.get_projects(db)
 
 
 @router.post("/", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 def create_project(payload: ProjectCreate, db: Session = Depends(get_db)) -> Project:
-    exists = db.query(Project).filter(Project.name == payload.name).first()
-    if exists:
-        raise HTTPException(status_code=400, detail="Project with this name already exists")
-    # Учитываем жанр из payload (может прийти как Enum или как строка)
-    genre_value = getattr(payload.genre, "value", payload.genre)
-    project = Project(name=payload.name, genre=genre_value)
-    db.add(project)
-    db.commit()
-    db.refresh(project)
-    return project
+    return ProjectService.create_project(db, payload)
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
 def get_project(project_id: int, db: Session = Depends(get_db)) -> Project:
-    project = db.get(Project, project_id)
+    project = ProjectService.get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
@@ -51,21 +43,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)) -> Project:
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(project_id: int, db: Session = Depends(get_db)):
-    project = db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-
-    db.query(TermRelationship).filter(TermRelationship.project_id == project_id).delete(synchronize_session=False)
-    db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).delete(synchronize_session=False)
-    db.query(GlossaryVersion).filter(GlossaryVersion.project_id == project_id).delete(synchronize_session=False)
-    db.query(BatchJobItem).filter(BatchJobItem.project_id == project_id).delete(synchronize_session=False)
-    db.query(BatchJob).filter(BatchJob.project_id == project_id).delete(synchronize_session=False)
-    db.query(Chapter).filter(Chapter.project_id == project_id).delete(synchronize_session=False)
-
-    # Теперь удаляем сам проект
-    db.delete(project)
-    db.commit()
+    ProjectService.delete_project(db, project_id)
 
 
 # Главы

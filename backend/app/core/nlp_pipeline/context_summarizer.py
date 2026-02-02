@@ -80,54 +80,48 @@ class ContextSummarizer:
 
     def create_project_summary(
         self, 
-        chapters: List[Dict[str, Any]]
+        chapters: List[Dict[str, Any]],
+        window_size: int = 3
     ) -> str:
         """
-        Создает общее саммари проекта на основе всех глав.
+        Создает иерархическое саммари проекта:
+        1. "История ранее" (сжатое саммари старых глав)
+        2. "Последние события" (подробное саммари последних N глав)
         
         Args:
-            chapters: Список глав с полями title, summary, original_text
+            chapters: Список всех глав с summary
+            window_size: Количество последних глав для подробного контекста
             
         Returns:
-            str: Общее саммари проекта
+            str: Структурированное саммари для контекста перевода
         """
         if not chapters:
             return ""
             
-        # Собираем все саммари глав
-        summaries = []
-        for chapter in chapters:
-            if chapter.get('summary'):
-                summaries.append(f"Глава '{chapter.get('title', 'Без названия')}': {chapter['summary']}")
+        total_chapters = len(chapters)
         
-        if not summaries:
-            return ""
+        # Разделяем на "старые" и "новые"
+        recent_chapters = chapters[-window_size:]
+        old_chapters = chapters[:-window_size] if total_chapters > window_size else []
+        
+        summary_parts = []
+        
+        # 1. Глобальный контекст (если есть старые главы)
+        if old_chapters:
+            old_summary_text = "\n".join([ch.get('summary', '') for ch in old_chapters if ch.get('summary')])
+            if old_summary_text:
+                summary_parts.append(f"ПРЕДЫСТОРИЯ (Главы 1-{len(old_chapters)}):\n{old_summary_text[:2000]}...") 
+        
+        # 2. Актуальный контекст (последние главы)
+        if recent_chapters:
+            recent_text = "\n\n".join([
+                f"Глава {ch.get('title')}: {ch.get('summary')}" 
+                for ch in recent_chapters 
+                if ch.get('summary')
+            ])
+            summary_parts.append(f"ПОСЛЕДНИЕ СОБЫТИЯ:\n{recent_text}")
             
-        combined_summaries = "\n".join(summaries)
-        
-        prompt = f"""
-Ты - эксперт по анализу текстов ранобэ. Создай краткое общее саммари проекта на основе саммари всех глав.
-
-САММАРИ ГЛАВ:
-{combined_summaries}
-
-Создай краткое общее саммари проекта (3-4 предложения), включающее:
-- Основную сюжетную линию
-- Ключевых персонажей и их роли
-- Основные локации и мир
-- Общий тон и атмосферу произведения
-
-Пиши на русском языке.
-
-ОБЩЕЕ САММАРИ ПРОЕКТА:
-"""
-        
-        try:
-            response = self.client.complete(prompt)
-            return response.strip()
-        except Exception as e:
-            logger.error(f"Error creating project summary: {e}")
-            return ""
+        return "\n\n".join(summary_parts)
 
 
 context_summarizer = ContextSummarizer()
