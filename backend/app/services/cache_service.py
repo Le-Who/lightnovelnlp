@@ -78,6 +78,7 @@ class CacheService:
             except Exception as e:
                 # Пытаемся переподключиться и повторить один раз
                 self.logger.warning(f"Cache get error (will retry): {e}")
+                time.sleep(0.1)  # Small delay before retry
                 self._reconnect_if_needed()
                 try:
                     value = self.redis_client.get(key)

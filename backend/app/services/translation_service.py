@@ -186,7 +186,7 @@ class TranslationService:
         review_text = gemini_client.complete(review_prompt)
         
         review_key = f"translation_review:{chapter_id}"
-        cache_service.set_cache(review_key, review_text, ttl=3600)
+        cache_service.set(review_key, review_text, ttl=3600)
         
         return {
             "chapter_id": chapter_id,
