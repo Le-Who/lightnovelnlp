@@ -31,12 +31,16 @@ class TermExtractor:
                 - context: контекст извлечения
                 - auto_approve: флаг автоматического утверждения
         """
-        # JSON Mode configuration
-        generation_config = {"response_mime_type": "application/json"}
+        # JSON Mode configuration with response_schema
         prompt = self._build_extraction_prompt(text, project_genre)
         
         try:
-            response = self.client.complete(prompt, generation_config=generation_config)
+            # Используем новую поддержку response_schema в GeminiClient
+            response = self.client.complete(
+                prompt, 
+                max_tokens=8192,  # Увеличиваем лимит для больших глав
+                response_schema=TermExtractionResponse
+            )
             return self._parse_response(response)
         except Exception as e:
             logger.error(f"Error extracting terms: {e}")
@@ -242,27 +246,44 @@ class TermExtractor:
             key = ProjectGenre.OTHER
         return instructions.get(key, instructions[ProjectGenre.OTHER])
 
-    def _parse_response(self, response: str) -> List[Dict[str, Any]]:
-        """Парсит JSON-ответ от Gemini API (Native JSON Mode)."""
+    def _parse_response(self, response: Any) -> List[Dict[str, Any]]:
+        """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""
         try:
-            # В JSON mode ответ всегда валидный JSON
-            data = json.loads(response)
+            # Если ответ уже спарсен SDK (при использовании response_schema)
+            if hasattr(response, 'terms'):
+                return [term.model_dump() if hasattr(term, 'model_dump') else term.dict() 
+                        for term in response.terms]
             
-            # Поддержка обоих форматов: список терминов или объект с ключом terms
-            if isinstance(data, list):
-                payload = {"terms": data}
-            else:
-                payload = data
+            # Если это строка (fallback)
+            if isinstance(response, str):
+                data = json.loads(response)
+                
+                # Поддержка обоих форматов: список терминов или объект с ключом terms
+                if isinstance(data, list):
+                    payload = {"terms": data}
+                else:
+                    payload = data
+                
+                # Pydantic validation
+                validated = TermExtractionResponse.model_validate(payload)
+                
+                # Возвращаем список словарей
+                return [term.model_dump() for term in validated.terms]
             
-            # Pydantic validation
-            validated = TermExtractionResponse.model_validate(payload)
+            # Если это уже словарь
+            if isinstance(response, dict):
+                if 'terms' in response:
+                    validated = TermExtractionResponse.model_validate(response)
+                    return [term.model_dump() for term in validated.terms]
+                return response.get('terms', [])
+
+            error_msg = f"Unexpected response type: {type(response)}"
+            logger.error(error_msg)
+            return []
             
-            # Возвращаем список словарей
-            return [term.model_dump() for term in validated.terms]
-            
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Error parsing/validating JSON response: {e}")
-            logger.debug(f"Raw response: {response}")
+        except (json.JSONDecodeError, ValueError, Exception) as e:
+            logger.error(f"Error parsing/validating response: {e}")
+            logger.debug(f"Raw response type: {type(response)}")
             return []
 
 

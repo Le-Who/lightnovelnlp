@@ -26,7 +26,7 @@ class GeminiClient:
         self.current_key_index = 0
         # Глобальный минутный лимит (10 запросов/мин по всем ключам)
         self.per_minute_limit = 10
-        self.models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]  # Primary -> Fallback
+        self.models = ["gemini-flash-latest", "gemini-2.5-flash"]  # Primary -> Fallback
 
         if not self.api_keys:
             raise ValueError("No Gemini API keys provided")
@@ -126,7 +126,7 @@ class GeminiClient:
 
         self._set_current_key()
 
-    def complete(self, prompt: str, max_tokens: int = 4000, generation_config: Dict[str, Any] = None) -> str:
+    def complete(self, prompt: str, max_tokens: int = 8192, generation_config: Dict[str, Any] = None, response_schema: Any = None) -> Any:
         """
         Выполняет запрос к Gemini API с автоматической ротацией ключей.
         
@@ -134,8 +134,9 @@ class GeminiClient:
             prompt: Текст запроса
             max_tokens: Максимальное количество токенов
             generation_config: Конфигурация генерации (например, {"response_mime_type": "application/json"})
+            response_schema: Схема для структурированного вывода (Pydantic класс или словарь)
         """
-        max_retries = len(self.api_keys)
+        max_retries = len(self.api_keys) * 2  # Даем больше попыток на случай временных сбоев моделей
 
         for attempt in range(max_retries):
             try:
@@ -177,14 +178,33 @@ class GeminiClient:
                             config_dict['max_output_tokens'] = max_tokens
                         
                         # Используем новый API: client.models.generate_content()
+                        # Если передана схема, используем её
+                        config_args = config_dict.copy()
+                        if response_schema:
+                            config_args['response_mime_type'] = 'application/json'
+                            config_args['response_schema'] = response_schema
+
                         response = self.client.models.generate_content(
                             model=model_name,
                             contents=prompt,
-                            config=types.GenerateContentConfig(**config_dict) if config_dict else None
+                            config=types.GenerateContentConfig(**config_args) if config_args else None
                         )
                         
+                        # Проверяем причину остановки
+                        # В google-genai SDK ответ может содержать несколько кандидатов
+                        candidate = response.candidates[0]
+                        if candidate.finish_reason == 'MAX_TOKENS':
+                            logger.error(f"Response truncated due to MAX_TOKENS (limit {max_tokens})")
+                        elif candidate.finish_reason != 'STOP' and candidate.finish_reason != 'OTHER':
+                            logger.warning(f"Unexpected finish reason: {candidate.finish_reason}")
+
                         # Если успех - увеличиваем счетчик и возвращаем
                         self._increment_key_usage(current_key)
+                        
+                        # Если есть спарсенный объект, возвращаем его
+                        if hasattr(response, 'parsed') and response.parsed:
+                            return response.parsed
+                        
                         return response.text
                         
                     except Exception as model_e:

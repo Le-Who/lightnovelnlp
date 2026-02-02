@@ -40,11 +40,13 @@ class RelationshipAnalyzer:
             
         prompt = self._build_relationship_prompt(text, terms)
         
-        # JSON Mode configuration
-        generation_config = {"response_mime_type": "application/json"}
-        
         try:
-            response = self.client.complete(prompt, generation_config=generation_config)
+            # Используем новую поддержку response_schema в GeminiClient
+            response = self.client.complete(
+                prompt, 
+                max_tokens=8192,
+                response_schema=RelationshipResponse
+            )
             return self._parse_relationship_response(response)
         except Exception as e:
             logger.error(f"Error analyzing relationships: {e}")
@@ -102,25 +104,38 @@ class RelationshipAnalyzer:
 - Не создавай связи, если их нет в тексте
 """
 
-    def _parse_relationship_response(self, response: str) -> List[Dict[str, Any]]:
-        """Парсит JSON-ответ от Gemini API (Native JSON Mode + Pydantic)."""
+    def _parse_relationship_response(self, response: Any) -> List[Dict[str, Any]]:
+        """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""
         try:
-            data = json.loads(response)
+            # Если ответ уже спарсен SDK
+            if hasattr(response, 'relationships'):
+                return [rel.model_dump() if hasattr(rel, 'model_dump') else rel.dict() 
+                        for rel in response.relationships]
             
-            # Поддержка обоих форматов
-            if isinstance(data, list):
-                payload = {"relationships": data}
-            else:
-                payload = data
-                
-            # Валидация
-            validated = RelationshipResponse.model_validate(payload)
+            # Если это строка (fallback)
+            if isinstance(response, str):
+                data = json.loads(response)
+                if isinstance(data, list):
+                    payload = {"relationships": data}
+                else:
+                    payload = data
+                validated = RelationshipResponse.model_validate(payload)
+                return [rel.model_dump() for rel in validated.relationships]
             
-            return [rel.model_dump() for rel in validated.relationships]
+            # Если это словарь
+            if isinstance(response, dict):
+                if 'relationships' in response:
+                    validated = RelationshipResponse.model_validate(response)
+                    return [rel.model_dump() for rel in validated.relationships]
+                return response.get('relationships', [])
+
+            error_msg = f"Unexpected response type: {type(response)}"
+            logger.error(error_msg)
+            return []
             
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Error parsing relationship JSON response: {e}")
-            logger.debug(f"Raw response: {response}")
+        except (json.JSONDecodeError, ValueError, Exception) as e:
+            logger.error(f"Error parsing/validating response: {e}")
+            logger.debug(f"Raw response type: {type(response)}")
             return []
 
 
