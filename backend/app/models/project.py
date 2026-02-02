@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from enum import Enum
 
@@ -28,7 +28,7 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), unique=True, index=True, nullable=False)
     genre = Column(String(50), default=ProjectGenre.OTHER, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Связи
     chapters = relationship("Chapter", back_populates="project", cascade="all, delete-orphan")
@@ -49,7 +49,7 @@ class Chapter(Base):
     translated_text = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
     order = Column(Integer, default=0, nullable=False)  # Порядок главы в проекте
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     processed_at = Column(DateTime, nullable=True)
     
     # Связи

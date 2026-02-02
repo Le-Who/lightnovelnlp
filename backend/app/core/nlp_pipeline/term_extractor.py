@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import List, Dict, Any
 
 from app.services.gemini_client import gemini_client
 from app.models.project import ProjectGenre
+
+logger = logging.getLogger(__name__)
 
 
 class TermExtractor:
@@ -33,7 +36,7 @@ class TermExtractor:
             response = self.client.complete(prompt)
             return self._parse_response(response)
         except Exception as e:
-            print(f"Error extracting terms: {e}")
+            logger.error(f"Error extracting terms: {e}")
             return []
 
     def count_term_frequency(self, text: str, terms: List[str]) -> Dict[str, int]:
@@ -265,8 +268,8 @@ class TermExtractor:
             
             return terms
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"Error parsing response: {e}")
-            print(f"Raw response: {response}")
+            logger.error(f"Error parsing response: {e}")
+            logger.debug(f"Raw response: {response}")
             return []
 
 

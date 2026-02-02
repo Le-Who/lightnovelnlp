@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
 import google.generativeai as genai
+import pytz
+
+logger = logging.getLogger(__name__)
 import pytz
 
 from app.core.config import settings
@@ -127,7 +131,7 @@ class GeminiClient:
         for attempt in range(max_retries):
             try:
                 # Глобальный троттлинг по минутному окну
-                minute_key = f"gemini_rate:minute:{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+                minute_key = f"gemini_rate:minute:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
                 current_minute_count = cache_service.increment_counter(minute_key, ttl=65)
                 if current_minute_count > self.per_minute_limit:
                     # Превышен лимит – возвращаем HTTP 429
@@ -171,7 +175,7 @@ class GeminiClient:
                 raise
             except Exception as e:
                 # Логируем, переводим ключ в кулдаун и пробуем следующий
-                print(f"Error with key {self.current_key_index}: {e}")
+                logger.error(f"Error with key {self.current_key_index}: {e}")
 
                 # Помещаем текущий ключ в кулдаун при ошибке
                 current_key = self.api_keys[self.current_key_index]

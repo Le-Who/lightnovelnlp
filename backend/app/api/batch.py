@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.deps import get_db
 from app.models.project import Chapter, Project
@@ -33,7 +36,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
         
         # Обновляем статус
         batch_job.status = "running"
-        batch_job.started_at = datetime.utcnow()
+        batch_job.started_at = datetime.now(timezone.utc)
         local_db.commit()
         
         # Получаем элементы задачи
@@ -52,7 +55,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
             try:
                 # Обновляем статус элемента
                 job_item.status = "processing"
-                job_item.started_at = datetime.utcnow()
+                job_item.started_at = datetime.now(timezone.utc)
                 local_db.commit()
                 
                 # Получаем главу и проект
@@ -100,7 +103,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
                             status=initial_status,
                             context=term_data.get("context", ""),
                             frequency=term_data.get("frequency", 1),
-                            approved_at=datetime.utcnow() if auto_approve else None
+                            approved_at=datetime.now(timezone.utc) if auto_approve else None
                         )
                         local_db.add(term)
                         saved_terms.append(term)
@@ -148,7 +151,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
                 
                 # Обновляем главу
                 chapter.summary = chapter_summary
-                chapter.processed_at = datetime.utcnow()
+                chapter.processed_at = datetime.now(timezone.utc)
                 
                 # Обновляем статистику
                 total_terms += len(saved_terms)
@@ -157,7 +160,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
                 
                 # Обновляем элемент задачи
                 job_item.status = "completed"
-                job_item.completed_at = datetime.utcnow()
+                job_item.completed_at = datetime.now(timezone.utc)
                 job_item.result = {
                     "extracted_terms": len(saved_terms),
                     "auto_approved_terms": auto_approved_count,
@@ -170,16 +173,16 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
                 local_db.commit()
                 
             except Exception as e:
-                print(f"Error processing job item {job_item.id}: {e}")
+                logger.error(f"Error processing job item {job_item.id}: {e}")
                 job_item.status = "failed"
-                job_item.completed_at = datetime.utcnow()
+                job_item.completed_at = datetime.now(timezone.utc)
                 job_item.error_message = str(e)
                 failed_items += 1
                 local_db.commit()
         
         # Обновляем статус задачи
         batch_job.status = "completed"
-        batch_job.completed_at = datetime.utcnow()
+        batch_job.completed_at = datetime.now(timezone.utc)
         batch_job.job_data = {
             "total_items": total_items,
             "processed_items": processed_items,
@@ -204,7 +207,7 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
     except Exception as e:
         if 'batch_job' in locals():
             batch_job.status = "failed"
-            batch_job.completed_at = datetime.utcnow()
+            batch_job.completed_at = datetime.now(timezone.utc)
             batch_job.error_message = str(e)
             local_db.commit()
         
@@ -229,7 +232,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session = None):
         
         # Обновляем статус
         batch_job.status = "running"
-        batch_job.started_at = datetime.utcnow()
+        batch_job.started_at = datetime.now(timezone.utc)
         local_db.commit()
         
         # Получаем элементы задачи
@@ -245,7 +248,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session = None):
             try:
                 # Обновляем статус элемента
                 job_item.status = "processing"
-                job_item.started_at = datetime.utcnow()
+                job_item.started_at = datetime.now(timezone.utc)
                 local_db.commit()
                 
                 # Получаем главу
@@ -305,7 +308,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session = None):
                 
                 # Обновляем элемент задачи
                 job_item.status = "completed"
-                job_item.completed_at = datetime.utcnow()
+                job_item.completed_at = datetime.now(timezone.utc)
                 job_item.result = {
                     "translated": True,
                     "glossary_terms_used": len(glossary_terms),
@@ -317,16 +320,16 @@ def process_batch_translate_sync(batch_job_id: int, db: Session = None):
                 local_db.commit()
                 
             except Exception as e:
-                print(f"Error processing job item {job_item.id}: {e}")
+                logger.error(f"Error processing job item {job_item.id}: {e}")
                 job_item.status = "failed"
-                job_item.completed_at = datetime.utcnow()
+                job_item.completed_at = datetime.now(timezone.utc)
                 job_item.error_message = str(e)
                 failed_items += 1
                 local_db.commit()
         
         # Обновляем статус задачи
         batch_job.status = "completed"
-        batch_job.completed_at = datetime.utcnow()
+        batch_job.completed_at = datetime.now(timezone.utc)
         batch_job.job_data = {
             "total_items": total_items,
             "processed_items": processed_items,
@@ -345,7 +348,7 @@ def process_batch_translate_sync(batch_job_id: int, db: Session = None):
     except Exception as e:
         if 'batch_job' in locals():
             batch_job.status = "failed"
-            batch_job.completed_at = datetime.utcnow()
+            batch_job.completed_at = datetime.now(timezone.utc)
             batch_job.error_message = str(e)
             local_db.commit()
         
@@ -380,7 +383,7 @@ def create_batch_analyze_job(
         job_type="analyze",
         status="pending",
         total_items=len(chapter_ids),
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(batch_job)
     db.commit()
@@ -433,7 +436,7 @@ def create_batch_translate_job(
         job_type="translate",
         status="pending",
         total_items=len(chapter_ids),
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(batch_job)
     db.commit()

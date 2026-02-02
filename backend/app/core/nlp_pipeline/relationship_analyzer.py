@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import List, Dict, Any
 
 from app.services.gemini_client import gemini_client
 from app.models.glossary import GlossaryTerm
+
+logger = logging.getLogger(__name__)
 
 
 class RelationshipAnalyzer:
@@ -40,7 +43,7 @@ class RelationshipAnalyzer:
             response = self.client.complete(prompt)
             return self._parse_relationship_response(response)
         except Exception as e:
-            print(f"Error analyzing relationships: {e}")
+            logger.error(f"Error analyzing relationships: {e}")
             return []
 
     def _build_relationship_prompt(self, text: str, terms: List[GlossaryTerm]) -> str:
@@ -110,8 +113,8 @@ class RelationshipAnalyzer:
             
             return data.get('relationships', [])
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"Error parsing relationship response: {e}")
-            print(f"Raw response: {response}")
+            logger.error(f"Error parsing relationship response: {e}")
+            logger.debug(f"Raw response: {response}")
             return []
 
 

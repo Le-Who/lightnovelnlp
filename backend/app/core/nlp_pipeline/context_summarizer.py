@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import List, Dict, Any
 
 from app.services.gemini_client import gemini_client
+
+logger = logging.getLogger(__name__)
 
 
 class ContextSummarizer:
@@ -32,7 +35,7 @@ class ContextSummarizer:
             response = self.client.complete(prompt)
             return response.strip()
         except Exception as e:
-            print(f"Error summarizing context: {e}")
+            logger.error(f"Error summarizing context: {e}")
             return ""
 
     def _build_summary_prompt(
@@ -123,7 +126,7 @@ class ContextSummarizer:
             response = self.client.complete(prompt)
             return response.strip()
         except Exception as e:
-            print(f"Error creating project summary: {e}")
+            logger.error(f"Error creating project summary: {e}")
             return ""
 
 

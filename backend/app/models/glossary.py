@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List
 
@@ -35,7 +35,7 @@ class GlossaryTerm(Base):
     status = Column(String(20), default=TermStatus.PENDING)
     context = Column(Text, nullable=True)
     frequency = Column(Integer, default=1, server_default="1")  # Частота встречаемости
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     approved_at = Column(DateTime, nullable=True)  # When the term was approved/rejected
     
     # Связи
@@ -59,7 +59,7 @@ class TermRelationship(Base):
     relation_type = Column(String(50), nullable=False)
     confidence = Column(Integer, nullable=True)  # 0-100
     context = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Связи
     project = relationship("Project", back_populates="term_relationships")
@@ -75,7 +75,7 @@ class GlossaryVersion(Base):
     version_name = Column(String(255), nullable=False)  # Название версии
     description = Column(Text, nullable=True)  # Описание изменений
     terms_data = Column(JSON, nullable=False)  # Снимок терминов в JSON
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(100), nullable=True)  # Кто создал версию
     
     # Связи
@@ -94,7 +94,7 @@ class BatchJob(Base):
     failed_items = Column(Integer, default=0)
     progress_percentage = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     

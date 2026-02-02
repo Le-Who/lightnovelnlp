@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.deps import get_db
 from app.models.project import Chapter, Project
@@ -67,7 +67,7 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                     status=initial_status,
                     context=term_data.get("context", ""),
                     frequency=term_data.get("frequency", 1),
-                    approved_at=datetime.utcnow() if auto_approve else None
+                    approved_at=datetime.now(timezone.utc) if auto_approve else None
                 )
                 local_db.add(term)
                 saved_terms.append(term)
@@ -120,7 +120,7 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         
         # Обновляем главу
         chapter.summary = chapter_summary
-        chapter.processed_at = datetime.utcnow()
+        chapter.processed_at = datetime.now(timezone.utc)
         
         # Сохраняем все изменения
         local_db.commit()

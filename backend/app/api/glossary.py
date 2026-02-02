@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -167,7 +167,7 @@ def approve_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossa
         raise HTTPException(status_code=404, detail="Term not found")
     
     db_term.status = TermStatus.APPROVED
-    db_term.approved_at = datetime.utcnow()
+    db_term.approved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_term)
     return db_term
@@ -181,7 +181,7 @@ def reject_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossar
         raise HTTPException(status_code=404, detail="Term not found")
     
     db_term.status = TermStatus.REJECTED
-    db_term.approved_at = datetime.utcnow()
+    db_term.approved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_term)
     return db_term
@@ -242,7 +242,7 @@ def create_glossary_version(project_id: int, version: GlossaryVersionCreate, db:
     # Создаем версию
     db_version = GlossaryVersion(
         project_id=project_id,
-        version_name=version.name or f"Version {datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+        version_name=version.name or f"Version {datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
         description=version.description,
         terms_data=[{
             "source_term": term.source_term,
@@ -278,7 +278,7 @@ def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> 
             category=term_data["category"],
             context=term_data.get("context", ""),
             status=TermStatus.APPROVED,
-            approved_at=datetime.utcnow()
+            approved_at=datetime.now(timezone.utc)
         )
         db.add(term)
         restored_terms.append(term)
@@ -298,7 +298,7 @@ def get_gemini_api_usage():
 @router.get("/cache-stats")
 def get_cache_stats():
     """Получить статистику кэширования."""
-    cache_info = {"cache_service_available": True, "timestamp": datetime.utcnow().isoformat()}
+    cache_info = {"cache_service_available": True, "timestamp": datetime.now(timezone.utc).isoformat()}
     test_key = "cache_ping"
     ok_set = cache_service.set(test_key, "1", ttl=10)
     # 'тихий' get, без логов даже при отвале

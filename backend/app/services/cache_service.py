@@ -17,6 +17,9 @@ except Exception:
 
 class CacheService:
     def __init__(self):
+        # Initialize logger early so we can use it in init
+        self.logger = logging.getLogger("cache_service")
+        
         # Инициализация REST-клиента Upstash (предпочтительно на free-tier)
         self.rest_client = None
         if UpstashRedis and settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
@@ -27,12 +30,11 @@ class CacheService:
                 )
             except Exception as e:
                 # Если REST недоступен, перейдем на TCP
-                print(f"Upstash REST init failed, falling back to TCP: {e}")
+                self.logger.warning(f"Upstash REST init failed, falling back to TCP: {e}")
 
         # TCP-клиент как запасной вариант
         self.redis_client = self._make_tcp_client()
         self.default_ttl = 3600  # 1 час по умолчанию
-        self.logger = logging.getLogger("cache_service")
 
     def _make_tcp_client(self):
         return redis.from_url(
@@ -141,7 +143,7 @@ class CacheService:
             try:
                 self.redis_client = self._make_tcp_client()
             except Exception as e:
-                print(f"Redis reconnection failed: {e}")
+                self.logger.warning(f"Redis reconnection failed: {e}")
 
     def set(self, key: str, value: Any, ttl: int = None) -> bool:
         """Установить значение в кэш."""
@@ -249,7 +251,7 @@ class CacheService:
                 return int(self.redis_client.delete(*keys) or 0)
             return 0
         except Exception as e:
-            print(f"Cache delete pattern error: {e}")
+            self.logger.warning(f"Cache delete pattern error: {e}")
             return 0
 
     # Кэширование переводов
@@ -361,7 +363,7 @@ class CacheService:
                 "keyspace_misses": info.get("keyspace_misses", 0)
             }
         except Exception as e:
-            print(f"Cache stats error: {e}")
+            self.logger.warning(f"Cache stats error: {e}")
             return {"rest_client": False, "connected": False}
 
 

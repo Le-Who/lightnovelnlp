@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.services.gemini_client import gemini_client
 from app.models.glossary import GlossaryTerm, TermStatus
+
+logger = logging.getLogger(__name__)
 
 
 class TranslationEngine:
@@ -36,7 +39,7 @@ class TranslationEngine:
             response = self.client.complete(prompt)
             return response.strip()
         except Exception as e:
-            print(f"Error translating text: {e}")
+            logger.error(f"Error translating text: {e}")
             raise
 
     def _build_translation_prompt(
