@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
+from app.db import SessionLocal
 from app.deps import get_db
-from app.models.project import Chapter, Project
+from app.models.project import Chapter, Project, ProjectGenre
 from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
@@ -15,8 +16,6 @@ router = APIRouter()
 
 def process_chapter_sync(chapter_id: int, db: Session = None):
     """Синхронная обработка главы для извлечения терминов."""
-    # Открываем новую сессию для фоновой задачи
-    from app.db import SessionLocal
     local_db = db or SessionLocal()
     
     try:
@@ -30,8 +29,6 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             return {"error": "Project not found", "chapter_id": chapter_id}
         
         # 1. Извлекаем термины с учетом жанра проекта
-        # project.genre в БД хранится как строка; приведем к Enum при необходимости
-        from app.models.project import ProjectGenre
         project_genre = project.genre
         if isinstance(project_genre, str):
             try:

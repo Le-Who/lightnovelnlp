@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from app.db import SessionLocal
 from app.deps import get_db
 from app.models.project import Chapter, Project
 from app.models.glossary import (
@@ -24,8 +25,6 @@ router = APIRouter()
 
 def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
     """Синхронная пакетная обработка глав для извлечения терминов."""
-    # Открываем новую сессию для фоновой задачи
-    from app.db import SessionLocal
     local_db = db or SessionLocal()
     
     try:
@@ -220,8 +219,6 @@ def process_batch_analyze_sync(batch_job_id: int, db: Session = None):
 
 def process_batch_translate_sync(batch_job_id: int, db: Session = None):
     """Синхронная пакетная обработка глав для перевода."""
-    # Открываем новую сессию для фоновой задачи
-    from app.db import SessionLocal
     local_db = db or SessionLocal()
     
     try:

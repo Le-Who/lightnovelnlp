@@ -1,11 +1,12 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
+from urllib.parse import quote
 
 from app.deps import get_db
 from app.models.project import Project, Chapter
+from app.models.glossary import GlossaryTerm, TermRelationship, GlossaryVersion, BatchJob, BatchJobItem
 from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead, ChapterUpdate
 import io
 try:
@@ -52,9 +53,6 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Явно удаляем зависимые сущности, чтобы избежать обращения к отсутствующим колонкам
-    from app.models.glossary import GlossaryTerm, TermRelationship, GlossaryVersion, BatchJob, BatchJobItem
-    from app.models.project import Chapter
 
     db.query(TermRelationship).filter(TermRelationship.project_id == project_id).delete(synchronize_session=False)
     db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).delete(synchronize_session=False)
@@ -83,7 +81,6 @@ def list_chapters(
     q = db.query(Chapter).filter(Chapter.project_id == project_id)
     if search:
         s = f"%{search}%"
-        from sqlalchemy import or_
         q = q.filter(or_(Chapter.title.ilike(s), Chapter.original_text.ilike(s)))
     sort_map = {
         "id": Chapter.id,
@@ -292,7 +289,6 @@ def download_chapter(
     db: Session = Depends(get_db)
 ):
     """Скачать переведенную главу в формате TXT."""
-    from fastapi.responses import Response
     
     # Проверяем, что проект и глава существуют
     project = db.get(Project, project_id)
@@ -320,18 +316,10 @@ def download_chapter(
     
     # Подготавливаем безопасные заголовки для скачивания (RFC 5987)
     # Основной filename должен быть ASCII-совместимым, а полный UTF-8 — через filename*
-    try:
-        from urllib.parse import quote
-    except Exception:
-        quote = None
 
     safe_filename = f"chapter_{chapter_id}.txt"
     full_filename = f"chapter_{chapter_id}_{project.name}_{chapter.title}.txt"
-    if quote is not None:
-        encoded_full = "UTF-8''" + quote(full_filename, safe='')
-    else:
-        # Fallback: заменяем не-ASCII символы на '_'
-        encoded_full = "UTF-8''" + ''.join(ch if ord(ch) < 128 else '_' for ch in full_filename)
+    encoded_full = "UTF-8''" + quote(full_filename, safe='')
 
     content_disposition = f"attachment; filename=\"{safe_filename}\"; filename*={encoded_full}"
 

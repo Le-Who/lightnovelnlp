@@ -17,10 +17,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add processed_at column to chapters table
-    op.add_column('chapters', sa.Column('processed_at', sa.DateTime(), nullable=True))
+    # Column processed_at is now created in 000_initial.py
+    pass
 
 
 def downgrade() -> None:
-    # Remove processed_at column from chapters table
-    op.drop_column('chapters', 'processed_at')
+    pass

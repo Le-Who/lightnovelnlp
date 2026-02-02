@@ -17,16 +17,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add order column to chapters table
-    op.add_column('chapters', sa.Column('order', sa.Integer(), nullable=False, server_default='0'))
-    
-    # Create index for efficient ordering
-    op.create_index('ix_chapters_order', 'chapters', ['project_id', 'order'], unique=False)
+    # Column order and index are now in 000_initial.py
+    pass
 
 
 def downgrade() -> None:
-    # Drop index first
-    op.drop_index('ix_chapters_order', table_name='chapters')
-    
-    # Drop order column
-    op.drop_column('chapters', 'order')
+    pass

@@ -17,19 +17,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Indexes
-    op.create_index('ix_chapters_project_id', 'chapters', ['project_id'], unique=False)
-    op.create_index('ix_glossary_terms_project_id', 'glossary_terms', ['project_id'], unique=False)
-
-    # Unique constraint for glossary term per project
-    # First ensure no duplicates exist (safe no-op if none)
-    # Depending on production data, a data migration might be required; here we assume clean state
-    op.create_unique_constraint('uq_glossary_term_per_project', 'glossary_terms', ['project_id', 'source_term'])
+    # All indexes and constraints are now in 000_initial.py
+    pass
 
 
 def downgrade() -> None:
-    op.drop_constraint('uq_glossary_term_per_project', 'glossary_terms', type_='unique')
-    op.drop_index('ix_glossary_terms_project_id', table_name='glossary_terms')
-    op.drop_index('ix_chapters_project_id', table_name='chapters')
+    pass
 
 

@@ -17,10 +17,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add genre column to projects table
-    op.add_column('projects', sa.Column('genre', sa.String(50), nullable=False, server_default='other'))
+    # Column genre is now created in 000_initial.py
+    pass
 
 
 def downgrade() -> None:
-    # Remove genre column from projects table
-    op.drop_column('projects', 'genre')
+    pass

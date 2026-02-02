@@ -5,7 +5,9 @@ from app.deps import get_db
 from app.models.project import Chapter
 from app.models.glossary import GlossaryTerm, TermStatus
 from app.core.translation_engine import translation_engine
+from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.services.cache_service import cache_service
+from app.services.gemini_client import gemini_client
 
 router = APIRouter()
 
@@ -61,7 +63,6 @@ def translate_chapter(
         
         if len(project_chapters) > 1:  # Если есть несколько глав с саммари
             # Создаем краткое общее саммари
-            from app.core.nlp_pipeline.context_summarizer import context_summarizer
             chapters_data = [
                 {
                     "title": ch.title,
@@ -140,7 +141,7 @@ def preview_translation(chapter_id: int, db: Session = Depends(get_db)) -> dict:
         ).order_by(Chapter.id).all()
         
         if len(project_chapters) > 1:
-            from app.core.nlp_pipeline.context_summarizer import context_summarizer
+
             chapters_data = [
                 {
                     "title": ch.title,
@@ -234,7 +235,6 @@ def review_translation(
         """
         
         # Получаем рецензию от LLM
-        from app.services.gemini_client import gemini_client
         review_text = gemini_client.complete(review_prompt)
         
         # Сохраняем рецензию в кэше (не в БД, так как это временные данные)

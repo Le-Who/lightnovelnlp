@@ -11,16 +11,17 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '001'
-down_revision = None
+down_revision = '000'
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    # Add approved_at column to glossary_terms table
-    op.add_column('glossary_terms', sa.Column('approved_at', sa.DateTime(), nullable=True))
+    # Column approved_at is now created in 000_initial.py
+    # This migration kept for chain compatibility
+    pass
 
 
 def downgrade() -> None:
-    # Remove approved_at column from glossary_terms table
-    op.drop_column('glossary_terms', 'approved_at')
+    # Column approved_at is now handled in 000_initial.py
+    pass
