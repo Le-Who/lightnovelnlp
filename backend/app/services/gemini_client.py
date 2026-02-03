@@ -15,6 +15,8 @@ import pytz
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 logging.getLogger("google.genai.types").setLevel(logging.ERROR)
 logging.getLogger("google_genai").setLevel(logging.ERROR)
+# Additional suppression for the specific path observed in logs
+warnings.filterwarnings("ignore", message=".*shadows an attribute.*", category=UserWarning)
 
 logger = logging.getLogger(__name__)
 

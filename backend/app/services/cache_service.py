@@ -148,7 +148,16 @@ class CacheService:
             self.redis_client.ping()
         except Exception:
             try:
+                # Explicitly close before recreating
+                try:
+                    self.redis_client.close()
+                except Exception:
+                    pass
+                
                 self.redis_client = self._make_tcp_client()
+                # Verify immediately
+                self.redis_client.ping()
+                self.logger.info("Redis reconnected successfully")
             except Exception as e:
                 self.logger.warning(f"Redis reconnection failed: {e}")
 
