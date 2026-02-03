@@ -13,6 +13,10 @@ RUN npm install
 # Копируем исходный код
 COPY . .
 
+# API URL для сборки (передается через Build Arguments в Northflank)
+ARG VITE_API_URL=https://p01--lightnovelnlp--95w5j7vcjd9s.code.run
+ENV VITE_API_URL=$VITE_API_URL
+
 # Собираем приложение
 RUN npm run build
 
