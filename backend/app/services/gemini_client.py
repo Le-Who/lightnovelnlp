@@ -186,11 +186,13 @@ class GeminiClient:
                             config_args['response_mime_type'] = 'application/json'
                             config_args['response_schema'] = response_schema
 
+                        logger.info(f"[GEMINI] Sending request to {model_name}...")
                         response = self.client.models.generate_content(
                             model=model_name,
                             contents=prompt,
                             config=types.GenerateContentConfig(**config_args) if config_args else None
                         )
+                        logger.info(f"[GEMINI] Response received from {model_name}")
                         
                         candidate = response.candidates[0]
                         if candidate.finish_reason == 'MAX_TOKENS':
@@ -202,6 +204,7 @@ class GeminiClient:
                         self._increment_key_usage(current_key, model_name)
                         
                         if hasattr(response, 'parsed') and response.parsed:
+                            logger.info(f"[GEMINI] Returning parsed response")
                             return response.parsed
                         
                         text_parts = []

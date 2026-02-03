@@ -35,21 +35,29 @@ class RelationshipAnalyzer:
                 - confidence: уверенность (0-100)
                 - context: контекст связи
         """
+        logger.info(f"[REL] Starting relationship analysis for {len(terms)} terms")
+        
         if len(terms) < 2:
+            logger.info("[REL] Less than 2 terms, skipping")
             return []  # Нужно минимум 2 термина для анализа связей
             
         prompt = self._build_relationship_prompt(text, terms)
+        logger.info(f"[REL] Built prompt, length: {len(prompt)} chars")
         
         try:
+            logger.info("[REL] Calling Gemini API...")
             # Используем новую поддержку response_schema в GeminiClient
             response = self.client.complete(
                 prompt, 
-                max_tokens=8192,
+                max_tokens=4096,  # Reduced from 8192 to speed up
                 response_schema=RelationshipResponse
             )
-            return self._parse_relationship_response(response)
+            logger.info(f"[REL] Gemini returned response of type: {type(response).__name__}")
+            result = self._parse_relationship_response(response)
+            logger.info(f"[REL] Parsed {len(result)} relationships")
+            return result
         except Exception as e:
-            logger.error(f"Error analyzing relationships: {e}")
+            logger.error(f"[REL] Error analyzing relationships: {e}", exc_info=True)
             return []
 
     def _build_relationship_prompt(self, text: str, terms: List[GlossaryTerm]) -> str:
