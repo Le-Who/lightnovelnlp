@@ -284,6 +284,21 @@ class TermExtractor:
                 elif isinstance(response, str):
                      logger.warning(f"Raw response text: {response}")
             
+            # Post-validation: enforce auto_approve rules
+            for term in extracted:
+                category = term.get("category", "other")
+                confidence = term.get("confidence", 0)
+                
+                # Characters are ALWAYS auto-approved
+                if category == "character":
+                    term["auto_approve"] = True
+                # High confidence (>= 80) terms in key categories get auto-approved
+                elif confidence >= 80 and category in ("location", "skill", "artifact"):
+                    term["auto_approve"] = True
+                # Low confidence or 'other' category requires manual review
+                elif confidence < 80 or category == "other":
+                    term["auto_approve"] = False
+            
             return extracted
 
         except (json.JSONDecodeError, ValueError, Exception) as e:

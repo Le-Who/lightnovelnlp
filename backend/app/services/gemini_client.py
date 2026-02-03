@@ -153,10 +153,10 @@ class GeminiClient:
                 minute_key = f"gemini_rate:minute:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
                 current_minute_count = cache_service.increment_counter(minute_key, ttl=65)
                 if current_minute_count > self.per_minute_limit:
-                    from fastapi import HTTPException
-                    raise HTTPException(
-                        status_code=429,
-                        detail="Rate limit exceeded: 10 req/min. Please retry shortly."
+                    from app.core.exceptions import RateLimitExceeded
+                    raise RateLimitExceeded(
+                        message="Rate limit exceeded: 10 req/min. Please retry shortly.",
+                        retry_after=60
                     )
 
                 # Выполняем запрос с повтором при временных ошибках

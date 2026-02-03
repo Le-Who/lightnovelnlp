@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import logging
 
 # Настройка логирования
@@ -11,6 +12,7 @@ try:
     from app.models import *  # Импортируем все модели для регистрации
     from app.api import projects, glossary, processing, translation, batch
     from app.core.config import settings
+    from app.core.exceptions import RateLimitExceeded, APIKeyExhausted
     
     logger.info("Configuration loaded successfully")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -47,6 +49,27 @@ app.include_router(glossary.router, prefix="/glossary", tags=["glossary"])
 app.include_router(processing.router, prefix="/processing", tags=["processing"])
 app.include_router(translation.router, prefix="/translation", tags=["translation"])
 app.include_router(batch.router, prefix="/batch", tags=["batch"])
+
+
+# Exception handlers for custom service exceptions
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded):
+    headers = {}
+    if exc.retry_after:
+        headers["Retry-After"] = str(exc.retry_after)
+    return JSONResponse(
+        status_code=429,
+        content={"detail": exc.message},
+        headers=headers
+    )
+
+
+@app.exception_handler(APIKeyExhausted)
+async def api_key_exhausted_handler(request: Request, exc: APIKeyExhausted):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": exc.message}
+    )
 
 
 @app.get("/")
