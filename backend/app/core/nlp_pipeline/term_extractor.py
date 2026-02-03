@@ -248,13 +248,10 @@ class TermExtractor:
 
     def _parse_response(self, response: Any) -> List[Dict[str, Any]]:
         """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""
+        try:
             results = []
-            # ... parsing logic ...
-            
-            # (Note: existing parsing logic actually returns directly. I need to capture it.)
-            # RE-WRITING METHOD FOR CAPTURE
-            
             extracted = []
+            
             # Если ответ уже спарсен SDK
             if hasattr(response, 'terms'):
                 extracted = [term.model_dump() if hasattr(term, 'model_dump') else term.dict() for term in response.terms]
@@ -270,7 +267,6 @@ class TermExtractor:
                     validated = TermExtractionResponse.model_validate(payload)
                     extracted = [term.model_dump() for term in validated.terms]
                 except Exception:
-                    # Let the outer try/catch handle it or logging below
                     pass
             
             # Если это словарь
