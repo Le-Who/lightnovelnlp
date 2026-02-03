@@ -237,7 +237,7 @@ def analyze_chapter_async(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ) -> dict:
-    ""Запустить анализ главы в фоновом режиме."""
+    """Запустить анализ главы в фоновом режиме."""
     # Проверяем, что глава существует
     chapter = db.get(Chapter, chapter_id)
     if not chapter:

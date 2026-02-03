@@ -4,13 +4,28 @@ import api from '../services/apiClient'
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
   const [loading, setLoading] = useState(false)
-  const [analyzing, setAnalyzing] = useState({})
-  const [translating, setTranslating] = useState({})
+  const [analyzing, setAnalyzing] = useState({})  // chapterId -> status string
+  const [translating, setTranslating] = useState({})  // chapterId -> status string
   const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
   const [previewData, setPreviewData] = useState(null)
   const [uploadingChapters, setUploadingChapters] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
+  const [activePolling, setActivePolling] = useState({})  // chapterId -> true/false
+
+  // Статус для отображения
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'pending': return 'Ожидание...'
+      case 'extracting': return 'Извлечение терминов...'
+      case 'relationships': return 'Анализ связей...'
+      case 'summarizing': return 'Создание саммари...'
+      case 'translating': return 'Перевод...'
+      case 'completed': return 'Завершено!'
+      case 'failed': return 'Ошибка'
+      default: return status
+    }
+  }
 
   const loadChapters = async () => {
     setLoading(true)
@@ -93,48 +108,102 @@ export default function ChapterManager({ projectId }) {
   }
 
   const analyzeChapter = async (chapterId) => {
-    setAnalyzing(prev => ({ ...prev, [chapterId]: true }))
+    setAnalyzing(prev => ({ ...prev, [chapterId]: 'pending' }))
 
     try {
-      const res = await api.post(`/processing/chapters/${chapterId}/analyze`)
-      console.log('Analysis response:', res.data)
+      // Запускаем async анализ
+      await api.post(`/processing/chapters/${chapterId}/analyze-async`)
 
-      // Check for explicit presence of extracted_terms key (not truthy value)
-      if ('extracted_terms' in res.data) {
-        alert(`Анализ завершен! Извлечено терминов: ${res.data.extracted_terms}, автоматически утверждено: ${res.data.auto_approved_terms}`)
-        loadChapters() // Перезагружаем список глав для обновления статуса
-      } else {
-        console.error('Unexpected response format:', res.data)
-        alert('Ошибка анализа: неожиданный формат ответа')
+      // Начинаем polling статуса
+      const pollStatus = async () => {
+        try {
+          const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
+          const status = statusRes.data.analysis_status
+
+          setAnalyzing(prev => ({ ...prev, [chapterId]: status }))
+
+          if (status === 'completed') {
+            // Анализ завершен
+            loadChapters()
+            setTimeout(() => {
+              setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
+              alert('Анализ завершен успешно!')
+            }, 1000)
+          } else if (status === 'failed') {
+            // Ошибка
+            setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
+            alert(`Ошибка анализа: ${statusRes.data.analysis_error || 'Неизвестная ошибка'}`)
+          } else {
+            // Продолжаем polling
+            setTimeout(pollStatus, 2000)
+          }
+        } catch (e) {
+          console.error('Error polling status:', e)
+          setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
+        }
       }
+
+      // Начинаем polling через 500ms
+      setTimeout(pollStatus, 500)
+
     } catch (e) {
       console.error('Error starting analysis:', e)
+      setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
       if (e.response?.data?.detail) {
         alert(`Ошибка анализа: ${e.response.data.detail}`)
       } else {
         alert('Ошибка запуска анализа')
       }
-    } finally {
-      setAnalyzing(prev => ({ ...prev, [chapterId]: false }))
     }
   }
 
   const translateChapter = async (chapterId) => {
-    setTranslating(prev => ({ ...prev, [chapterId]: true }))
+    setTranslating(prev => ({ ...prev, [chapterId]: 'pending' }))
 
     try {
-      const res = await api.post(`/translation/chapters/${chapterId}/translate`)
-      alert(`Перевод завершен! Использовано терминов: ${res.data.glossary_terms_used}`)
-      loadChapters() // Перезагружаем для обновления перевода
+      // Запускаем async перевод
+      await api.post(`/translation/chapters/${chapterId}/translate-async`)
+
+      // Начинаем polling статуса
+      const pollStatus = async () => {
+        try {
+          const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
+          const status = statusRes.data.translation_status
+
+          setTranslating(prev => ({ ...prev, [chapterId]: status }))
+
+          if (status === 'completed') {
+            // Перевод завершен
+            loadChapters()
+            setTimeout(() => {
+              setTranslating(prev => ({ ...prev, [chapterId]: null }))
+              alert('Перевод завершен успешно!')
+            }, 1000)
+          } else if (status === 'failed') {
+            // Ошибка
+            setTranslating(prev => ({ ...prev, [chapterId]: null }))
+            alert(`Ошибка перевода: ${statusRes.data.translation_error || 'Неизвестная ошибка'}`)
+          } else {
+            // Продолжаем polling
+            setTimeout(pollStatus, 2000)
+          }
+        } catch (e) {
+          console.error('Error polling status:', e)
+          setTranslating(prev => ({ ...prev, [chapterId]: null }))
+        }
+      }
+
+      // Начинаем polling через 500ms
+      setTimeout(pollStatus, 500)
+
     } catch (e) {
-      console.error('Error translating chapter:', e)
+      console.error('Error starting translation:', e)
+      setTranslating(prev => ({ ...prev, [chapterId]: null }))
       if (e.response?.data?.detail) {
         alert(`Ошибка перевода: ${e.response.data.detail}`)
       } else {
         alert('Ошибка перевода')
       }
-    } finally {
-      setTranslating(prev => ({ ...prev, [chapterId]: false }))
     }
   }
 
@@ -266,17 +335,18 @@ export default function ChapterManager({ projectId }) {
                 <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
                   <button
                     onClick={() => analyzeChapter(chapter.id)}
-                    disabled={analyzing[chapter.id]}
+                    disabled={!!analyzing[chapter.id]}
                     style={{
                       padding: '8px 16px',
                       fontSize: '0.9em',
-                      backgroundColor: analyzing[chapter.id] ? '#ccc' : '#2196F3',
+                      backgroundColor: analyzing[chapter.id] ? '#78909C' : '#2196F3',
                       color: 'white',
                       border: 'none',
-                      borderRadius: 4
+                      borderRadius: 4,
+                      minWidth: 140
                     }}
                   >
-                    {analyzing[chapter.id] ? 'Анализ...' : 'Анализировать'}
+                    {analyzing[chapter.id] ? getStatusLabel(analyzing[chapter.id]) : 'Анализировать'}
                   </button>
 
                   <button
@@ -295,17 +365,18 @@ export default function ChapterManager({ projectId }) {
 
                   <button
                     onClick={() => translateChapter(chapter.id)}
-                    disabled={translating[chapter.id]}
+                    disabled={!!translating[chapter.id]}
                     style={{
                       padding: '8px 16px',
                       fontSize: '0.9em',
-                      backgroundColor: translating[chapter.id] ? '#ccc' : '#4CAF50',
+                      backgroundColor: translating[chapter.id] ? '#78909C' : '#4CAF50',
                       color: 'white',
                       border: 'none',
-                      borderRadius: 4
+                      borderRadius: 4,
+                      minWidth: 140
                     }}
                   >
-                    {translating[chapter.id] ? 'Перевод...' : 'Перевести'}
+                    {translating[chapter.id] ? getStatusLabel(translating[chapter.id]) : 'Перевести'}
                   </button>
                 </div>
               </div>

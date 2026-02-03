@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import logging
 
 # Настройка логирования
@@ -24,6 +25,53 @@ except Exception as e:
     logger.error(f"Failed to load configuration: {e}")
     raise
 
+
+def run_migrations():
+    """Выполняет автоматические миграции при запуске, если нужные колонки отсутствуют."""
+    from sqlalchemy import text, inspect
+    
+    try:
+        inspector = inspect(engine)
+        columns = [col['name'] for col in inspector.get_columns('chapters')]
+        
+        migrations = []
+        
+        if 'analysis_status' not in columns:
+            migrations.append(
+                "ALTER TABLE chapters ADD COLUMN analysis_status VARCHAR(20) DEFAULT 'idle' NOT NULL"
+            )
+        if 'analysis_error' not in columns:
+            migrations.append("ALTER TABLE chapters ADD COLUMN analysis_error TEXT")
+        if 'translation_status' not in columns:
+            migrations.append(
+                "ALTER TABLE chapters ADD COLUMN translation_status VARCHAR(20) DEFAULT 'idle' NOT NULL"
+            )
+        if 'translation_error' not in columns:
+            migrations.append("ALTER TABLE chapters ADD COLUMN translation_error TEXT")
+        
+        if migrations:
+            with engine.connect() as conn:
+                for sql in migrations:
+                    logger.info(f"Running migration: {sql}")
+                    conn.execute(text(sql))
+                conn.commit()
+            logger.info(f"Migrations completed: added {len(migrations)} columns")
+        else:
+            logger.info("No migrations needed - all columns exist")
+            
+    except Exception as e:
+        logger.warning(f"Migration check failed (non-critical): {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown lifecycle."""
+    # Startup
+    run_migrations()
+    yield
+    # Shutdown (nothing needed)
+
+
 # Создаем таблицы
 # Base.metadata.create_all(bind=engine)  # Убрано - используем Alembic для миграций
 
@@ -31,7 +79,8 @@ app = FastAPI(
     title="Light Novel NLP API", 
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Настройка CORS
