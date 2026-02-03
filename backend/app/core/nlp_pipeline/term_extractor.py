@@ -281,9 +281,14 @@ class TermExtractor:
             logger.error(error_msg)
             return []
             
+            return []
+            
         except (json.JSONDecodeError, ValueError, Exception) as e:
             logger.error(f"Error parsing/validating response: {e}")
-            logger.debug(f"Raw response type: {type(response)}")
+            if response and hasattr(response, 'text'):
+                 logger.error(f"Raw response text (first 500 chars): {response.text[:500]}")
+            else:
+                 logger.debug(f"Raw response type: {type(response)}")
             return []
 
 

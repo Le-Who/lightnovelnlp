@@ -27,8 +27,9 @@ router = APIRouter()
 # Sync processing functions removed in favor of Celery tasks
 
 
-@router.post("/analyze", status_code=status.HTTP_200_OK)
+@router.post("/{project_id}/analyze", status_code=status.HTTP_200_OK)
 def create_batch_analyze_job(
+    project_id: int,
     chapter_ids: List[int],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
@@ -81,8 +82,9 @@ def create_batch_analyze_job(
     }
 
 
-@router.post("/translate", status_code=status.HTTP_200_OK)
+@router.post("/{project_id}/translate", status_code=status.HTTP_200_OK)
 def create_batch_translate_job(
+    project_id: int,
     chapter_ids: List[int],
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)

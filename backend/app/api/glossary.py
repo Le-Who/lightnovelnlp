@@ -187,7 +187,7 @@ def reject_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossar
     return db_term
 
 
-@router.get("/relationships/{project_id}", response_model=List[TermRelationshipRead])
+@router.get("/{project_id}/relationships", response_model=List[TermRelationshipRead])
 def get_term_relationships(project_id: int, db: Session = Depends(get_db)) -> List[TermRelationship]:
     """Получить связи между терминами для проекта."""
     relationships = db.query(TermRelationship).filter(TermRelationship.project_id == project_id).all()
@@ -204,7 +204,7 @@ def create_term_relationship(relationship: TermRelationshipCreate, db: Session =
     return db_relationship
 
 
-@router.get("/versions/{project_id}", response_model=List[GlossaryVersionRead])
+@router.get("/{project_id}/versions", response_model=List[GlossaryVersionRead])
 def get_glossary_versions(
     project_id: int,
     db: Session = Depends(get_db),
@@ -230,7 +230,7 @@ def get_glossary_versions(
     return q.all()
 
 
-@router.post("/versions/{project_id}", response_model=GlossaryVersionRead, status_code=status.HTTP_201_CREATED)
+@router.post("/{project_id}/versions", response_model=GlossaryVersionRead, status_code=status.HTTP_201_CREATED)
 def create_glossary_version(project_id: int, version: GlossaryVersionCreate, db: Session = Depends(get_db)) -> GlossaryVersion:
     """Создать новую версию глоссария."""
     # Получаем все утвержденные термины для проекта
