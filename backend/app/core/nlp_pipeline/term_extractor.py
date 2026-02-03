@@ -41,9 +41,12 @@ class TermExtractor:
                 max_tokens=8192,  # Увеличиваем лимит для больших глав
                 response_schema=TermExtractionResponse
             )
-            return self._parse_response(response)
+            logger.info(f"Received response from Gemini, type: {type(response).__name__}")
+            terms = self._parse_response(response)
+            logger.info(f"Extracted {len(terms)} terms from chapter")
+            return terms
         except Exception as e:
-            logger.error(f"Error extracting terms: {e}")
+            logger.error(f"Error extracting terms: {e}", exc_info=True)
             return []
 
     def count_term_frequency(self, text: str, terms: List[str]) -> Dict[str, int]:
@@ -252,37 +255,57 @@ class TermExtractor:
             results = []
             extracted = []
             
+            # Debug: log response type and content preview
+            logger.info(f"Parsing response of type: {type(response).__name__}")
+            
             # Если ответ уже спарсен SDK
             if hasattr(response, 'terms'):
+                logger.info(f"Response has 'terms' attribute, extracting {len(response.terms)} terms")
                 extracted = [term.model_dump() if hasattr(term, 'model_dump') else term.dict() for term in response.terms]
             
             # Если это строка (fallback)
             elif isinstance(response, str):
+                logger.info(f"Response is string, length: {len(response)}")
+                logger.debug(f"Raw string response: {response[:500]}...")
                 try:
                     data = json.loads(response)
+                    logger.info(f"JSON parsed successfully, type: {type(data).__name__}")
                     if isinstance(data, list):
                         payload = {"terms": data}
                     else:
                         payload = data
                     validated = TermExtractionResponse.model_validate(payload)
                     extracted = [term.model_dump() for term in validated.terms]
-                except Exception:
-                    pass
+                    logger.info(f"Extracted {len(extracted)} terms from string response")
+                except json.JSONDecodeError as je:
+                    logger.error(f"JSON decode error: {je}")
+                    logger.error(f"Failed to parse: {response[:200]}...")
+                except Exception as e:
+                    logger.error(f"Error validating string response: {e}")
+                    logger.error(f"Payload was: {str(payload)[:500] if 'payload' in dir() else 'N/A'}")
             
             # Если это словарь
             elif isinstance(response, dict):
+                logger.info(f"Response is dict with keys: {list(response.keys())}")
                 if 'terms' in response:
                     validated = TermExtractionResponse.model_validate(response)
                     extracted = [term.model_dump() for term in validated.terms]
+                    logger.info(f"Extracted {len(extracted)} terms from dict response")
                 else:
                     extracted = response.get('terms', [])
+                    logger.warning(f"Dict has no 'terms' key, got empty list")
+            
+            else:
+                logger.warning(f"Unexpected response type: {type(response)}, value: {str(response)[:200]}")
             
             if not extracted:
                 logger.warning("No terms extracted from response.")
                 if hasattr(response, 'text'):
                      logger.warning(f"Raw response text: {response.text}")
                 elif isinstance(response, str):
-                     logger.warning(f"Raw response text: {response}")
+                     logger.warning(f"Raw response (first 500 chars): {response[:500]}")
+            else:
+                logger.info(f"Successfully extracted {len(extracted)} terms")
             
             # Post-validation: enforce auto_approve rules
             for term in extracted:
