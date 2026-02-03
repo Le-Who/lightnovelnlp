@@ -123,7 +123,11 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         local_db.commit()
         
         # Инвалидируем кэш глоссария для проекта
-        cache_service.invalidate_glossary_cache(chapter.project_id)
+        try:
+            cache_service.invalidate_glossary_cache(chapter.project_id)
+        except Exception as e:
+            # Не фейлим весь запрос из-за кэша
+            pass
         
         return {
             "chapter_id": chapter_id,

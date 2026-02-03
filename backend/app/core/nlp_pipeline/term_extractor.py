@@ -248,47 +248,54 @@ class TermExtractor:
 
     def _parse_response(self, response: Any) -> List[Dict[str, Any]]:
         """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""
-        try:
-            # Если ответ уже спарсен SDK (при использовании response_schema)
+            results = []
+            # ... parsing logic ...
+            
+            # (Note: existing parsing logic actually returns directly. I need to capture it.)
+            # RE-WRITING METHOD FOR CAPTURE
+            
+            extracted = []
+            # Если ответ уже спарсен SDK
             if hasattr(response, 'terms'):
-                return [term.model_dump() if hasattr(term, 'model_dump') else term.dict() 
-                        for term in response.terms]
+                extracted = [term.model_dump() if hasattr(term, 'model_dump') else term.dict() for term in response.terms]
             
             # Если это строка (fallback)
-            if isinstance(response, str):
-                data = json.loads(response)
-                
-                # Поддержка обоих форматов: список терминов или объект с ключом terms
-                if isinstance(data, list):
-                    payload = {"terms": data}
-                else:
-                    payload = data
-                
-                # Pydantic validation
-                validated = TermExtractionResponse.model_validate(payload)
-                
-                # Возвращаем список словарей
-                return [term.model_dump() for term in validated.terms]
+            elif isinstance(response, str):
+                try:
+                    data = json.loads(response)
+                    if isinstance(data, list):
+                        payload = {"terms": data}
+                    else:
+                        payload = data
+                    validated = TermExtractionResponse.model_validate(payload)
+                    extracted = [term.model_dump() for term in validated.terms]
+                except Exception:
+                    # Let the outer try/catch handle it or logging below
+                    pass
             
-            # Если это уже словарь
-            if isinstance(response, dict):
+            # Если это словарь
+            elif isinstance(response, dict):
                 if 'terms' in response:
                     validated = TermExtractionResponse.model_validate(response)
-                    return [term.model_dump() for term in validated.terms]
-                return response.get('terms', [])
+                    extracted = [term.model_dump() for term in validated.terms]
+                else:
+                    extracted = response.get('terms', [])
+            
+            if not extracted:
+                logger.warning("No terms extracted from response.")
+                if hasattr(response, 'text'):
+                     logger.warning(f"Raw response text: {response.text}")
+                elif isinstance(response, str):
+                     logger.warning(f"Raw response text: {response}")
+            
+            return extracted
 
-            error_msg = f"Unexpected response type: {type(response)}"
-            logger.error(error_msg)
-            return []
-            
-            return []
-            
         except (json.JSONDecodeError, ValueError, Exception) as e:
             logger.error(f"Error parsing/validating response: {e}")
-            if response and hasattr(response, 'text'):
-                 logger.error(f"Raw response text (first 500 chars): {response.text[:500]}")
-            else:
-                 logger.debug(f"Raw response type: {type(response)}")
+            if hasattr(response, 'text'):
+                 logger.error(f"Raw response text: {response.text}")
+            elif isinstance(response, str):
+                 logger.error(f"Raw response string: {response}")
             return []
 
 
