@@ -27,6 +27,149 @@ router = APIRouter()
 # Sync processing functions removed in favor of Celery tasks
 
 
+@router.post("/{project_id}/analyze-chapters", status_code=status.HTTP_200_OK)
+def create_batch_analyze_all_chapters(
+    project_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+) -> dict:
+    """Создать задачу пакетного анализа ВСЕХ необработанных глав проекта."""
+    # Получаем все необработанные главы проекта
+    chapters = db.query(Chapter).filter(
+        Chapter.project_id == project_id,
+        Chapter.processed_at == None
+    ).all()
+    
+    if not chapters:
+        return {"message": "No unprocessed chapters found", "total_items": 0}
+    
+    chapter_ids = [ch.id for ch in chapters]
+    
+    # Создаем задачу
+    batch_job = BatchJob(
+        project_id=project_id,
+        job_type="analyze",
+        status="pending",
+        total_items=len(chapter_ids),
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(batch_job)
+    db.commit()
+    
+    # Создаем элементы задачи
+    for chapter_id in chapter_ids:
+        job_item = BatchJobItem(
+            project_id=project_id,
+            batch_job_id=batch_job.id,
+            item_type="chapter",
+            item_id=chapter_id,
+            status="pending"
+        )
+        db.add(job_item)
+    
+    db.commit()
+    
+    # Запускаем обработку в фоне (Async via Celery)
+    process_batch_analyze_task.delay(batch_job.id)
+    
+    return {
+        "batch_job_id": batch_job.id,
+        "status": "pending",
+        "total_items": len(chapter_ids),
+        "message": "Batch analysis job created"
+    }
+
+
+@router.post("/{project_id}/translate-chapters", status_code=status.HTTP_200_OK)
+def create_batch_translate_all_chapters(
+    project_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+) -> dict:
+    """Создать задачу пакетного перевода ВСЕХ непереведенных глав проекта."""
+    # Получаем все непереведенные главы проекта
+    chapters = db.query(Chapter).filter(
+        Chapter.project_id == project_id,
+        Chapter.translated_text == None
+    ).all()
+    
+    if not chapters:
+        return {"message": "No untranslated chapters found", "total_items": 0}
+    
+    chapter_ids = [ch.id for ch in chapters]
+    
+    # Создаем задачу
+    batch_job = BatchJob(
+        project_id=project_id,
+        job_type="translate",
+        status="pending",
+        total_items=len(chapter_ids),
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(batch_job)
+    db.commit()
+    
+    # Создаем элементы задачи
+    for chapter_id in chapter_ids:
+        job_item = BatchJobItem(
+            project_id=project_id,
+            batch_job_id=batch_job.id,
+            item_type="chapter",
+            item_id=chapter_id,
+            status="pending"
+        )
+        db.add(job_item)
+    
+    db.commit()
+    
+    # Запускаем обработку в фоне (Async via Celery)
+    process_batch_translate_task.delay(batch_job.id)
+    
+    return {
+        "batch_job_id": batch_job.id,
+        "status": "pending",
+        "total_items": len(chapter_ids),
+        "message": "Batch translation job created"
+    }
+
+
+@router.get("/{project_id}/jobs")
+def list_project_batch_jobs(project_id: int, db: Session = Depends(get_db)) -> list:
+    """Получить список всех пакетных задач проекта."""
+    jobs = db.query(BatchJob).filter(BatchJob.project_id == project_id).order_by(
+        BatchJob.created_at.desc()
+    ).all()
+    
+    result = []
+    for job in jobs:
+        # Подсчитываем прогресс
+        completed_items = db.query(BatchJobItem).filter(
+            BatchJobItem.batch_job_id == job.id,
+            BatchJobItem.status == "completed"
+        ).count()
+        
+        failed_items = db.query(BatchJobItem).filter(
+            BatchJobItem.batch_job_id == job.id,
+            BatchJobItem.status == "failed"
+        ).count()
+        
+        result.append({
+            "id": job.id,
+            "job_type": job.job_type,
+            "status": job.status,
+            "total_items": job.total_items,
+            "processed_items": completed_items,
+            "failed_items": failed_items,
+            "progress_percentage": round(completed_items / job.total_items * 100) if job.total_items > 0 else 0,
+            "created_at": job.created_at,
+            "started_at": job.started_at,
+            "completed_at": job.completed_at,
+            "error_message": job.error_message
+        })
+    
+    return result
+
+
 @router.post("/{project_id}/analyze", status_code=status.HTTP_200_OK)
 def create_batch_analyze_job(
     project_id: int,
@@ -34,7 +177,7 @@ def create_batch_analyze_job(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ) -> dict:
-    """Создать задачу пакетного анализа глав."""
+    """Создать задачу пакетного анализа выбранных глав."""
     if not chapter_ids:
         raise HTTPException(status_code=400, detail="No chapter IDs provided")
     
