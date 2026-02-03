@@ -16,10 +16,14 @@ router = APIRouter()
 
 def process_chapter_sync(chapter_id: int, db: Session = None):
     """Синхронная обработка главы для извлечения терминов."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     local_db = db or SessionLocal()
     
     try:
         # Получаем главу и проект
+        logger.info(f"[STEP 1] Loading chapter {chapter_id}")
         chapter = local_db.get(Chapter, chapter_id)
         if not chapter:
             return {"error": "Chapter not found", "chapter_id": chapter_id}
@@ -27,6 +31,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         project = local_db.get(Project, chapter.project_id)
         if not project:
             return {"error": "Project not found", "chapter_id": chapter_id}
+        
+        logger.info(f"[STEP 2] Extracting terms for chapter '{chapter.title}', genre: {project.genre}")
         
         # 1. Извлекаем термины с учетом жанра проекта
         project_genre = project.genre
@@ -36,6 +42,7 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             except Exception:
                 project_genre = ProjectGenre.OTHER
         extracted_terms = term_extractor.extract_terms_with_frequency(chapter.original_text, project_genre)
+        logger.info(f"[STEP 2 DONE] Extracted {len(extracted_terms)} terms")
         
         # Сохраняем термины в БД с автоматическим утверждением
         saved_terms = []
@@ -69,67 +76,89 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 local_db.add(term)
                 saved_terms.append(term)
         
+        logger.info(f"[STEP 3] Saved {len(saved_terms)} new terms to DB")
+        
         # 2. Анализируем связи между терминами
         relationships = []
         if len(saved_terms) > 1:
-            relationships = relationship_analyzer.analyze_relationships(
-                chapter.original_text, 
-                saved_terms  # Pass GlossaryTerm objects, not strings
-            )
+            logger.info(f"[STEP 4] Analyzing relationships between {len(saved_terms)} terms")
+            try:
+                relationships = relationship_analyzer.analyze_relationships(
+                    chapter.original_text, 
+                    saved_terms  # Pass GlossaryTerm objects, not strings
+                )
+                logger.info(f"[STEP 4 DONE] Found {len(relationships)} relationships")
+            except Exception as rel_error:
+                logger.error(f"[STEP 4 ERROR] Relationship analysis failed: {rel_error}", exc_info=True)
+                # Continue without relationships
             
             for rel_data in relationships:
-                # Find the source and target terms by their source_term strings
-                source_term_obj = local_db.query(GlossaryTerm).filter(
-                    GlossaryTerm.project_id == chapter.project_id,
-                    GlossaryTerm.source_term == rel_data["source_term"]
-                ).first()
-                
-                target_term_obj = local_db.query(GlossaryTerm).filter(
-                    GlossaryTerm.project_id == chapter.project_id,
-                    GlossaryTerm.source_term == rel_data["target_term"]
-                ).first()
-                
-                if source_term_obj and target_term_obj:
-                    # Безопасно получаем relation_type, используя relation_type или relationType
-                    relation_type = rel_data.get("relation_type") or rel_data.get("relationType") or "other"
-                    confidence = rel_data.get("confidence", 50)  # По умолчанию 50%
-                    context = rel_data.get("context", "")
+                try:
+                    # Find the source and target terms by their source_term strings
+                    source_term_obj = local_db.query(GlossaryTerm).filter(
+                        GlossaryTerm.project_id == chapter.project_id,
+                        GlossaryTerm.source_term == rel_data["source_term"]
+                    ).first()
                     
-                    relationship = TermRelationship(
-                        project_id=chapter.project_id,
-                        source_term_id=source_term_obj.id,
-                        target_term_id=target_term_obj.id,
-                        relation_type=relation_type,
-                        confidence=confidence,
-                        context=context
-                    )
-                    local_db.add(relationship)
+                    target_term_obj = local_db.query(GlossaryTerm).filter(
+                        GlossaryTerm.project_id == chapter.project_id,
+                        GlossaryTerm.source_term == rel_data["target_term"]
+                    ).first()
+                    
+                    if source_term_obj and target_term_obj:
+                        # Безопасно получаем relation_type, используя relation_type или relationType
+                        relation_type = rel_data.get("relation_type") or rel_data.get("relationType") or "other"
+                        confidence = rel_data.get("confidence", 50)  # По умолчанию 50%
+                        context = rel_data.get("context", "")
+                        
+                        relationship = TermRelationship(
+                            project_id=chapter.project_id,
+                            source_term_id=source_term_obj.id,
+                            target_term_id=target_term_obj.id,
+                            relation_type=relation_type,
+                            confidence=confidence,
+                            context=context
+                        )
+                        local_db.add(relationship)
+                except Exception as rel_save_error:
+                    logger.warning(f"Failed to save relationship: {rel_save_error}")
+        else:
+            logger.info(f"[STEP 4] Skipping relationship analysis (only {len(saved_terms)} terms)")
         
         # 3. Создаем саммари главы (с нормализацией исходного текста)
-        normalized_text = chapter.original_text.replace('\r\n', '\n')
-        # Удалим избыточные пустые строки
-        lines = [ln.strip() for ln in normalized_text.split('\n')]
-        compact_text = "\n".join([ln for ln in lines if ln != ""])  # убираем пустые строки
-        chapter_summary = context_summarizer.summarize_context(
-            compact_text,
-            chapter.title
-        )
+        logger.info(f"[STEP 5] Creating chapter summary")
+        try:
+            normalized_text = chapter.original_text.replace('\r\n', '\n')
+            # Удалим избыточные пустые строки
+            lines = [ln.strip() for ln in normalized_text.split('\n')]
+            compact_text = "\n".join([ln for ln in lines if ln != ""])  # убираем пустые строки
+            chapter_summary = context_summarizer.summarize_context(
+                compact_text,
+                chapter.title
+            )
+            logger.info(f"[STEP 5 DONE] Summary created, length: {len(chapter_summary) if chapter_summary else 0}")
+        except Exception as sum_error:
+            logger.error(f"[STEP 5 ERROR] Summary creation failed: {sum_error}", exc_info=True)
+            chapter_summary = None
         
         # Обновляем главу
+        logger.info(f"[STEP 6] Updating chapter with summary and processed_at")
         chapter.summary = chapter_summary
         chapter.processed_at = datetime.now(timezone.utc)
         
         # Сохраняем все изменения
+        logger.info(f"[STEP 7] Committing all changes to DB")
         local_db.commit()
+        logger.info(f"[STEP 7 DONE] Commit successful")
         
         # Инвалидируем кэш глоссария для проекта
         try:
             cache_service.invalidate_glossary_cache(chapter.project_id)
         except Exception as e:
             # Не фейлим весь запрос из-за кэша
-            pass
+            logger.warning(f"Cache invalidation failed (non-critical): {e}")
         
-        return {
+        result = {
             "chapter_id": chapter_id,
             "extracted_terms": len(saved_terms),
             "auto_approved_terms": auto_approved_count,
@@ -138,8 +167,11 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             "summary_created": bool(chapter_summary),
             "project_genre": getattr(project_genre, "value", project_genre)
         }
+        logger.info(f"[COMPLETE] Analysis result: {result}")
+        return result
         
     except Exception as e:
+        logger.error(f"[FATAL ERROR] process_chapter_sync failed: {e}", exc_info=True)
         local_db.rollback()
         return {"error": str(e), "chapter_id": chapter_id}
     finally:
