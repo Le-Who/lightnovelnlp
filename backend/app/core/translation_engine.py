@@ -21,7 +21,9 @@ class TranslationEngine:
         context_summary: str | None = None,
         project_summary: str | None = None,
         relationships: List[Dict[str, Any]] | None = None,
-        genre: str | None = None
+        genre: str | None = None,
+        source_language: str = "en",
+        custom_genre_instructions: str | None = None
     ) -> str:
         """
         Переводит текст с использованием утвержденного глоссария и контекста.
@@ -32,12 +34,17 @@ class TranslationEngine:
             context_summary: Саммари текущей главы (опционально)
             project_summary: Общее саммари проекта (опционально)
             relationships: Список связей между терминами (опционально)
-            genre: Жанр проекта для настройки стиля (Wuxia, Sci-Fi, Romance...)
+            genre: Жанр проекта для настройки стиля
+            source_language: Язык оригинала (zh, ja, ko, en)
+            custom_genre_instructions: Кастомные инструкции для жанра/стиля
             
         Returns:
             str: Переведенный текст
         """
-        prompt = self._build_translation_prompt(text, glossary_terms, context_summary, project_summary, relationships, genre)
+        prompt = self._build_translation_prompt(
+            text, glossary_terms, context_summary, project_summary, 
+            relationships, genre, source_language, custom_genre_instructions
+        )
         
         try:
             response = self.client.complete(prompt)
@@ -53,7 +60,9 @@ class TranslationEngine:
         context_summary: str | None = None,
         project_summary: str | None = None,
         relationships: List[Dict[str, Any]] | None = None,
-        genre: str | None = None
+        genre: str | None = None,
+        source_language: str = "en",
+        custom_genre_instructions: str | None = None
     ) -> str:
         """Строит промпт для перевода с учетом глоссария и контекста."""
         # Нормализуем входной текст: приводим переводы строк к \n и убираем лишние пустые
@@ -75,33 +84,40 @@ class TranslationEngine:
         # Формируем глоссарий для промпта
         glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(нет утвержденных терминов)"
         
+        # Определение языка
+        lang_names = {"zh": "китайского", "ja": "японского", "ko": "корейского", "en": "английского"}
+        source_lang_name = lang_names.get(source_language, "английского")
+        
         genre_instruction = ""
-        if genre:
+        if custom_genre_instructions:
+            genre_instruction = f"Стиль: {custom_genre_instructions}"
+        elif genre:
             genre = str(genre).lower()
-            if "wuxia" in genre or "xianxia" in genre:
-                genre_instruction = "Стиль: Используй терминологию культивации, возвышенный тон, архаизмы где уместно."
+            if "wuxia" in genre:
+                genre_instruction = "Стиль: Используй терминологию ушу, возвышенный тон, архаизмы. Сохраняй названия техник."
+            elif "xianxia" in genre:
+                genre_instruction = "Стиль: Даосская терминология культивации, возвышенный тон, небесные законы."
             elif "scifi" in genre or "sci-fi" in genre:
                 genre_instruction = "Стиль: Технически точный язык, футуристическая терминология."
             elif "romance" in genre:
                 genre_instruction = "Стиль: Акцент на эмоциональные оттенки и чувства персонажей."
             elif "litrpg" in genre:
                 genre_instruction = "Стиль: Игровая терминология, четкие описания навыков и статов."
+            elif "isekai" in genre:
+                genre_instruction = "Стиль: Контраст миров, уникальные способности протагониста."
         
         # Базовый промпт
-        prompt = f"""
-Ты - профессиональный переводчик ранобэ с английского на русский язык. 
-Цель: Создать литературный, художественный перевод, сохраняющий стиль оригинала.
+        prompt = f"""Ты - профессиональный переводчик ранобэ с {source_lang_name} на русский. 
+Цель: Литературный перевод, сохраняющий стиль оригинала.
 {genre_instruction}
 
-ВАЖНО: Ты ДОЛЖЕН строго следовать предоставленному глоссарию для перевода всех терминов.
-
-ГЛОССАРИЙ (обязательно использовать эти переводы):
+ГЛОССАРИЙ (ОБЯЗАТЕЛЬНО использовать эти переводы):
 {glossary_text}
-"""""
+"""
         # Добавляем связи между терминами
         if relationships:
             rels_text = "\n".join([
-                f"- {r['source']} и {r['target']}: {r['type']} ({r.get('description', '')})"
+                f"- {r.get('source_term', r.get('source', '?'))} и {r.get('target_term', r.get('target', '?'))}: {r.get('relation_type', r.get('type', '?'))} ({r.get('context', r.get('description', ''))})"
                 for r in relationships
             ])
             prompt += f"""

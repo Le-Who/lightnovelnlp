@@ -13,7 +13,8 @@ def test_build_prompt_wuxia_genre():
         genre="WUXIA"
     )
     
-    assert "терминологию культивации" in prompt
+    # Wuxia now uses 'ушу' terminology instead of 'культивации'
+    assert "терминологию ушу" in prompt
     assert "возвышенный тон" in prompt
 
 def test_build_prompt_scifi_genre():

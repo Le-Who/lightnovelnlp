@@ -19,6 +19,19 @@ class ProjectGenre(str, Enum):
     HORROR = "horror"
     SLICE_OF_LIFE = "slice_of_life"
     ADVENTURE = "adventure"
+    WUXIA = "wuxia"           # Китайское боевое фэнтези
+    XIANXIA = "xianxia"       # Культивация бессмертия
+    LITRPG = "litrpg"         # Игровые механики
+    ISEKAI = "isekai"         # Попаданцы
+    OTHER = "other"
+
+
+class SourceLanguage(str, Enum):
+    """Язык оригинала произведения."""
+    CHINESE = "zh"      # 中文
+    JAPANESE = "ja"     # 日本語
+    KOREAN = "ko"       # 한국어
+    ENGLISH = "en"      # English
     OTHER = "other"
 
 
@@ -47,8 +60,13 @@ class Project(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), unique=True, index=True, nullable=False)
-    genre = Column(String(50), default=ProjectGenre.OTHER, nullable=False)
+    genre = Column(String(50), default=ProjectGenre.OTHER.value, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Новые поля для улучшенного NLP
+    source_language = Column(String(10), default=SourceLanguage.ENGLISH.value, nullable=False)
+    target_language = Column(String(10), default="ru", nullable=False)  # Целевой язык перевода
+    custom_genre_instructions = Column(Text, nullable=True)  # Кастомные инструкции для жанра
     
     # Связи
     chapters = relationship("Chapter", back_populates="project", cascade="all, delete-orphan")

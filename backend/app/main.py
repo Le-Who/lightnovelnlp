@@ -32,22 +32,37 @@ def run_migrations():
     
     try:
         inspector = inspect(engine)
-        columns = [col['name'] for col in inspector.get_columns('chapters')]
-        
         migrations = []
         
-        if 'analysis_status' not in columns:
+        # Миграции для таблицы chapters
+        chapter_columns = [col['name'] for col in inspector.get_columns('chapters')]
+        
+        if 'analysis_status' not in chapter_columns:
             migrations.append(
                 "ALTER TABLE chapters ADD COLUMN analysis_status VARCHAR(20) DEFAULT 'idle' NOT NULL"
             )
-        if 'analysis_error' not in columns:
+        if 'analysis_error' not in chapter_columns:
             migrations.append("ALTER TABLE chapters ADD COLUMN analysis_error TEXT")
-        if 'translation_status' not in columns:
+        if 'translation_status' not in chapter_columns:
             migrations.append(
                 "ALTER TABLE chapters ADD COLUMN translation_status VARCHAR(20) DEFAULT 'idle' NOT NULL"
             )
-        if 'translation_error' not in columns:
+        if 'translation_error' not in chapter_columns:
             migrations.append("ALTER TABLE chapters ADD COLUMN translation_error TEXT")
+        
+        # Миграции для таблицы projects
+        project_columns = [col['name'] for col in inspector.get_columns('projects')]
+        
+        if 'source_language' not in project_columns:
+            migrations.append(
+                "ALTER TABLE projects ADD COLUMN source_language VARCHAR(10) DEFAULT 'en' NOT NULL"
+            )
+        if 'target_language' not in project_columns:
+            migrations.append(
+                "ALTER TABLE projects ADD COLUMN target_language VARCHAR(10) DEFAULT 'ru' NOT NULL"
+            )
+        if 'custom_genre_instructions' not in project_columns:
+            migrations.append("ALTER TABLE projects ADD COLUMN custom_genre_instructions TEXT")
         
         if migrations:
             with engine.connect() as conn:
