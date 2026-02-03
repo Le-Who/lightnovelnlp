@@ -2,16 +2,16 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 export default function ProjectList({ projects }) {
-  if (!projects?.length) return <div>Проекты отсутствуют</div>
-  
+  if (!Array.isArray(projects) || !projects.length) return <div>Проекты отсутствуют</div>
+
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       {projects.map((p) => (
-        <Link 
-          key={p.id} 
+        <Link
+          key={p.id}
           to={`/projects/${p.id}`}
-          style={{ 
-            textDecoration: 'none', 
+          style={{
+            textDecoration: 'none',
             color: 'inherit',
             display: 'block',
             padding: 16,

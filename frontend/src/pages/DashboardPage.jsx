@@ -11,7 +11,7 @@ export default function DashboardPage() {
     setLoading(true)
     try {
       const res = await api.get('/projects/')
-      setProjects(res.data)
+      setProjects(Array.isArray(res.data) ? res.data : [])
     } catch (e) {
       console.error(e)
     } finally {
