@@ -187,17 +187,24 @@ def analyze_chapter(
     db: Session = Depends(get_db)
 ) -> dict:
     """Запустить анализ главы для извлечения терминов (синхронно)."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     # Проверяем, что глава существует
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
     
     # Выполняем анализ синхронно
+    logger.info(f"[API] Starting analysis for chapter {chapter_id}")
     result = process_chapter_sync(chapter_id, db)
+    logger.info(f"[API] Analysis returned: {result}")
     
     if "error" in result:
+        logger.error(f"[API] Analysis error: {result['error']}")
         raise HTTPException(status_code=500, detail=result["error"])
     
+    logger.info(f"[API] Returning successful result for chapter {chapter_id}")
     return result
 
 

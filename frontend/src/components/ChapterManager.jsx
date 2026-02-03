@@ -94,15 +94,18 @@ export default function ChapterManager({ projectId }) {
 
   const analyzeChapter = async (chapterId) => {
     setAnalyzing(prev => ({ ...prev, [chapterId]: true }))
-    
+
     try {
       const res = await api.post(`/processing/chapters/${chapterId}/analyze`)
-      
-      if (res.data.extracted_terms) {
+      console.log('Analysis response:', res.data)
+
+      // Check for explicit presence of extracted_terms key (not truthy value)
+      if ('extracted_terms' in res.data) {
         alert(`Анализ завершен! Извлечено терминов: ${res.data.extracted_terms}, автоматически утверждено: ${res.data.auto_approved_terms}`)
         loadChapters() // Перезагружаем список глав для обновления статуса
       } else {
-        alert('Ошибка анализа главы')
+        console.error('Unexpected response format:', res.data)
+        alert('Ошибка анализа: неожиданный формат ответа')
       }
     } catch (e) {
       console.error('Error starting analysis:', e)
@@ -118,7 +121,7 @@ export default function ChapterManager({ projectId }) {
 
   const translateChapter = async (chapterId) => {
     setTranslating(prev => ({ ...prev, [chapterId]: true }))
-    
+
     try {
       const res = await api.post(`/translation/chapters/${chapterId}/translate`)
       alert(`Перевод завершен! Использовано терминов: ${res.data.glossary_terms_used}`)
@@ -154,7 +157,7 @@ export default function ChapterManager({ projectId }) {
   return (
     <div>
       <h3>Главы проекта</h3>
-      
+
       {/* Форма создания главы */}
       <form onSubmit={createChapter} style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
         <h4>Добавить главу</h4>
@@ -190,10 +193,10 @@ export default function ChapterManager({ projectId }) {
             value={chapterPattern}
             onChange={(e) => setChapterPattern(e.target.value)}
             placeholder="Глава \\d+"
-            style={{ 
-              width: '100%', 
-              padding: '8px', 
-              border: '1px solid #ddd', 
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #ddd',
               borderRadius: 4,
               marginBottom: 10
             }}
@@ -208,8 +211,8 @@ export default function ChapterManager({ projectId }) {
           onChange={handleFileSelect}
           style={{ marginBottom: 10 }}
         />
-        <button 
-          onClick={uploadChaptersFromFile} 
+        <button
+          onClick={uploadChaptersFromFile}
           disabled={uploadingChapters || !selectedFile}
           style={{
             padding: '8px 16px',
@@ -230,12 +233,12 @@ export default function ChapterManager({ projectId }) {
       ) : (
         <div style={{ display: 'grid', gap: 16 }}>
           {chapters.map((chapter) => (
-            <div 
-              key={chapter.id} 
-              style={{ 
-                border: '1px solid #ddd', 
-                padding: 16, 
-                borderRadius: 8 
+            <div
+              key={chapter.id}
+              style={{
+                border: '1px solid #ddd',
+                padding: 16,
+                borderRadius: 8
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -249,9 +252,9 @@ export default function ChapterManager({ projectId }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ 
-                    maxHeight: 100, 
-                    overflow: 'hidden', 
+                  <div style={{
+                    maxHeight: 100,
+                    overflow: 'hidden',
                     fontSize: '0.9em',
                     color: '#666',
                     fontStyle: 'italic'
@@ -259,13 +262,13 @@ export default function ChapterManager({ projectId }) {
                     {chapter.original_text.substring(0, 200)}...
                   </div>
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
-                  <button 
+                  <button
                     onClick={() => analyzeChapter(chapter.id)}
                     disabled={analyzing[chapter.id]}
-                    style={{ 
-                      padding: '8px 16px', 
+                    style={{
+                      padding: '8px 16px',
                       fontSize: '0.9em',
                       backgroundColor: analyzing[chapter.id] ? '#ccc' : '#2196F3',
                       color: 'white',
@@ -275,11 +278,11 @@ export default function ChapterManager({ projectId }) {
                   >
                     {analyzing[chapter.id] ? 'Анализ...' : 'Анализировать'}
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => previewTranslation(chapter.id)}
-                    style={{ 
-                      padding: '8px 16px', 
+                    style={{
+                      padding: '8px 16px',
                       fontSize: '0.9em',
                       backgroundColor: '#FF9800',
                       color: 'white',
@@ -289,12 +292,12 @@ export default function ChapterManager({ projectId }) {
                   >
                     Предварительный просмотр
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => translateChapter(chapter.id)}
                     disabled={translating[chapter.id]}
-                    style={{ 
-                      padding: '8px 16px', 
+                    style={{
+                      padding: '8px 16px',
                       fontSize: '0.9em',
                       backgroundColor: translating[chapter.id] ? '#ccc' : '#4CAF50',
                       color: 'white',
@@ -339,19 +342,19 @@ export default function ChapterManager({ projectId }) {
                 ✕
               </button>
             </div>
-            
+
             {previewData.preview_available ? (
               <div>
                 <div style={{ marginBottom: 16 }}>
                   <strong>Использовано терминов глоссария:</strong> {previewData.glossary_terms_count}
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
                     <h4>Оригинал</h4>
-                    <div style={{ 
-                      border: '1px solid #ddd', 
-                      padding: 16, 
+                    <div style={{
+                      border: '1px solid #ddd',
+                      padding: 16,
                       borderRadius: 4,
                       maxHeight: 400,
                       overflow: 'auto',
@@ -360,12 +363,12 @@ export default function ChapterManager({ projectId }) {
                       {previewData.original_text}
                     </div>
                   </div>
-                  
+
                   <div>
                     <h4>Перевод</h4>
-                    <div style={{ 
-                      border: '1px solid #ddd', 
-                      padding: 16, 
+                    <div style={{
+                      border: '1px solid #ddd',
+                      padding: 16,
                       borderRadius: 4,
                       maxHeight: 400,
                       overflow: 'auto',
