@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from app.db import SessionLocal
 from app.deps import get_db
-from app.models.project import Chapter, Project, ProjectGenre
+from app.models.project import Chapter, Project, ProjectGenre, AnalysisStatus
 from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
@@ -33,6 +33,11 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             return {"error": "Project not found", "chapter_id": chapter_id}
         
         logger.info(f"[STEP 2] Extracting terms for chapter '{chapter.title}', genre: {project.genre}")
+        
+        # Обновляем статус: извлечение терминов
+        chapter.analysis_status = AnalysisStatus.EXTRACTING.value
+        chapter.analysis_error = None
+        local_db.commit()
         
         # 1. Извлекаем термины с учетом жанра проекта
         project_genre = project.genre
@@ -81,6 +86,10 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         # 2. Анализируем связи между терминами
         relationships = []
         if len(saved_terms) > 1:
+            # Обновляем статус: анализ связей
+            chapter.analysis_status = AnalysisStatus.RELATIONSHIPS.value
+            local_db.commit()
+            
             logger.info(f"[STEP 4] Analyzing relationships between {len(saved_terms)} terms")
             try:
                 relationships = relationship_analyzer.analyze_relationships(
@@ -126,6 +135,10 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             logger.info(f"[STEP 4] Skipping relationship analysis (only {len(saved_terms)} terms)")
         
         # 3. Создаем саммари главы (с нормализацией исходного текста)
+        # Обновляем статус: создание саммари
+        chapter.analysis_status = AnalysisStatus.SUMMARIZING.value
+        local_db.commit()
+        
         logger.info(f"[STEP 5] Creating chapter summary")
         try:
             normalized_text = chapter.original_text.replace('\r\n', '\n')
@@ -145,6 +158,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         logger.info(f"[STEP 6] Updating chapter with summary and processed_at")
         chapter.summary = chapter_summary
         chapter.processed_at = datetime.now(timezone.utc)
+        chapter.analysis_status = AnalysisStatus.COMPLETED.value
+        chapter.analysis_error = None
         
         # Сохраняем все изменения
         logger.info(f"[STEP 7] Committing all changes to DB")
@@ -172,7 +187,15 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         
     except Exception as e:
         logger.error(f"[FATAL ERROR] process_chapter_sync failed: {e}", exc_info=True)
-        local_db.rollback()
+        try:
+            # Помечаем как failed
+            chapter = local_db.get(Chapter, chapter_id)
+            if chapter:
+                chapter.analysis_status = AnalysisStatus.FAILED.value
+                chapter.analysis_error = str(e)
+                local_db.commit()
+        except Exception:
+            local_db.rollback()
         return {"error": str(e), "chapter_id": chapter_id}
     finally:
         # Закрываем локальную сессию только если мы её создали
@@ -214,11 +237,16 @@ def analyze_chapter_async(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ) -> dict:
-    """Запустить анализ главы в фоновом режиме (если доступен)."""
+    ""Запустить анализ главы в фоновом режиме."""
     # Проверяем, что глава существует
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
+    
+    # Устанавливаем начальный статус PENDING
+    chapter.analysis_status = AnalysisStatus.PENDING.value
+    chapter.analysis_error = None
+    db.commit()
     
     # Добавляем задачу в фоновые задачи FastAPI
     background_tasks.add_task(process_chapter_sync, chapter_id)
@@ -226,7 +254,7 @@ def analyze_chapter_async(
     return {
         "message": "Analysis started in background",
         "chapter_id": chapter_id,
-        "note": "Processing will continue in background. Check chapter status for updates."
+        "status": "pending"
     }
 
 
@@ -244,9 +272,14 @@ def get_chapter_status(chapter_id: int, db: Session = Depends(get_db)) -> dict:
     
     return {
         "chapter_id": chapter_id,
+        "title": chapter.title,
         "processed": chapter.processed_at is not None,
         "processed_at": chapter.processed_at,
-        "summary": chapter.summary is not None,
+        "has_summary": chapter.summary is not None,
+        "has_translation": chapter.translated_text is not None,
         "terms_count": terms_count,
-        "status": "completed" if chapter.processed_at else "pending"
+        "analysis_status": chapter.analysis_status,
+        "analysis_error": chapter.analysis_error,
+        "translation_status": chapter.translation_status,
+        "translation_error": chapter.translation_error
     }

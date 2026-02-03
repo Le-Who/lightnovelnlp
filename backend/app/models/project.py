@@ -22,6 +22,26 @@ class ProjectGenre(str, Enum):
     OTHER = "other"
 
 
+class AnalysisStatus(str, Enum):
+    """Статус анализа главы."""
+    IDLE = "idle"              # Не запущен
+    PENDING = "pending"        # Ожидает в очереди
+    EXTRACTING = "extracting"  # Извлечение терминов
+    RELATIONSHIPS = "relationships"  # Анализ связей
+    SUMMARIZING = "summarizing"  # Создание саммари
+    COMPLETED = "completed"    # Завершен
+    FAILED = "failed"          # Ошибка
+
+
+class TranslationStatus(str, Enum):
+    """Статус перевода главы."""
+    IDLE = "idle"
+    PENDING = "pending"
+    TRANSLATING = "translating"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -52,6 +72,12 @@ class Chapter(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     processed_at = Column(DateTime, nullable=True)
     
+    # Статусы для отслеживания async операций
+    analysis_status = Column(String(20), default=AnalysisStatus.IDLE.value, nullable=False)
+    analysis_error = Column(Text, nullable=True)
+    translation_status = Column(String(20), default=TranslationStatus.IDLE.value, nullable=False)
+    translation_error = Column(Text, nullable=True)
+    
     # Связи
     project = relationship("Project", back_populates="chapters")
 
@@ -59,3 +85,4 @@ class Chapter(Base):
         Index("ix_chapters_project_id", "project_id"),
         Index("ix_chapters_order", "project_id", "order"),  # Индекс для сортировки
     )
+
