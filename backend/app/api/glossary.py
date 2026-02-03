@@ -23,7 +23,7 @@ from app.services.gemini_client import gemini_client
 router = APIRouter()
 
 
-@router.get("/terms/{project_id}", response_model=List[GlossaryTermRead])
+@router.get("/{project_id}/terms", response_model=List[GlossaryTermRead])
 def get_glossary_terms(
     project_id: int,
     db: Session = Depends(get_db),
@@ -56,7 +56,7 @@ def get_glossary_terms(
     return q.all()
 
 
-@router.get("/terms/{project_id}/pending", response_model=List[GlossaryTermRead])
+@router.get("/{project_id}/terms/pending", response_model=List[GlossaryTermRead])
 def get_pending_glossary_terms(
     project_id: int,
     db: Session = Depends(get_db),

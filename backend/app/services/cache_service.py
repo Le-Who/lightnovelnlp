@@ -44,9 +44,10 @@ class CacheService:
     def _make_tcp_client(self):
         return redis.from_url(
             settings.REDIS_URL,
-            socket_timeout=3,
-            socket_connect_timeout=3,
-            retry_on_timeout=True
+            socket_timeout=5,
+            socket_connect_timeout=5,
+            retry_on_timeout=True,
+            health_check_interval=30
         )
 
     def _generate_key(self, prefix: str, *args) -> str:

@@ -14,6 +14,7 @@ import pytz
 # Suppress Pydantic warnings from google-genai types
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 logging.getLogger("google.genai.types").setLevel(logging.ERROR)
+logging.getLogger("google_genai").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 
