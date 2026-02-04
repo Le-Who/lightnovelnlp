@@ -9,6 +9,7 @@ export default function RelationshipsViewer({ projectId }) {
   const [terms, setTerms] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedTerm, setSelectedTerm] = useState(null)
+  const [sortBy, setSortBy] = useState('confidence')
 
   const loadData = async () => {
     setLoading(true)
@@ -79,7 +80,18 @@ export default function RelationshipsViewer({ projectId }) {
   const filteredRelationships = relationships.filter(rel => {
     if (!selectedTerm) return true
     return rel.source_term_id === parseInt(selectedTerm) ||
-           rel.target_term_id === parseInt(selectedTerm)
+      rel.target_term_id === parseInt(selectedTerm)
+  })
+
+  const sortedRelationships = [...filteredRelationships].sort((a, b) => {
+    if (sortBy === 'confidence') return (b.confidence || 0) - (a.confidence || 0)
+    if (sortBy === 'source_term') {
+      const termA = getTermById(a.source_term_id)?.source_term || ''
+      const termB = getTermById(b.source_term_id)?.source_term || ''
+      return termA.localeCompare(termB)
+    }
+    if (sortBy === 'relation_type') return a.relation_type.localeCompare(b.relation_type)
+    return 0
   })
 
   return (
@@ -87,72 +99,87 @@ export default function RelationshipsViewer({ projectId }) {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
-             <CardTitle className="text-lg">Фильтр</CardTitle>
+            <CardTitle className="text-lg">Фильтр и Сортировка</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium">Термин:</label>
-            <select
-              value={selectedTerm || ''}
-              onChange={(e) => setSelectedTerm(e.target.value || null)}
-              className="h-9 w-full md:w-64 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
-            >
-              <option value="">Все связи</option>
-              {terms.map(term => (
-                <option key={term.id} value={term.id}>
-                  {term.source_term} → {term.translated_term}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Термин:</label>
+              <select
+                value={selectedTerm || ''}
+                onChange={(e) => setSelectedTerm(e.target.value || null)}
+                className="h-9 w-full md:w-64 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+              >
+                <option value="">Все связи</option>
+                {terms.map(term => (
+                  <option key={term.id} value={term.id}>
+                    {term.source_term} → {term.translated_term}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Сортировка:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="h-9 w-full md:w-48 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+              >
+                <option value="confidence">По уверенности</option>
+                <option value="source_term">По источнику</option>
+                <option value="relation_type">По типу связи</option>
+              </select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredRelationships.map((relationship) => {
-            const sourceTerm = getTermById(relationship.source_term_id)
-            const targetTerm = getTermById(relationship.target_term_id)
-            
-            if (!sourceTerm || !targetTerm) return null
-            
-            return (
-              <Card key={relationship.id} className="relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-1 h-full ${getRelationTypeColorClass(relationship.relation_type).split(' ')[0].replace('bg-', 'bg-')}`}></div> {/* Simple colored strip fallback logic needs improvement or just explicit colors */}
-                {/* Better approach: use border-l-4 */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${getRelationTypeColorClass(relationship.relation_type).replace('text-', 'bg-').split(' ')[1] || 'bg-slate-400'}`}></div>
+        {sortedRelationships.map((relationship) => {
+          const sourceTerm = getTermById(relationship.source_term_id)
+          const targetTerm = getTermById(relationship.target_term_id)
 
-                <CardContent className="p-4 pl-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getRelationTypeColorClass(relationship.relation_type)}`}>
-                      {getRelationTypeLabel(relationship.relation_type)}
-                    </span>
-                    {relationship.confidence && (
-                       <span className="text-xs text-slate-400">{relationship.confidence}%</span>
-                    )}
-                  </div>
+          if (!sourceTerm || !targetTerm) return null
 
-                  <div className="flex items-center gap-2 mb-2 font-medium">
-                    <span>{sourceTerm.source_term}</span>
-                    <ArrowRight className="h-3 w-3 text-slate-400" />
-                    <span>{targetTerm.source_term}</span>
-                  </div>
+          return (
+            <Card key={relationship.id} className="relative overflow-hidden">
+              <div className={`absolute top-0 left-0 w-1 h-full ${getRelationTypeColorClass(relationship.relation_type).split(' ')[0].replace('bg-', 'bg-')}`}></div> {/* Simple colored strip fallback logic needs improvement or just explicit colors */}
+              {/* Better approach: use border-l-4 */}
+              <div className={`absolute left-0 top-0 bottom-0 w-1 ${getRelationTypeColorClass(relationship.relation_type).replace('text-', 'bg-').split(' ')[1] || 'bg-slate-400'}`}></div>
 
-                  <div className="text-xs text-slate-500 mb-3 flex items-center gap-2">
-                    <span>{sourceTerm.translated_term}</span>
-                    <ArrowRight className="h-3 w-3 text-slate-300" />
-                    <span>{targetTerm.translated_term}</span>
-                  </div>
-
-                  {relationship.context && (
-                    <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded italic border border-slate-100">
-                      &quot;{relationship.context}&quot;
-                    </div>
+              <CardContent className="p-4 pl-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${getRelationTypeColorClass(relationship.relation_type)}`}>
+                    {getRelationTypeLabel(relationship.relation_type)}
+                  </span>
+                  {relationship.confidence && (
+                    <span className="text-xs text-slate-400">{relationship.confidence}%</span>
                   )}
-                </CardContent>
-              </Card>
-            )
-          })}
+                </div>
+
+                <div className="flex items-center gap-2 mb-2 font-medium">
+                  <span>{sourceTerm.source_term}</span>
+                  <ArrowRight className="h-3 w-3 text-slate-400" />
+                  <span>{targetTerm.source_term}</span>
+                </div>
+
+                <div className="text-xs text-slate-500 mb-3 flex items-center gap-2">
+                  <span>{sourceTerm.translated_term}</span>
+                  <ArrowRight className="h-3 w-3 text-slate-300" />
+                  <span>{targetTerm.translated_term}</span>
+                </div>
+
+                {relationship.context && (
+                  <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded italic border border-slate-100">
+                    &quot;{relationship.context}&quot;
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )

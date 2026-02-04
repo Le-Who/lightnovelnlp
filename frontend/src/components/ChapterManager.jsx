@@ -9,7 +9,7 @@ import { Label } from './ui/Label'
 import { Modal } from './ui/Modal'
 import { Spinner } from './ui/Spinner'
 import { Alert } from './ui/Alert'
-import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, AlertCircle } from 'lucide-react'
+import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, AlertCircle, Trash2 } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
@@ -21,6 +21,7 @@ export default function ChapterManager({ projectId }) {
   const [uploadingChapters, setUploadingChapters] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const modalRef = useRef(null)
 
   // Status mapping
@@ -60,17 +61,29 @@ export default function ChapterManager({ projectId }) {
     }
   }, [projectId])
 
-  const createChapter = async (e) => {
-    e.preventDefault()
+  const createChapter = async () => {
     if (!newChapter.title.trim() || !newChapter.original_text.trim()) return
 
     try {
       await api.post(`/projects/${projectId}/chapters`, newChapter)
       setNewChapter({ title: '', original_text: '' })
+      setIsCreateModalOpen(false)
       loadChapters()
     } catch (e) {
       console.error('Error creating chapter:', e)
       alert('Ошибка создания главы')
+    }
+  }
+
+  const deleteChapter = async (chapterId) => {
+    if (!confirm('Вы уверены, что хотите удалить эту главу?')) return
+
+    try {
+      await api.delete(`/projects/${projectId}/chapters/${chapterId}`)
+      loadChapters()
+    } catch (e) {
+      console.error('Error deleting chapter:', e)
+      alert('Ошибка удаления главы')
     }
   }
 
@@ -228,260 +241,230 @@ export default function ChapterManager({ projectId }) {
   if (loading) return <div>Загрузка глав...</div>
 
   return (
-    <div>
-      <h3>Главы проекта</h3>
-
-      {/* Форма создания главы */}
-      <form onSubmit={createChapter} style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-        <h4>Добавить главу</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label htmlFor="chapter-title" style={{ fontWeight: 500 }}>Название главы</label>
-          <input
-            id="chapter-title"
-            value={newChapter.title}
-            onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="Название главы"
-            style={{ padding: 8 }}
-          />
-          <label htmlFor="chapter-text" style={{ fontWeight: 500 }}>Оригинальный текст главы</label>
-          <textarea
-            id="chapter-text"
-            value={newChapter.original_text}
-            onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
-            placeholder="Оригинальный текст главы"
-            rows={5}
-            style={{ padding: 8, resize: 'vertical' }}
-          />
-          <button type="submit" style={{ padding: 8, alignSelf: 'flex-start' }}>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h3 className="text-xl font-semibold text-slate-900">Главы проекта</h3>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
             Добавить главу
-          </button>
+          </Button>
         </div>
-      </form>
+      </div>
 
       {/* Загрузка глав из файла */}
-      <div style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-        <h4>Загрузить главы из файла</h4>
-        <div style={{ marginBottom: 10 }}>
-          <label htmlFor="chapter-pattern" style={{ display: 'block', marginBottom: 5 }}>
-            Паттерн разделения глав:
-          </label>
-          <input
-            id="chapter-pattern"
-            type="text"
-            value={chapterPattern}
-            onChange={(e) => setChapterPattern(e.target.value)}
-            placeholder="Глава \\d+"
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: '1px solid #ddd',
-              borderRadius: 4,
-              marginBottom: 10
-            }}
-          />
-          <small style={{ color: '#666' }}>
-            Используйте регулярное выражение для разделения глав (по умолчанию: "Глава \\d+")
-          </small>
-        </div>
-        <input
-          type="file"
-          accept=".txt"
-          onChange={handleFileSelect}
-          style={{ marginBottom: 10 }}
-        />
-        <button
-          onClick={uploadChaptersFromFile}
-          disabled={uploadingChapters || !selectedFile}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: uploadingChapters ? '#ccc' : '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: 4,
-            cursor: uploadingChapters ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {uploadingChapters ? 'Загрузка...' : 'Загрузить главы из файла'}
-        </button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Загрузить главы из файла</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="chapter-pattern">Паттерн разделения глав</Label>
+              <Input
+                id="chapter-pattern"
+                value={chapterPattern}
+                onChange={(e) => setChapterPattern(e.target.value)}
+                placeholder="Глава \\d+"
+              />
+              <p className="text-xs text-slate-500">
+                Регулярное выражение для разделения (по умолчанию: "Глава \\d+")
+              </p>
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <Input
+                type="file"
+                accept=".txt"
+                onChange={handleFileSelect}
+                className="cursor-pointer"
+              />
+              <Button
+                onClick={uploadChaptersFromFile}
+                disabled={uploadingChapters || !selectedFile}
+                className="whitespace-nowrap"
+              >
+                {uploadingChapters ? <Spinner className="w-4 h-4 mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                Загрузить
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Список глав */}
       {chapters.length === 0 ? (
-        <p>Главы отсутствуют. Добавьте первую главу или загрузите из файла.</p>
+        <Alert>
+          Главы отсутствуют. Добавьте первую главу вручную или загрузите из файла.
+        </Alert>
       ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="space-y-4">
           {chapters.map((chapter) => (
-            <div
-              key={chapter.id}
-              style={{
-                border: '1px solid #ddd',
-                padding: 16,
-                borderRadius: 8
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: '0 0 8px 0' }}>{chapter.title}</h4>
-                  <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
-                    Символов: {chapter.original_text.length}
-                    {chapter.translated_text && (
-                      <span style={{ marginLeft: 16, color: '#4CAF50' }}>
-                        ✓ Переведено
+            <Card key={chapter.id}>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row gap-4 justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-lg font-medium text-slate-900">{chapter.title}</h4>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteChapter(chapter.id)}
+                        className="h-8 w-8 text-slate-400 hover:text-red-600 md:hidden"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-4 w-4" />
+                        {chapter.original_text.length} симв.
                       </span>
-                    )}
+                      {chapter.translated_text && (
+                        <Badge variant="success" className="gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Переведено
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-600 line-clamp-2">
+                      {chapter.original_text}
+                    </p>
                   </div>
-                  <div style={{
-                    maxHeight: 100,
-                    overflow: 'hidden',
-                    fontSize: '0.9em',
-                    color: '#666',
-                    fontStyle: 'italic'
-                  }}>
-                    {chapter.original_text.substring(0, 200)}...
+
+                  <div className="flex flex-row md:flex-col gap-2 items-stretch md:w-48">
+                    <Button
+                      onClick={() => analyzeChapter(chapter.id)}
+                      disabled={!!analyzing[chapter.id]}
+                      variant={analyzing[chapter.id] ? "secondary" : "default"}
+                      className="flex-1"
+                    >
+                      {analyzing[chapter.id] ? (
+                        <>
+                          <Spinner className="w-4 h-4 mr-2" />
+                          {getStatusLabel(analyzing[chapter.id])}
+                        </>
+                      ) : (
+                        "Анализировать"
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={() => previewTranslation(chapter.id)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Предпросмотр
+                    </Button>
+
+                    <Button
+                      onClick={() => translateChapter(chapter.id)}
+                      disabled={!!translating[chapter.id]}
+                      variant={translating[chapter.id] ? "secondary" : "default"}
+                      className={`flex-1 ${!translating[chapter.id] && 'bg-green-600 hover:bg-green-700'}`}
+                    >
+                      {translating[chapter.id] ? (
+                        <>
+                          <Spinner className="w-4 h-4 mr-2" />
+                          {getStatusLabel(translating[chapter.id])}
+                        </>
+                      ) : (
+                        <>
+                          <Languages className="w-4 h-4 mr-2" />
+                          Перевести
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => deleteChapter(chapter.id)}
+                      className="hidden md:flex text-slate-400 hover:text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Удалить
+                    </Button>
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
-                  <button
-                    onClick={() => analyzeChapter(chapter.id)}
-                    disabled={!!analyzing[chapter.id]}
-                    aria-label={`Анализировать главу "${chapter.title}"`}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '0.9em',
-                      backgroundColor: analyzing[chapter.id] ? '#78909C' : '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      minWidth: 140
-                    }}
-                  >
-                    {analyzing[chapter.id] ? getStatusLabel(analyzing[chapter.id]) : 'Анализировать'}
-                  </button>
-
-                  <button
-                    onClick={() => previewTranslation(chapter.id)}
-                    aria-label={`Предварительный просмотр главы "${chapter.title}"`}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '0.9em',
-                      backgroundColor: '#FF9800',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4
-                    }}
-                  >
-                    Предварительный просмотр
-                  </button>
-
-                  <button
-                    onClick={() => translateChapter(chapter.id)}
-                    disabled={!!translating[chapter.id]}
-                    aria-label={`Перевести главу "${chapter.title}"`}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '0.9em',
-                      backgroundColor: translating[chapter.id] ? '#78909C' : '#4CAF50',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      minWidth: 140
-                    }}
-                  >
-                    {translating[chapter.id] ? getStatusLabel(translating[chapter.id]) : 'Перевести'}
-                  </button>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
 
-      {/* Модальное окно предварительного просмотра */}
-      {previewData && (
-        <div
-          ref={modalRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="preview-modal-title"
-          tabIndex={-1}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-            outline: 'none'
-          }}
-        >
-          <div style={{
-            backgroundColor: 'white',
-            padding: 24,
-            borderRadius: 8,
-            maxWidth: '80%',
-            maxHeight: '80%',
-            overflow: 'auto'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 id="preview-modal-title">Предварительный просмотр перевода</h3>
-              <button
-                onClick={closePreview}
-                aria-label="Закрыть предпросмотр"
-                style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f44336', color: 'white', borderRadius: 4 }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {previewData.preview_available ? (
-              <div>
-                <div style={{ marginBottom: 16 }}>
-                  <strong>Использовано терминов глоссария:</strong> {previewData.glossary_terms_count}
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    <h4>Оригинал</h4>
-                    <div style={{
-                      border: '1px solid #ddd',
-                      padding: 16,
-                      borderRadius: 4,
-                      maxHeight: 400,
-                      overflow: 'auto',
-                      fontSize: '0.9em'
-                    }}>
-                      {previewData.original_text}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4>Перевод</h4>
-                    <div style={{
-                      border: '1px solid #ddd',
-                      padding: 16,
-                      borderRadius: 4,
-                      maxHeight: 400,
-                      overflow: 'auto',
-                      fontSize: '0.9em'
-                    }}>
-                      {previewData.translated_text}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ color: '#f44336' }}>
-                {previewData.message}
-              </div>
-            )}
+      {/* Модальное окно создания главы */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Добавить новую главу"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="chapter-title">Название главы</Label>
+            <Input
+              id="chapter-title"
+              value={newChapter.title}
+              onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Как называется глава"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="chapter-text">Текст главы</Label>
+            <Textarea
+              id="chapter-text"
+              value={newChapter.original_text}
+              onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
+              placeholder="Вставьте текст главы сюда..."
+              className="min-h-[200px]"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={createChapter}>
+              Создать главу
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* Модальное окно предварительного просмотра */}
+      <Modal
+        isOpen={!!previewData}
+        onClose={closePreview}
+        title="Предварительный просмотр перевода"
+        className="max-w-4xl"
+      >
+        {previewData?.preview_available ? (
+          <div className="space-y-4 h-[70vh] flex flex-col">
+            <div>
+              <strong>Использовано терминов глоссария:</strong> {previewData.glossary_terms_count}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
+              <div className="flex flex-col h-full">
+                <h4 className="font-medium mb-2">Оригинал</h4>
+                <div className="border rounded-md p-4 bg-slate-50 overflow-auto flex-1 text-sm whitespace-pre-wrap">
+                  {previewData.original_text}
+                </div>
+              </div>
+
+              <div className="flex flex-col h-full">
+                <h4 className="font-medium mb-2">Перевод</h4>
+                <div className="border rounded-md p-4 bg-white overflow-auto flex-1 text-sm whitespace-pre-wrap">
+                  {previewData.translated_text}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-red-500 p-4">
+            {previewData?.message}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

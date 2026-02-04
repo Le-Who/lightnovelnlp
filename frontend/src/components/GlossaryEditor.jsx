@@ -61,7 +61,7 @@ export default function GlossaryEditor({ projectId }) {
 
   const deleteTerm = async (termId) => {
     if (!confirm('Удалить этот термин?')) return
-    
+
     try {
       await api.delete(`/glossary/terms/${termId}`)
       loadTerms()
@@ -79,7 +79,7 @@ export default function GlossaryEditor({ projectId }) {
   const getCategoryLabel = (category) => {
     const labels = {
       character: 'Персонаж',
-      location: 'Локация', 
+      location: 'Локация',
       skill: 'Умение',
       artifact: 'Артефакт',
       other: 'Другое'
@@ -105,6 +105,7 @@ export default function GlossaryEditor({ projectId }) {
               <option value="id">ID</option>
               <option value="source_term">Название</option>
               <option value="frequency">Частота</option>
+              <option value="category">Категория</option>
               <option value="created_at">Дата создания</option>
             </select>
 
@@ -143,9 +144,9 @@ export default function GlossaryEditor({ projectId }) {
                     <TableCell className="font-medium">
                       {term.source_term}
                       {term.context && (
-                         <div className="text-xs text-slate-500 mt-1 max-w-xs truncate" title={term.context}>
-                           {term.context}
-                         </div>
+                        <div className="text-xs text-slate-500 mt-1 italic whitespace-normal">
+                          {term.context}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
