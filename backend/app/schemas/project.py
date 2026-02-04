@@ -44,5 +44,10 @@ class ChapterRead(ChapterBase):
     translated_text: Optional[str] = None
     summary: Optional[str] = None
     created_at: datetime
+    processed_at: Optional[datetime] = None
+    analysis_status: str = "idle"
+    analysis_error: Optional[str] = None
+    translation_status: str = "idle"
+    translation_error: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

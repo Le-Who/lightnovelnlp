@@ -1,16 +1,8 @@
 import logging
 from datetime import datetime, timezone
 from app.db import SessionLocal
-from app.models.project import Chapter, Project
-from app.models.glossary import (
-    BatchJob, BatchJobItem, GlossaryTerm, TermStatus, TermCategory, TermRelationship
-)
-from app.core.nlp_pipeline.term_extractor import term_extractor
-from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
-from app.core.nlp_pipeline.context_summarizer import context_summarizer
-from app.core.translation_engine import translation_engine
-from app.services.cache_service import cache_service
-from app.services.project_service import ProjectService
+from app.models.glossary import BatchJob, BatchJobItem
+from app.api.processing import process_chapter_sync
 from app.services.translation_service import TranslationService
 
 logger = logging.getLogger(__name__)
@@ -18,44 +10,16 @@ logger = logging.getLogger(__name__)
 
 def analyze_chapter_task(chapter_id: int):
     """
-    Синхронная задача для анализа главы (извлечение терминов).
-    Вызывается через BackgroundTasks.
+    Sync task for chapter analysis (term extraction).
+    Called via BackgroundTasks. Delegates to process_chapter_sync.
     """
     logger.info(f"Starting analysis for chapter {chapter_id}")
     db = SessionLocal()
     try:
-        chapter = db.get(Chapter, chapter_id)
-        if not chapter:
-            logger.warning(f"Chapter {chapter_id} not found")
-            return {"status": "error", "chapter_id": chapter_id, "error": "Chapter not found"}
-        
-        # Извлечение терминов
-        terms = term_extractor.extract_terms(chapter.original_text)
-        
-        # Сохраняем термины в БД
-        for term_data in terms:
-            existing = db.query(GlossaryTerm).filter(
-                GlossaryTerm.project_id == chapter.project_id,
-                GlossaryTerm.source_term == term_data.get("source_term")
-            ).first()
-            
-            if not existing:
-                new_term = GlossaryTerm(
-                    project_id=chapter.project_id,
-                    source_term=term_data.get("source_term", ""),
-                    translated_term=term_data.get("translated_term", ""),
-                    category=term_data.get("category", TermCategory.OTHER),
-                    context=term_data.get("context", ""),
-                    status=TermStatus.PENDING
-                )
-                db.add(new_term)
-        
-        # Обновляем статус главы
-        chapter.processed_at = datetime.now(timezone.utc)
-        db.commit()
-        
-        logger.info(f"Analysis for chapter {chapter_id} completed, extracted {len(terms)} terms")
-        return {"status": "completed", "chapter_id": chapter_id, "terms_extracted": len(terms)}
+        result = process_chapter_sync(chapter_id, db)
+        if "error" in result:
+            return {"status": "error", "chapter_id": chapter_id, "error": result["error"]}
+        return {"status": "completed", "chapter_id": chapter_id, **result}
     except Exception as e:
         logger.error(f"Error analyzing chapter {chapter_id}: {e}")
         return {"status": "error", "chapter_id": chapter_id, "error": str(e)}
@@ -105,31 +69,12 @@ def process_batch_analyze_task(batch_job_id: int):
                 job_item.started_at = datetime.now(timezone.utc)
                 db.commit()
                 
-                # Выполняем анализ главы
+                # Use shared process_chapter_sync for chapter analysis
                 if job_item.item_type == "chapter":
-                    chapter = db.get(Chapter, job_item.item_id)
-                    if chapter:
-                        terms = term_extractor.extract_terms(chapter.original_text)
-                        
-                        for term_data in terms:
-                            existing = db.query(GlossaryTerm).filter(
-                                GlossaryTerm.project_id == chapter.project_id,
-                                GlossaryTerm.source_term == term_data.get("source_term")
-                            ).first()
-                            
-                            if not existing:
-                                new_term = GlossaryTerm(
-                                    project_id=chapter.project_id,
-                                    source_term=term_data.get("source_term", ""),
-                                    translated_term=term_data.get("translated_term", ""),
-                                    category=term_data.get("category", TermCategory.OTHER),
-                                    context=term_data.get("context", ""),
-                                    status=TermStatus.PENDING
-                                )
-                                db.add(new_term)
-                        
-                        chapter.processed_at = datetime.now(timezone.utc)
-                        job_item.result = {"terms_extracted": len(terms)}
+                    result = process_chapter_sync(job_item.item_id, db)
+                    if "error" in result:
+                        raise Exception(result["error"])
+                    job_item.result = result
                 
                 job_item.status = "completed"
                 job_item.completed_at = datetime.now(timezone.utc)
