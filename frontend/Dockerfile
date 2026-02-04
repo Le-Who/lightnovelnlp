@@ -6,17 +6,17 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy dependency definitions
+# Copy dependency definitions first to leverage Docker cache
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
+# Install dependencies (frozen-lockfile ensures reproducibility)
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy the rest of the source code
 COPY . .
 
-# Build argument for API URL
-ARG VITE_API_URL
+# Build argument for API URL (required for Vite at build time)
+ARG VITE_API_URL=https://p01--lightnovelnlp--95w5j7vcjd9s.code.run
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build the application
@@ -28,10 +28,10 @@ FROM nginx:alpine
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx config
+# Copy nginx config (ensure this file exists in your frontend directory)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port
+# Expose port 8080 (standard for cloud runners)
 EXPOSE 8080
 
 # Start Nginx
