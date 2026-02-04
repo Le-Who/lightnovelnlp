@@ -19,9 +19,6 @@ COPY . .
 ARG VITE_API_URL=https://p01--lightnovelnlp--95w5j7vcjd9s.code.run
 ENV VITE_API_URL=$VITE_API_URL
 
-# Debug: List all files in /app to verify what was copied
-RUN ls -R /app
-
 # Build the application
 RUN pnpm run build
 
