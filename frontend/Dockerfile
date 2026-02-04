@@ -1,36 +1,38 @@
-# Этап сборки
-FROM node:18-alpine AS builder
+# Stage 1: Builder
+FROM node:20-alpine AS builder
 
-# Устанавливаем рабочую директорию
+# Enable pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
-# Копируем файлы зависимостей
-COPY package*.json ./
+# Copy dependency definitions
+COPY package.json pnpm-lock.yaml ./
 
-# Устанавливаем зависимости
-RUN npm install
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
-# Копируем исходный код
+# Copy source code
 COPY . .
 
-# API URL для сборки (передается через Build Arguments в Northflank)
-ARG VITE_API_URL=https://p01--lightnovelnlp--95w5j7vcjd9s.code.run
+# Build argument for API URL
+ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-# Собираем приложение
-RUN npm run build
+# Build the application
+RUN pnpm run build
 
-# Этап продакшена
+# Stage 2: Production
 FROM nginx:alpine
 
-# Копируем собранные файлы
+# Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Копируем конфигурацию nginx
+# Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Открываем порт
+# Expose port
 EXPOSE 8080
 
-# Запускаем nginx
+# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
