@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import api from '../services/apiClient'
 
 export default function ChapterManager({ projectId }) {
@@ -12,6 +12,7 @@ export default function ChapterManager({ projectId }) {
   const [selectedFile, setSelectedFile] = useState(null)
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
   const [activePolling, setActivePolling] = useState({})  // chapterId -> true/false
+  const modalRef = useRef(null)
 
   // Статус для отображения
   const getStatusLabel = (status) => {
@@ -221,6 +222,22 @@ export default function ChapterManager({ projectId }) {
     setPreviewData(null)
   }
 
+  useEffect(() => {
+    if (previewData && modalRef.current) {
+      modalRef.current.focus()
+    }
+  }, [previewData])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && previewData) {
+        setPreviewData(null)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [previewData])
+
   if (loading) return <div>Загрузка глав...</div>
 
   return (
@@ -231,13 +248,17 @@ export default function ChapterManager({ projectId }) {
       <form onSubmit={createChapter} style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
         <h4>Добавить главу</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label htmlFor="chapter-title" style={{ fontWeight: 500 }}>Название главы</label>
           <input
+            id="chapter-title"
             value={newChapter.title}
             onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
             placeholder="Название главы"
             style={{ padding: 8 }}
           />
+          <label htmlFor="chapter-text" style={{ fontWeight: 500 }}>Оригинальный текст главы</label>
           <textarea
+            id="chapter-text"
             value={newChapter.original_text}
             onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
             placeholder="Оригинальный текст главы"
@@ -254,10 +275,11 @@ export default function ChapterManager({ projectId }) {
       <div style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
         <h4>Загрузить главы из файла</h4>
         <div style={{ marginBottom: 10 }}>
-          <label style={{ display: 'block', marginBottom: 5 }}>
+          <label htmlFor="chapter-pattern" style={{ display: 'block', marginBottom: 5 }}>
             Паттерн разделения глав:
           </label>
           <input
+            id="chapter-pattern"
             type="text"
             value={chapterPattern}
             onChange={(e) => setChapterPattern(e.target.value)}
@@ -336,6 +358,7 @@ export default function ChapterManager({ projectId }) {
                   <button
                     onClick={() => analyzeChapter(chapter.id)}
                     disabled={!!analyzing[chapter.id]}
+                    aria-label={`Анализировать главу "${chapter.title}"`}
                     style={{
                       padding: '8px 16px',
                       fontSize: '0.9em',
@@ -351,6 +374,7 @@ export default function ChapterManager({ projectId }) {
 
                   <button
                     onClick={() => previewTranslation(chapter.id)}
+                    aria-label={`Предварительный просмотр главы "${chapter.title}"`}
                     style={{
                       padding: '8px 16px',
                       fontSize: '0.9em',
@@ -366,6 +390,7 @@ export default function ChapterManager({ projectId }) {
                   <button
                     onClick={() => translateChapter(chapter.id)}
                     disabled={!!translating[chapter.id]}
+                    aria-label={`Перевести главу "${chapter.title}"`}
                     style={{
                       padding: '8px 16px',
                       fontSize: '0.9em',
@@ -387,18 +412,26 @@ export default function ChapterManager({ projectId }) {
 
       {/* Модальное окно предварительного просмотра */}
       {previewData && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
+        <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preview-modal-title"
+          tabIndex={-1}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            outline: 'none'
+          }}
+        >
           <div style={{
             backgroundColor: 'white',
             padding: 24,
@@ -408,8 +441,12 @@ export default function ChapterManager({ projectId }) {
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3>Предварительный просмотр перевода</h3>
-              <button onClick={closePreview} style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f44336', color: 'white', borderRadius: 4 }}>
+              <h3 id="preview-modal-title">Предварительный просмотр перевода</h3>
+              <button
+                onClick={closePreview}
+                aria-label="Закрыть предпросмотр"
+                style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f44336', color: 'white', borderRadius: 4 }}
+              >
                 ✕
               </button>
             </div>
