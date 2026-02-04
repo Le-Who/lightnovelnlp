@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils.js'
 
 const variants = {
   default: 'border-transparent bg-slate-900 text-slate-50 hover:bg-slate-900/80',
