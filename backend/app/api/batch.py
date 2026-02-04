@@ -311,3 +311,16 @@ def get_batch_job_status(job_id: int, db: Session = Depends(get_db)) -> dict:
             for item in job_items
         ]
     }
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_batch_job(job_id: int, db: Session = Depends(get_db)):
+    """Удалить пакетную задачу и все связанные элементы."""
+    batch_job = db.get(BatchJob, job_id)
+    if not batch_job:
+        raise HTTPException(status_code=404, detail="Batch job not found")
+    
+    # Cascade delete is configured in model relationship
+    db.delete(batch_job)
+    db.commit()
+    return None
