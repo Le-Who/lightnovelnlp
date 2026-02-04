@@ -230,20 +230,28 @@ export default function ChapterManager({ projectId }) {
       {/* Форма создания главы */}
       <form onSubmit={createChapter} style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
         <h4>Добавить главу</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input
-            value={newChapter.title}
-            onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="Название главы"
-            style={{ padding: 8 }}
-          />
-          <textarea
-            value={newChapter.original_text}
-            onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
-            placeholder="Оригинальный текст главы"
-            rows={5}
-            style={{ padding: 8, resize: 'vertical' }}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label htmlFor="chapter-title" style={{ fontSize: '0.9em', fontWeight: 500 }}>Название главы</label>
+            <input
+              id="chapter-title"
+              value={newChapter.title}
+              onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Название главы"
+              style={{ padding: 8 }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label htmlFor="chapter-text" style={{ fontSize: '0.9em', fontWeight: 500 }}>Оригинальный текст главы</label>
+            <textarea
+              id="chapter-text"
+              value={newChapter.original_text}
+              onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
+              placeholder="Оригинальный текст главы"
+              rows={5}
+              style={{ padding: 8, resize: 'vertical' }}
+            />
+          </div>
           <button type="submit" style={{ padding: 8, alignSelf: 'flex-start' }}>
             Добавить главу
           </button>
@@ -254,10 +262,11 @@ export default function ChapterManager({ projectId }) {
       <div style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
         <h4>Загрузить главы из файла</h4>
         <div style={{ marginBottom: 10 }}>
-          <label style={{ display: 'block', marginBottom: 5 }}>
+          <label htmlFor="chapter-pattern" style={{ display: 'block', marginBottom: 5 }}>
             Паттерн разделения глав:
           </label>
           <input
+            id="chapter-pattern"
             type="text"
             value={chapterPattern}
             onChange={(e) => setChapterPattern(e.target.value)}
@@ -387,18 +396,23 @@ export default function ChapterManager({ projectId }) {
 
       {/* Модальное окно предварительного просмотра */}
       {previewData && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preview-title"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000
+          }}
+        >
           <div style={{
             backgroundColor: 'white',
             padding: 24,
@@ -408,8 +422,12 @@ export default function ChapterManager({ projectId }) {
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3>Предварительный просмотр перевода</h3>
-              <button onClick={closePreview} style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f44336', color: 'white', borderRadius: 4 }}>
+              <h3 id="preview-title">Предварительный просмотр перевода</h3>
+              <button
+                onClick={closePreview}
+                aria-label="Закрыть предпросмотр"
+                style={{ padding: '8px 16px', border: 'none', backgroundColor: '#f44336', color: 'white', borderRadius: 4 }}
+              >
                 ✕
               </button>
             </div>
