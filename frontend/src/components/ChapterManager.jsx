@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
 import api from '../services/apiClient'
+import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
+import { Button } from './ui/Button'
+import { Input } from './ui/Input'
+import { Textarea } from './ui/Textarea'
+import { Badge } from './ui/Badge'
+import { Label } from './ui/Label'
+import { Modal } from './ui/Modal'
+import { Spinner } from './ui/Spinner'
+import { Alert } from './ui/Alert'
+import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, AlertCircle } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
@@ -11,10 +21,9 @@ export default function ChapterManager({ projectId }) {
   const [uploadingChapters, setUploadingChapters] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
-  const [activePolling, setActivePolling] = useState({})  // chapterId -> true/false
   const modalRef = useRef(null)
 
-  // Статус для отображения
+  // Status mapping
   const getStatusLabel = (status) => {
     switch (status) {
       case 'pending': return 'Ожидание...'
@@ -85,7 +94,7 @@ export default function ChapterManager({ projectId }) {
 
       alert(`Успешно загружено ${res.data.chapters_created} глав!`)
       setSelectedFile(null)
-      loadChapters() // Перезагружаем список глав
+      loadChapters() // Reload list
     } catch (e) {
       console.error('Error uploading chapters:', e)
       if (e.response?.data?.detail) {
@@ -112,10 +121,8 @@ export default function ChapterManager({ projectId }) {
     setAnalyzing(prev => ({ ...prev, [chapterId]: 'pending' }))
 
     try {
-      // Запускаем async анализ
       await api.post(`/processing/chapters/${chapterId}/analyze-async`)
 
-      // Начинаем polling статуса
       const pollStatus = async () => {
         try {
           const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
@@ -124,18 +131,14 @@ export default function ChapterManager({ projectId }) {
           setAnalyzing(prev => ({ ...prev, [chapterId]: status }))
 
           if (status === 'completed') {
-            // Анализ завершен
             loadChapters()
             setTimeout(() => {
               setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-              alert('Анализ завершен успешно!')
             }, 1000)
           } else if (status === 'failed') {
-            // Ошибка
             setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
             alert(`Ошибка анализа: ${statusRes.data.analysis_error || 'Неизвестная ошибка'}`)
           } else {
-            // Продолжаем polling
             setTimeout(pollStatus, 2000)
           }
         } catch (e) {
@@ -144,17 +147,12 @@ export default function ChapterManager({ projectId }) {
         }
       }
 
-      // Начинаем polling через 500ms
       setTimeout(pollStatus, 500)
 
     } catch (e) {
       console.error('Error starting analysis:', e)
       setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-      if (e.response?.data?.detail) {
-        alert(`Ошибка анализа: ${e.response.data.detail}`)
-      } else {
-        alert('Ошибка запуска анализа')
-      }
+      alert('Ошибка запуска анализа')
     }
   }
 
@@ -162,10 +160,8 @@ export default function ChapterManager({ projectId }) {
     setTranslating(prev => ({ ...prev, [chapterId]: 'pending' }))
 
     try {
-      // Запускаем async перевод
       await api.post(`/translation/chapters/${chapterId}/translate-async`)
 
-      // Начинаем polling статуса
       const pollStatus = async () => {
         try {
           const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
@@ -174,18 +170,14 @@ export default function ChapterManager({ projectId }) {
           setTranslating(prev => ({ ...prev, [chapterId]: status }))
 
           if (status === 'completed') {
-            // Перевод завершен
             loadChapters()
             setTimeout(() => {
               setTranslating(prev => ({ ...prev, [chapterId]: null }))
-              alert('Перевод завершен успешно!')
             }, 1000)
           } else if (status === 'failed') {
-            // Ошибка
             setTranslating(prev => ({ ...prev, [chapterId]: null }))
             alert(`Ошибка перевода: ${statusRes.data.translation_error || 'Неизвестная ошибка'}`)
           } else {
-            // Продолжаем polling
             setTimeout(pollStatus, 2000)
           }
         } catch (e) {
@@ -194,17 +186,12 @@ export default function ChapterManager({ projectId }) {
         }
       }
 
-      // Начинаем polling через 500ms
       setTimeout(pollStatus, 500)
 
     } catch (e) {
       console.error('Error starting translation:', e)
       setTranslating(prev => ({ ...prev, [chapterId]: null }))
-      if (e.response?.data?.detail) {
-        alert(`Ошибка перевода: ${e.response.data.detail}`)
-      } else {
-        alert('Ошибка перевода')
-      }
+      alert('Ошибка перевода')
     }
   }
 

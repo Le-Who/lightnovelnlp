@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import api from '../services/apiClient'
+import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
+import { Button } from './ui/Button'
+import { Badge } from './ui/Badge'
+import { Spinner } from './ui/Spinner'
+import { Alert, AlertTitle, AlertDescription } from './ui/Alert'
+import { Play, XCircle, RefreshCw } from 'lucide-react'
 
 export default function BatchProcessor({ projectId }) {
   const [jobs, setJobs] = useState([])
@@ -13,7 +19,6 @@ export default function BatchProcessor({ projectId }) {
       const res = await api.get(`/batch/${projectId}/jobs`)
       setJobs(res.data)
       
-      // Определяем активные задачи для отслеживания
       const active = new Set()
       res.data.forEach(job => {
         if (job.status === 'pending' || job.status === 'running') {
@@ -34,7 +39,6 @@ export default function BatchProcessor({ projectId }) {
     }
   }, [projectId])
 
-  // Отслеживание активных задач
   useEffect(() => {
     if (activeJobs.size === 0) return
 
@@ -51,14 +55,13 @@ export default function BatchProcessor({ projectId }) {
         })
         setActiveJobs(stillActive)
         
-        // Если нет активных задач, останавливаем интервал
         if (stillActive.size === 0) {
           clearInterval(interval)
         }
       } catch (e) {
         console.error('Error updating jobs:', e)
       }
-    }, 2000) // Обновляем каждые 2 секунды
+    }, 2000)
 
     return () => clearInterval(interval)
   }, [activeJobs, projectId])
@@ -106,25 +109,14 @@ export default function BatchProcessor({ projectId }) {
     }
   }
 
-  const getStatusColor = (status) => {
+  const getStatusBadge = (status) => {
     switch (status) {
-      case 'completed': return '#4CAF50'
-      case 'running': return '#2196F3'
-      case 'pending': return '#FF9800'
-      case 'failed': return '#f44336'
-      case 'cancelled': return '#9E9E9E'
-      default: return '#9E9E9E'
-    }
-  }
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'completed': return 'Завершено'
-      case 'running': return 'Выполняется'
-      case 'pending': return 'Ожидает'
-      case 'failed': return 'Ошибка'
-      case 'cancelled': return 'Отменено'
-      default: return status
+      case 'completed': return <Badge variant="success">Завершено</Badge>
+      case 'running': return <Badge variant="info">Выполняется</Badge>
+      case 'pending': return <Badge variant="warning">Ожидает</Badge>
+      case 'failed': return <Badge variant="destructive">Ошибка</Badge>
+      case 'cancelled': return <Badge variant="secondary">Отменено</Badge>
+      default: return <Badge variant="outline">{status}</Badge>
     }
   }
 
@@ -136,154 +128,114 @@ export default function BatchProcessor({ projectId }) {
     }
   }
 
-  if (loading) return <div>Загрузка задач...</div>
+  if (loading && jobs.length === 0) return <div className="flex justify-center p-8"><Spinner /></div>
 
   return (
-    <div>
-      <h3>Пакетная обработка</h3>
-      
-      {/* Создание задач */}
-      <div style={{ 
-        border: '1px solid #ddd', 
-        padding: 16, 
-        borderRadius: 8, 
-        marginBottom: 24,
-        backgroundColor: '#f9f9f9'
-      }}>
-        <h4 style={{ margin: '0 0 16px 0' }}>Создать задачу</h4>
-        
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            onClick={createAnalyzeJob}
-            disabled={creatingJob}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: creatingJob ? 'not-allowed' : 'pointer',
-              opacity: creatingJob ? 0.7 : 1
-            }}
-          >
-            {creatingJob ? 'Создание...' : 'Анализ всех глав'}
-          </button>
-          
-          <button
-            onClick={createTranslateJob}
-            disabled={creatingJob}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: creatingJob ? 'not-allowed' : 'pointer',
-              opacity: creatingJob ? 0.7 : 1
-            }}
-          >
-            {creatingJob ? 'Создание...' : 'Перевод всех глав'}
-          </button>
-        </div>
-        
-        <div style={{ fontSize: '0.9em', color: '#666', marginTop: 12 }}>
-          <p><strong>Анализ глав:</strong> Извлечение терминов, анализ связей, создание саммари</p>
-          <p><strong>Перевод глав:</strong> Перевод всех непереведенных глав с использованием глоссария</p>
-        </div>
-      </div>
-
-      {/* Список задач */}
-      {jobs.length === 0 ? (
-        <p>Задачи отсутствуют. Создайте первую задачу пакетной обработки.</p>
-      ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {jobs.map((job) => (
-            <div 
-              key={job.id} 
-              style={{ 
-                border: '1px solid #ddd', 
-                padding: 16, 
-                borderRadius: 8,
-                backgroundColor: 'white'
-              }}
+    <div className="space-y-6">
+      <Card className="bg-slate-50 border-dashed">
+        <CardHeader>
+          <CardTitle>Создать задачу</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4 mb-4">
+            <Button
+              onClick={createAnalyzeJob}
+              disabled={creatingJob}
+              className="bg-green-600 hover:bg-green-700"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div>
-                  <h4 style={{ margin: '0 0 4px 0' }}>
-                    {getJobTypeLabel(job.job_type)}
-                  </h4>
-                  <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
-                    Создана: {new Date(job.created_at).toLocaleString()}
-                  </div>
-                  {job.started_at && (
-                    <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
-                      Начата: {new Date(job.started_at).toLocaleString()}
+              {creatingJob ? <Spinner className="mr-2" /> : <Play className="mr-2 h-4 w-4" />}
+              Анализ всех глав
+            </Button>
+
+            <Button
+              onClick={createTranslateJob}
+              disabled={creatingJob}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {creatingJob ? <Spinner className="mr-2" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Перевод всех глав
+            </Button>
+          </div>
+          
+          <div className="text-sm text-slate-500 space-y-1">
+            <p><strong>Анализ глав:</strong> Извлечение терминов, анализ связей, создание саммари</p>
+            <p><strong>Перевод глав:</strong> Перевод всех непереведенных глав с использованием глоссария</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold tracking-tight">История задач</h3>
+        {jobs.length === 0 ? (
+          <div className="text-center py-12 border border-dashed rounded-lg text-slate-500">
+            Задачи отсутствуют.
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {jobs.map((job) => (
+              <Card key={job.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                         <h4 className="font-semibold">{getJobTypeLabel(job.job_type)}</h4>
+                         {getStatusBadge(job.status)}
+                      </div>
+
+                      <div className="text-xs text-slate-500 flex gap-4">
+                        <span>Создана: {new Date(job.created_at).toLocaleString()}</span>
+                        {job.started_at && <span>Начата: {new Date(job.started_at).toLocaleString()}</span>}
+                        {job.completed_at && <span>Завершена: {new Date(job.completed_at).toLocaleString()}</span>}
+                      </div>
+
+                      <div className="text-sm font-medium mt-2">
+                        Прогресс: {job.progress_percentage}%
+                        <span className="text-slate-400 font-normal ml-2">
+                          ({job.processed_items} / {job.total_items})
+                        </span>
+                      </div>
+
+                      {/* Simple Progress Bar */}
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden max-w-md mt-1">
+                        <div
+                          className={`h-full transition-all duration-500 ${job.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'}`}
+                          style={{ width: `${job.progress_percentage}%` }}
+                        />
+                      </div>
+
+                      {job.failed_items > 0 && (
+                        <div className="text-xs text-red-500 font-medium">
+                          Ошибок: {job.failed_items}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {job.completed_at && (
-                    <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
-                      Завершена: {new Date(job.completed_at).toLocaleString()}
+
+                    <div className="flex flex-col gap-2 items-end">
+                      {(job.status === 'pending' || job.status === 'running') && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => cancelJob(job.id)}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Отменить
+                        </Button>
+                      )}
                     </div>
-                  )}
-                </div>
-                
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ 
-                    fontSize: '0.9em', 
-                    color: getStatusColor(job.status),
-                    fontWeight: 'bold',
-                    marginBottom: 8
-                  }}>
-                    {getStatusLabel(job.status)}
                   </div>
                   
-                  <div style={{ fontSize: '0.8em', color: '#666', marginBottom: 4 }}>
-                    Прогресс: {job.progress_percentage}%
-                  </div>
-                  <div style={{ fontSize: '0.8em', color: '#666', marginBottom: 4 }}>
-                    Обработано: {job.processed_items} / {job.total_items}
-                  </div>
-                  {job.failed_items > 0 && (
-                    <div style={{ fontSize: '0.8em', color: '#f44336', marginBottom: 8 }}>
-                      Ошибок: {job.failed_items}
-                    </div>
+                  {job.error_message && (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertTitle>Ошибка</AlertTitle>
+                      <AlertDescription>{job.error_message}</AlertDescription>
+                    </Alert>
                   )}
-                  
-                  {(job.status === 'pending' || job.status === 'running') && (
-                    <button
-                      onClick={() => cancelJob(job.id)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: '0.9em'
-                      }}
-                    >
-                      Отменить
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              {job.error_message && (
-                <div style={{ 
-                  fontSize: '0.9em', 
-                  color: '#f44336', 
-                  backgroundColor: '#ffebee',
-                  padding: 8,
-                  borderRadius: 4,
-                  marginTop: 8
-                }}>
-                  <strong>Ошибка:</strong> {job.error_message}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

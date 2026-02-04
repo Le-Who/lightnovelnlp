@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import api from '../services/apiClient'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './ui/Table'
+import { Button } from './ui/Button'
+import { Input } from './ui/Input'
+import { Badge } from './ui/Badge'
+import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
+import { Spinner } from './ui/Spinner'
+import { Save, X, Edit2, Check, Trash2 } from 'lucide-react'
 
 export default function GlossaryEditor({ projectId }) {
   const [terms, setTerms] = useState([])
@@ -34,7 +41,7 @@ export default function GlossaryEditor({ projectId }) {
   const approveTerm = async (termId) => {
     try {
       await api.post(`/glossary/terms/${termId}/approve`)
-      loadTerms() // Перезагружаем список
+      loadTerms()
     } catch (e) {
       console.error('Error approving term:', e)
       alert('Ошибка утверждения термина')
@@ -64,8 +71,9 @@ export default function GlossaryEditor({ projectId }) {
     }
   }
 
-  const getStatusColor = (status) => {
-    return status === 'approved' ? 'green' : 'orange'
+  const getStatusBadge = (status) => {
+    if (status === 'approved') return <Badge variant="success">Утвержден</Badge>
+    return <Badge variant="warning">Ожидает</Badge>
   }
 
   const getCategoryLabel = (category) => {
@@ -79,137 +87,143 @@ export default function GlossaryEditor({ projectId }) {
     return labels[category] || category
   }
 
-  if (loading) return <div>Загрузка глоссария...</div>
+  if (loading && terms.length === 0) return <div className="flex justify-center p-8"><Spinner /></div>
 
   return (
-    <div>
-      <h3>Глоссарий проекта</h3>
-      
-      {/* Панель сортировки */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label>Сортировка по:</label>
-          <select 
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value)}
-            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ddd' }}
-          >
-            <option value="id">ID</option>
-            <option value="source_term">Название</option>
-            <option value="frequency">Частота</option>
-            <option value="created_at">Дата создания</option>
-          </select>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label>Порядок:</label>
-          <select 
-            value={sortOrder} 
-            onChange={(e) => setSortOrder(e.target.value)}
-            style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ddd' }}
-          >
-            <option value="asc">По возрастанию</option>
-            <option value="desc">По убыванию</option>
-          </select>
-        </div>
-      </div>
-      
-      {terms.length === 0 ? (
-        <p>Термины отсутствуют. Запустите анализ главы для извлечения терминов.</p>
-      ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {terms.map((term) => (
-            <div 
-              key={term.id} 
-              style={{ 
-                border: '1px solid #ddd', 
-                padding: 16, 
-                borderRadius: 8,
-                backgroundColor: term.status === 'approved' ? '#f0f8f0' : '#fff8f0'
-              }}
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <CardTitle>Глоссарий</CardTitle>
+
+          <div className="flex gap-2 items-center text-sm">
+            <span className="text-slate-500">Сортировка:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                    <strong>{term.source_term}</strong>
-                    <span style={{ color: 'gray' }}>→</span>
-                    {editingTerm?.id === term.id ? (
-                      <input
-                        value={editingTerm.translated_term}
-                        onChange={(e) => setEditingTerm({
-                          ...editingTerm,
-                          translated_term: e.target.value
-                        })}
-                        style={{ flex: 1 }}
-                      />
-                    ) : (
-                      <strong>{term.translated_term}</strong>
-                    )}
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: 16, fontSize: '0.9em', color: '#666' }}>
-                    <span>Категория: {getCategoryLabel(term.category)}</span>
-                    <span style={{ color: getStatusColor(term.status) }}>
-                      Статус: {term.status === 'approved' ? 'Утвержден' : 'Ожидает'}
-                    </span>
-                    <span>Частота: {term.frequency || 1}</span>
-                  </div>
-                  
-                  {term.context && (
-                    <div style={{ marginTop: 8, fontSize: '0.9em', color: '#666' }}>
-                      <strong>Контекст:</strong> {term.context}
-                    </div>
-                  )}
-                </div>
-                
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {editingTerm?.id === term.id ? (
-                    <>
-                      <button 
-                        onClick={() => updateTerm(term.id, {
-                          translated_term: editingTerm.translated_term
-                        })}
-                        style={{ padding: '4px 8px', fontSize: '0.8em' }}
-                      >
-                        Сохранить
-                      </button>
-                      <button 
-                        onClick={() => setEditingTerm(null)}
-                        style={{ padding: '4px 8px', fontSize: '0.8em' }}
-                      >
-                        Отмена
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button 
-                        onClick={() => setEditingTerm(term)}
-                        style={{ padding: '4px 8px', fontSize: '0.8em' }}
-                      >
-                        Редактировать
-                      </button>
-                      {term.status === 'pending' && (
-                        <button 
-                          onClick={() => approveTerm(term.id)}
-                          style={{ padding: '4px 8px', fontSize: '0.8em', backgroundColor: '#4CAF50', color: 'white' }}
-                        >
-                          Утвердить
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => deleteTerm(term.id)}
-                        style={{ padding: '4px 8px', fontSize: '0.8em', backgroundColor: '#f44336', color: 'white' }}
-                      >
-                        Удалить
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+              <option value="id">ID</option>
+              <option value="source_term">Название</option>
+              <option value="frequency">Частота</option>
+              <option value="created_at">Дата создания</option>
+            </select>
+
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+            >
+              <option value="asc">По возр.</option>
+              <option value="desc">По убыв.</option>
+            </select>
+          </div>
         </div>
-      )}
-    </div>
+      </CardHeader>
+      <CardContent>
+        {terms.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            Термины отсутствуют. Запустите анализ главы для извлечения терминов.
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Оригинал</TableHead>
+                  <TableHead>Перевод</TableHead>
+                  <TableHead>Категория</TableHead>
+                  <TableHead>Частота</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead className="text-right">Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {terms.map((term) => (
+                  <TableRow key={term.id}>
+                    <TableCell className="font-medium">
+                      {term.source_term}
+                      {term.context && (
+                         <div className="text-xs text-slate-500 mt-1 max-w-xs truncate" title={term.context}>
+                           {term.context}
+                         </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingTerm?.id === term.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editingTerm.translated_term}
+                            onChange={(e) => setEditingTerm({
+                              ...editingTerm,
+                              translated_term: e.target.value
+                            })}
+                            className="h-8 w-40"
+                          />
+                        </div>
+                      ) : (
+                        term.translated_term
+                      )}
+                    </TableCell>
+                    <TableCell>{getCategoryLabel(term.category)}</TableCell>
+                    <TableCell>{term.frequency || 1}</TableCell>
+                    <TableCell>{getStatusBadge(term.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {editingTerm?.id === term.id ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => updateTerm(term.id, {
+                                translated_term: editingTerm.translated_term
+                              })}
+                            >
+                              <Save className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingTerm(null)}
+                            >
+                              <X className="h-4 w-4 text-slate-500" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingTerm(term)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            {term.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => approveTerm(term.id)}
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteTerm(term.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
