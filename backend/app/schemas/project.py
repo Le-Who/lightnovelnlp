@@ -8,7 +8,7 @@ from app.models.project import ProjectGenre
 
 class ProjectBase(BaseModel):
     name: str
-    genre: ProjectGenre = ProjectGenre.OTHER
+    genre: str = "other"
 
 
 class ProjectCreate(ProjectBase):

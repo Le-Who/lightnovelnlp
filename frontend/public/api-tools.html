@@ -225,7 +225,9 @@
                 </div>
                 <div class="form-group">
                     <label for="projectGenre">Жанр проекта:</label>
-                    <select id="projectGenre">
+                    <input list="genreOptions" id="projectGenre" placeholder="Выберите или введите свой жанр..."
+                        class="full-width">
+                    <datalist id="genreOptions">
                         <option value="fantasy">Фантастика</option>
                         <option value="scifi">Научная фантастика</option>
                         <option value="romance">Романтика</option>
@@ -234,8 +236,12 @@
                         <option value="horror">Ужасы</option>
                         <option value="slice_of_life">Повседневность</option>
                         <option value="adventure">Приключения</option>
+                        <option value="wuxia">Wuxia (Китайское боевое фэнтези)</option>
+                        <option value="xianxia">Xianxia (Культивация бессмертия)</option>
+                        <option value="litrpg">LitRPG (Игровые механики)</option>
+                        <option value="isekai">Isekai (Попаданцы)</option>
                         <option value="other">Другое</option>
-                    </select>
+                    </datalist>
                 </div>
                 <button onclick="createProject()">Создать проект</button>
             </div>
@@ -1510,6 +1516,10 @@
                 'horror': 'Ужасы',
                 'slice_of_life': 'Повседневность',
                 'adventure': 'Приключения',
+                'wuxia': 'Wuxia (Боевое фэнтези)',
+                'xianxia': 'Xianxia (Культивация)',
+                'litrpg': 'LitRPG',
+                'isekai': 'Isekai (Попаданцы)',
                 'other': 'Другое'
             };
             return labels[genre] || genre;
