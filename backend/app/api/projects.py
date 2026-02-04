@@ -178,12 +178,22 @@ def upload_chapters_from_file(
             detail="Only .txt files are supported"
         )
     
+    # 🛡️ Security: Validate chapter_pattern to prevent ReDoS
+    if not chapter_pattern:
+        raise HTTPException(status_code=400, detail="Chapter pattern cannot be empty")
+
+    if len(chapter_pattern) > 50:
+        raise HTTPException(status_code=400, detail="Chapter pattern is too long (max 50 chars)")
+
     try:
         # Читаем содержимое файла
         content = file.file.read().decode('utf-8')
         
         # Разделяем текст на главы по паттерну
-        pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
+        try:
+            pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
+        except re.error as e:
+            raise HTTPException(status_code=400, detail=f"Invalid regex pattern: {str(e)}")
         # Находим все совпадения с их позициями
         matches = list(pattern.finditer(content))
         
