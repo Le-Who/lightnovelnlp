@@ -62,25 +62,26 @@ class CacheService:
 
     def get(self, key: str) -> Optional[Any]:
         """Получить значение из кэша."""
+        rest_success = False
+        value = None
+        
         # Сначала пробуем REST, если он доступен
         if self.rest_client:
             try:
                 value = self.rest_client.get(key)
+                rest_success = True  # REST сработал, fallback не нужен
             except Exception as e:
                 self.logger.warning(f"REST cache get error, fallback to TCP: {e}")
-                value = None
-        else:
-            value = None
 
-        if value is None:
-            # Fallback: TCP
+        # Fallback: TCP - только если REST не сработал
+        if not rest_success:
             try:
                 self._reconnect_if_needed()
                 value = self.redis_client.get(key)
             except Exception as e:
                 # Пытаемся переподключиться и повторить один раз
                 self.logger.debug(f"Cache get error (will retry): {e}")
-                time.sleep(0.5)  # More delay before retry
+                time.sleep(0.5)
                 self._reconnect_if_needed()
                 try:
                     value = self.redis_client.get(key)
@@ -178,19 +179,20 @@ class CacheService:
                 return bool(res)
             except Exception as e:
                 self.logger.warning(f"REST cache set error, fallback to TCP: {e}")
-
-        # TCP fallback
-        try:
-            self._reconnect_if_needed()
-            return bool(self.redis_client.setex(key, ttl, serialized_value))
-        except Exception as e:
-            self.logger.warning(f"Cache set error (will retry): {e}")
-            self._reconnect_if_needed()
+        else:
+            # TCP fallback - только если REST не доступен
             try:
+                self._reconnect_if_needed()
                 return bool(self.redis_client.setex(key, ttl, serialized_value))
-            except Exception as e2:
-                self.logger.warning(f"Cache set failed after retry: {e2}")
-                return False
+            except Exception as e:
+                self.logger.warning(f"Cache set error (will retry): {e}")
+                self._reconnect_if_needed()
+                try:
+                    return bool(self.redis_client.setex(key, ttl, serialized_value))
+                except Exception as e2:
+                    self.logger.warning(f"Cache set failed after retry: {e2}")
+                    return False
+        return False
 
     def increment_counter(self, key: str, ttl: int = 60) -> int:
         """Атомарно инкрементирует счетчик и устанавливает TTL при первом инкременте.
@@ -238,17 +240,19 @@ class CacheService:
                 return bool(res)
             except Exception as e:
                 self.logger.warning(f"REST cache delete error, fallback to TCP: {e}")
-        # TCP fallback
-        try:
-            return bool(self.redis_client.delete(key))
-        except Exception as e:
-            self.logger.warning(f"Cache delete error (will retry): {e}")
-            self._reconnect_if_needed()
+        else:
+            # TCP fallback - только если REST не доступен
             try:
                 return bool(self.redis_client.delete(key))
-            except Exception as e2:
-                self.logger.warning(f"Cache delete failed after retry: {e2}")
-                return False
+            except Exception as e:
+                self.logger.warning(f"Cache delete error (will retry): {e}")
+                self._reconnect_if_needed()
+                try:
+                    return bool(self.redis_client.delete(key))
+                except Exception as e2:
+                    self.logger.warning(f"Cache delete failed after retry: {e2}")
+                    return False
+        return False
 
     def delete_pattern(self, pattern: str) -> int:
         """Удалить все ключи по паттерну."""

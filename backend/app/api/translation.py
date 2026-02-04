@@ -156,7 +156,7 @@ def get_translation_review(chapter_id: int) -> dict:
     """Получить рецензию перевода главы."""
     # Проверяем кэш на наличие рецензии
     review_key = f"translation_review:{chapter_id}"
-    review_text = cache_service.get_cache(review_key)
+    review_text = cache_service.get(review_key)
     
     if not review_text:
         return {
