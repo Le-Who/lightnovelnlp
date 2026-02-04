@@ -2,6 +2,7 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils.js'
+import { ThemeToggle } from '../theme-toggle'
 
 const navItems = [
   { name: 'Проекты', href: '/', icon: LayoutDashboard },
@@ -12,9 +13,9 @@ export function Sidebar() {
   const pathname = location.pathname
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r bg-slate-50/50">
+    <div className="flex h-screen w-64 flex-col border-r border-border bg-muted/30">
       <div className="p-6">
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
           Ranobe Translator
         </h1>
       </div>
@@ -28,8 +29,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-slate-900 text-slate-50"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -38,8 +39,11 @@ export function Sidebar() {
           )
         })}
       </nav>
-      <div className="border-t p-4 text-xs text-slate-500 text-center">
-        &copy; 2024 LightNovel NLP
+      <div className="border-t border-border p-4">
+        <ThemeToggle />
+        <div className="mt-4 text-xs text-muted-foreground text-center">
+          &copy; 2024 LightNovel NLP
+        </div>
       </div>
     </div>
   )
