@@ -27,7 +27,7 @@ function Modal({ isOpen, onClose, title, children, className }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div
         className={cn(
-          "relative w-full max-w-lg rounded-lg border bg-white p-6 shadow-lg animate-in zoom-in-95 duration-200",
+          "relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg animate-in zoom-in-95 duration-200 text-foreground",
           className
         )}
         role="dialog"
@@ -38,7 +38,7 @@ function Modal({ isOpen, onClose, title, children, className }) {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-4 top-4 h-6 w-6 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500"
+            className="absolute right-4 top-4 h-6 w-6 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
             onClick={onClose}
           >
             <X className="h-4 w-4" />

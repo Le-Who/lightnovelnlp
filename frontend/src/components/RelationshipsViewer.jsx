@@ -53,16 +53,16 @@ export default function RelationshipsViewer({ projectId }) {
 
   const getRelationTypeColorClass = (type) => {
     const classes = {
-      'friend': 'bg-green-100 text-green-800 border-green-200',
-      'enemy': 'bg-red-100 text-red-800 border-red-200',
-      'family': 'bg-blue-100 text-blue-800 border-blue-200',
-      'location': 'bg-orange-100 text-orange-800 border-orange-200',
-      'skill_related': 'bg-purple-100 text-purple-800 border-purple-200',
-      'artifact_owner': 'bg-amber-100 text-amber-800 border-amber-200',
-      'teacher_student': 'bg-slate-100 text-slate-800 border-slate-200',
-      'rival': 'bg-pink-100 text-pink-800 border-pink-200',
-      'ally': 'bg-cyan-100 text-cyan-800 border-cyan-200',
-      'other': 'bg-gray-100 text-gray-800 border-gray-200'
+      'friend': 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+      'enemy': 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
+      'family': 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+      'location': 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
+      'skill_related': 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
+      'artifact_owner': 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
+      'teacher_student': 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+      'rival': 'bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800',
+      'ally': 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800',
+      'other': 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
     }
     return classes[type] || classes['other']
   }
@@ -71,7 +71,7 @@ export default function RelationshipsViewer({ projectId }) {
 
   if (relationships.length === 0) {
     return (
-      <div className="text-center py-12 border border-dashed rounded-lg text-slate-500">
+      <div className="text-center py-12 border border-dashed rounded-lg text-muted-foreground">
         Связи отсутствуют. Запустите анализ глав для выявления связей между терминами.
       </div>
     )
@@ -109,7 +109,7 @@ export default function RelationshipsViewer({ projectId }) {
               <select
                 value={selectedTerm || ''}
                 onChange={(e) => setSelectedTerm(e.target.value || null)}
-                className="h-9 w-full md:w-64 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+                className="h-9 w-full md:w-64 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
               >
                 <option value="">Все связи</option>
                 {terms.map(term => (
@@ -125,7 +125,7 @@ export default function RelationshipsViewer({ projectId }) {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="h-9 w-full md:w-48 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+                className="h-9 w-full md:w-48 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
               >
                 <option value="confidence">По уверенности</option>
                 <option value="source_term">По источнику</option>
@@ -155,24 +155,24 @@ export default function RelationshipsViewer({ projectId }) {
                     {getRelationTypeLabel(relationship.relation_type)}
                   </span>
                   {relationship.confidence && (
-                    <span className="text-xs text-slate-400">{relationship.confidence}%</span>
+                    <span className="text-xs text-muted-foreground">{relationship.confidence}%</span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 mb-2 font-medium">
+                <div className="flex items-center gap-2 mb-2 font-medium text-card-foreground">
                   <span>{sourceTerm.source_term}</span>
-                  <ArrowRight className="h-3 w-3 text-slate-400" />
+                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
                   <span>{targetTerm.source_term}</span>
                 </div>
 
-                <div className="text-xs text-slate-500 mb-3 flex items-center gap-2">
+                <div className="text-xs text-muted-foreground mb-3 flex items-center gap-2">
                   <span>{sourceTerm.translated_term}</span>
-                  <ArrowRight className="h-3 w-3 text-slate-300" />
+                  <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
                   <span>{targetTerm.translated_term}</span>
                 </div>
 
                 {relationship.context && (
-                  <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded italic border border-slate-100">
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded italic border border-border">
                     &quot;{relationship.context}&quot;
                   </div>
                 )}

@@ -132,7 +132,7 @@ export default function BatchProcessor({ projectId }) {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-slate-50 border-dashed">
+      <Card className="bg-muted/50 border-dashed">
         <CardHeader>
           <CardTitle>Создать задачу</CardTitle>
         </CardHeader>
@@ -141,7 +141,7 @@ export default function BatchProcessor({ projectId }) {
             <Button
               onClick={createAnalyzeJob}
               disabled={creatingJob}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 dark:text-white"
             >
               {creatingJob ? <Spinner className="mr-2" /> : <Play className="mr-2 h-4 w-4" />}
               Анализ всех глав
@@ -150,14 +150,14 @@ export default function BatchProcessor({ projectId }) {
             <Button
               onClick={createTranslateJob}
               disabled={creatingJob}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 dark:text-white"
             >
               {creatingJob ? <Spinner className="mr-2" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Перевод всех глав
             </Button>
           </div>
           
-          <div className="text-sm text-slate-500 space-y-1">
+          <div className="text-sm text-muted-foreground space-y-1">
             <p><strong>Анализ глав:</strong> Извлечение терминов, анализ связей, создание саммари</p>
             <p><strong>Перевод глав:</strong> Перевод всех непереведенных глав с использованием глоссария</p>
           </div>
@@ -165,9 +165,9 @@ export default function BatchProcessor({ projectId }) {
       </Card>
 
       <div className="space-y-4">
-        <h3 className="text-xl font-semibold tracking-tight">История задач</h3>
+        <h3 className="text-xl font-semibold tracking-tight text-foreground">История задач</h3>
         {jobs.length === 0 ? (
-          <div className="text-center py-12 border border-dashed rounded-lg text-slate-500">
+          <div className="text-center py-12 border border-dashed rounded-lg text-muted-foreground">
             Задачи отсутствуют.
           </div>
         ) : (
@@ -178,25 +178,25 @@ export default function BatchProcessor({ projectId }) {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
-                         <h4 className="font-semibold">{getJobTypeLabel(job.job_type)}</h4>
+                         <h4 className="font-semibold text-card-foreground">{getJobTypeLabel(job.job_type)}</h4>
                          {getStatusBadge(job.status)}
                       </div>
 
-                      <div className="text-xs text-slate-500 flex gap-4">
+                      <div className="text-xs text-muted-foreground flex gap-4">
                         <span>Создана: {new Date(job.created_at).toLocaleString()}</span>
                         {job.started_at && <span>Начата: {new Date(job.started_at).toLocaleString()}</span>}
                         {job.completed_at && <span>Завершена: {new Date(job.completed_at).toLocaleString()}</span>}
                       </div>
 
-                      <div className="text-sm font-medium mt-2">
+                      <div className="text-sm font-medium mt-2 text-card-foreground">
                         Прогресс: {job.progress_percentage}%
-                        <span className="text-slate-400 font-normal ml-2">
+                        <span className="text-muted-foreground/70 font-normal ml-2">
                           ({job.processed_items} / {job.total_items})
                         </span>
                       </div>
 
                       {/* Simple Progress Bar */}
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden max-w-md mt-1">
+                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden max-w-md mt-1">
                         <div
                           className={`h-full transition-all duration-500 ${job.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'}`}
                           style={{ width: `${job.progress_percentage}%` }}

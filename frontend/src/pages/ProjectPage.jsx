@@ -9,7 +9,6 @@ import RelationshipsViewer from '../components/RelationshipsViewer.jsx'
 import GlossaryVersionManager from '../components/GlossaryVersionManager.jsx'
 import BatchProcessor from '../components/BatchProcessor.jsx'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs'
-import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 
 export default function ProjectPage() {
@@ -37,16 +36,16 @@ export default function ProjectPage() {
 
   if (loading) return (
     <div className="flex h-[50vh] items-center justify-center">
-      <Spinner className="h-8 w-8 text-slate-400" />
+      <Spinner className="h-8 w-8 text-muted-foreground" />
     </div>
   )
 
   if (!project) return (
     <div className="flex flex-col items-center justify-center py-12">
-      <h2 className="text-xl font-semibold mb-2">Проект не найден</h2>
-      <Button variant="link" asChild>
-        <Link to="/">Вернуться на главную</Link>
-      </Button>
+      <h2 className="text-xl font-semibold mb-2 text-foreground">Проект не найден</h2>
+      <Link to="/" className="text-primary underline-offset-4 hover:underline">
+        Вернуться на главную
+      </Link>
     </div>
   )
 
@@ -55,15 +54,15 @@ export default function ProjectPage() {
       <div className="flex flex-col gap-2">
         <Link 
           to="/" 
-          className="inline-flex items-center text-sm text-slate-500 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Назад к проектам
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-            <p className="text-slate-500">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">{project.name}</h1>
+            <p className="text-muted-foreground">
               Создан: {new Date(project.created_at).toLocaleDateString()}
             </p>
           </div>
