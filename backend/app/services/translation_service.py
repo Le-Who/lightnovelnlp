@@ -161,17 +161,20 @@ class TranslationService:
         
         glossary_terms = GlossaryService.filter_terms_by_text(chapter.original_text, all_terms)
         
-        review_prompt = f"""
-        Please conduct a stylistic and grammatical review of the translation from Russian to English.
+        source_lang = chapter.project.source_language
+        target_lang = chapter.project.target_language
         
-        Original text (Russian):
+        review_prompt = f"""
+        Please conduct a stylistic and grammatical review of the translation from {source_lang} to {target_lang}.
+        
+        Original text ({source_lang}):
         {chapter.original_text[:1000]}...
         
-        Current translation (English):
+        Current translation ({target_lang}):
         {chapter.translated_text}
         
         Approved glossary terms:
-        {chr(10).join([f"- {t.source_term} → {t.translated_term}" for t in glossary_terms[:10]])}
+        {chr(10).join([f"- {t.source_term} -> {t.translated_term}" for t in glossary_terms[:10]])}
         
         Please analyze the translation and provide:
         1. Overall translation quality score (1-10)

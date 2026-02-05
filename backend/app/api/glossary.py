@@ -254,7 +254,8 @@ def create_glossary_version(project_id: int, version: GlossaryVersionCreate, db:
             "source_term": term.source_term,
             "translated_term": term.translated_term,
             "category": term.category,
-            "context": term.context
+            "context": term.context,
+            "frequency": term.frequency
         } for term in terms]
     )
     
@@ -283,6 +284,7 @@ def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> 
             translated_term=term_data["translated_term"],
             category=term_data["category"],
             context=term_data.get("context", ""),
+            frequency=term_data.get("frequency", 1),
             status=TermStatus.APPROVED,
             approved_at=datetime.now(timezone.utc)
         )
