@@ -9,7 +9,7 @@ import { Label } from './ui/Label'
 import { Modal } from './ui/Modal'
 import { Spinner } from './ui/Spinner'
 import { Alert } from './ui/Alert'
-import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, AlertCircle, Trash2 } from 'lucide-react'
+import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, Trash2 } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
@@ -267,8 +267,8 @@ export default function ChapterManager({ projectId }) {
                 onChange={(e) => setChapterPattern(e.target.value)}
                 placeholder="Глава \\d+"
               />
-              <p className="text-xs text-slate-500">
-                Регулярное выражение для разделения (по умолчанию: "Глава \\d+")
+              <p className="text-xs text-muted-foreground">
+                Регулярное выражение для разделения (по умолчанию: &quot;Глава \\d+&quot;)
               </p>
             </div>
 
