@@ -53,7 +53,7 @@ class TermRelationship(Base):
     __tablename__ = "term_relationships"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     source_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
     target_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
     relation_type = Column(String(50), nullable=False)
