@@ -1,0 +1,4 @@
+## 2024-05-23 - ReDoS Mitigation without Dependencies
+**Vulnerability:** A Regular Expression Denial of Service (ReDoS) vulnerability was found in the chapter upload endpoint (`backend/app/api/projects.py`), where user-supplied regex patterns were compiled and executed without validation or timeout.
+**Learning:** Python's standard `re` module does not support timeouts or possessive quantifiers, making it inherently unsafe for user-supplied regex. While `google-re2` is the standard fix, adding dependencies can be restricted.
+**Prevention:** Implemented a `safe_finditer` utility that runs the regex operation in a separate `multiprocessing` process (using `spawn` context) with a strict timeout. This isolates the potential infinite loop/backtracking and terminates the process if it exceeds the time limit, effectively neutralizing the DoS vector without new dependencies.
