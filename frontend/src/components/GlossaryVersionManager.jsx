@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import api from '../services/apiClient'
+import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
+import { Button } from './ui/Button'
+import { Input } from './ui/Input'
+import { Textarea } from './ui/Textarea'
+import { Label } from './ui/Label'
+import { Spinner } from './ui/Spinner'
+import { History, Save, RefreshCw } from 'lucide-react'
 
 export default function GlossaryVersionManager({ projectId }) {
   const [versions, setVersions] = useState([])
@@ -66,127 +73,95 @@ export default function GlossaryVersionManager({ projectId }) {
     }
   }
 
-  if (loading) return <div>Загрузка версий...</div>
+  if (loading) return <div className="flex justify-center p-8"><Spinner /></div>
 
   return (
-    <div>
-      <h3>Версии глоссария</h3>
-      
-      {/* Создание новой версии */}
-      <div style={{ 
-        border: '1px solid #ddd', 
-        padding: 16, 
-        borderRadius: 8, 
-        marginBottom: 24,
-        backgroundColor: '#f9f9f9'
-      }}>
-        <h4 style={{ margin: '0 0 16px 0' }}>Создать новую версию</h4>
-        
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: 4 }}>Название версии:</label>
-            <input
-              type="text"
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Создать новую версию</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="version-name">Название версии</Label>
+            <Input
+              id="version-name"
               value={newVersionName}
               onChange={(e) => setNewVersionName(e.target.value)}
               placeholder="Например: Версия 1.0"
-              style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }}
             />
           </div>
           
-          <div>
-            <label style={{ display: 'block', marginBottom: 4 }}>Описание:</label>
-            <textarea
+          <div className="space-y-2">
+            <Label htmlFor="version-desc">Описание</Label>
+            <Textarea
+              id="version-desc"
               value={newVersionDescription}
               onChange={(e) => setNewVersionDescription(e.target.value)}
               placeholder="Описание изменений в этой версии"
-              style={{ 
-                width: '100%', 
-                padding: 8, 
-                border: '1px solid #ddd', 
-                borderRadius: 4,
-                minHeight: 60,
-                resize: 'vertical'
-              }}
+              rows={4}
             />
           </div>
           
-          <button
+          <Button
             onClick={createVersion}
             disabled={creatingVersion}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: creatingVersion ? 'not-allowed' : 'pointer',
-              opacity: creatingVersion ? 0.7 : 1
-            }}
+            className="w-full"
           >
+            {creatingVersion ? <Spinner className="mr-2" /> : <Save className="mr-2 h-4 w-4" />}
             {creatingVersion ? 'Создание...' : 'Создать версию'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
 
-      {/* Список версий */}
-      {versions.length === 0 ? (
-        <p>Версии отсутствуют. Создайте первую версию глоссария.</p>
-      ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {versions.map((version) => (
-            <div 
-              key={version.version_id} 
-              style={{ 
-                border: '1px solid #ddd', 
-                padding: 16, 
-                borderRadius: 8,
-                backgroundColor: 'white'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div>
-                  <h4 style={{ margin: '0 0 4px 0' }}>
-                    {version.name || `Версия ${version.version_number}`}
-                  </h4>
-                  <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
-                    Создана: {new Date(version.created_at).toLocaleString()}
-                  </div>
-                  {version.description && (
-                    <div style={{ fontSize: '0.9em', color: '#666', marginBottom: 8 }}>
-                      {version.description}
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold tracking-tight">История версий</h3>
+        {versions.length === 0 ? (
+          <div className="text-center py-12 border border-dashed rounded-lg text-slate-500">
+            Версии отсутствуют.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {versions.map((version) => (
+              <Card key={version.version_id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <History className="h-4 w-4 text-slate-500" />
+                        <h4 className="font-semibold">
+                          {version.name || `Версия ${version.version_number}`}
+                        </h4>
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        {new Date(version.created_at).toLocaleString()}
+                      </div>
+                      {version.description && (
+                        <p className="text-sm text-slate-600 mt-2">
+                          {version.description}
+                        </p>
+                      )}
+                      <div className="flex gap-4 mt-2 text-xs text-slate-500">
+                        <span>Терминов: {version.terms_count}</span>
+                        <span>Утверждено: {version.approved_terms_count}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-                
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.8em', color: '#666', marginBottom: 4 }}>
-                    Терминов: {version.terms_count}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => restoreVersion(version.version_id)}
+                    >
+                      <RefreshCw className="mr-2 h-3 w-3" />
+                      Восстановить
+                    </Button>
                   </div>
-                  <div style={{ fontSize: '0.8em', color: '#666', marginBottom: 8 }}>
-                    Утверждено: {version.approved_terms_count}
-                  </div>
-                  
-                  <button
-                    onClick={() => restoreVersion(version.version_id)}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#FF9800',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '0.9em'
-                    }}
-                  >
-                    Восстановить
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
