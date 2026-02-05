@@ -273,9 +273,10 @@ export default function ChapterManager({ projectId }) {
             </div>
 
             <div className="space-y-2">
-              <Label>Файл с главами</Label>
+              <Label htmlFor="chapters-upload">Файл с главами</Label>
               <div className="flex gap-2 items-center">
                 <Input
+                  id="chapters-upload"
                   type="file"
                   accept=".txt"
                   onChange={handleFileSelect}
@@ -314,6 +315,7 @@ export default function ChapterManager({ projectId }) {
                         size="icon"
                         onClick={() => deleteChapter(chapter.id)}
                         className="h-8 w-8 text-muted-foreground hover:text-destructive md:hidden"
+                        aria-label="Удалить главу"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
