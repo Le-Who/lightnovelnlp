@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,34 +13,42 @@
             padding: 20px;
             background-color: #f5f5f5;
         }
+
         .container {
             background: white;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
+
         h1 {
             color: #2c3e50;
             text-align: center;
             margin-bottom: 30px;
         }
+
         h2 {
             color: #34495e;
             border-bottom: 2px solid #3498db;
             padding-bottom: 10px;
             margin-top: 30px;
         }
+
         .form-group {
             margin-bottom: 20px;
         }
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
             color: #2c3e50;
         }
-        input, textarea, select {
+
+        input,
+        textarea,
+        select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -47,10 +56,12 @@
             font-size: 14px;
             box-sizing: border-box;
         }
+
         textarea {
             height: 100px;
             resize: vertical;
         }
+
         button {
             background-color: #3498db;
             color: white;
@@ -62,9 +73,11 @@
             margin-right: 10px;
             margin-bottom: 10px;
         }
+
         button:hover {
             background-color: #2980b9;
         }
+
         .response {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -76,22 +89,27 @@
             max-height: 300px;
             overflow-y: auto;
         }
+
         .success {
             border-color: #28a745;
             background-color: #d4edda;
         }
+
         .error {
             border-color: #dc3545;
             background-color: #f8d7da;
         }
+
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
+
         .full-width {
             grid-column: 1 / -1;
         }
+
         .api-url {
             background-color: #e9ecef;
             padding: 10px;
@@ -99,10 +117,12 @@
             font-family: monospace;
             margin-bottom: 15px;
         }
+
         .nav-links {
             text-align: center;
             margin-bottom: 30px;
         }
+
         .nav-links a {
             color: #3498db;
             text-decoration: none;
@@ -111,17 +131,77 @@
             border: 1px solid #3498db;
             border-radius: 5px;
         }
+
         .nav-links a:hover {
             background-color: #3498db;
             color: white;
         }
+
+        /* Grid UI Styles */
+        .term-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 5px;
+        }
+
+        .term-card {
+            background: white;
+            border: 1px solid #eee;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .term-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .term-card.selected {
+            border-color: #3498db;
+            background-color: #eaf6ff;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+        }
+
+        .term-card .source {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .term-card .trans {
+            color: #666;
+            font-size: 0.9em;
+            word-break: break-word;
+        }
+
+        .term-card .badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 0.7em;
+            padding: 2px 5px;
+            border-radius: 3px;
+            background: #eee;
+        }
     </style>
 </head>
+
 <body>
     <div class="nav-links">
         <a href="/">Главная</a>
         <a href="/api-tools.html">API Tools</a>
-                 <a href="https://p01--lightnovelnlp--95w5j7vcjd9s.code.run/docs" target="_blank">Swagger Docs</a>
+        <a href="https://p01--lightnovelnlp--95w5j7vcjd9s.code.run/docs" target="_blank">Swagger Docs</a>
     </div>
 
     <h1>🔧 Light Novel NLP - API Tools</h1>
@@ -145,7 +225,9 @@
                 </div>
                 <div class="form-group">
                     <label for="projectGenre">Жанр проекта:</label>
-                    <select id="projectGenre">
+                    <input list="genreOptions" id="projectGenre" placeholder="Выберите или введите свой жанр..."
+                        class="full-width">
+                    <datalist id="genreOptions">
                         <option value="fantasy">Фантастика</option>
                         <option value="scifi">Научная фантастика</option>
                         <option value="romance">Романтика</option>
@@ -154,8 +236,12 @@
                         <option value="horror">Ужасы</option>
                         <option value="slice_of_life">Повседневность</option>
                         <option value="adventure">Приключения</option>
+                        <option value="wuxia">Wuxia (Китайское боевое фэнтези)</option>
+                        <option value="xianxia">Xianxia (Культивация бессмертия)</option>
+                        <option value="litrpg">LitRPG (Игровые механики)</option>
+                        <option value="isekai">Isekai (Попаданцы)</option>
                         <option value="other">Другое</option>
-                    </select>
+                    </datalist>
                 </div>
                 <button onclick="createProject()">Создать проект</button>
             </div>
@@ -270,7 +356,8 @@
                 </div>
                 <div class="form-group">
                     <label>Выберите главы:</label>
-                    <div id="batchAnalyzeChapters" style="max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fafafa;">
+                    <div id="batchAnalyzeChapters"
+                        style="max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fafafa;">
                         <p style="color:#777;">Сначала выберите проект...</p>
                     </div>
                 </div>
@@ -286,11 +373,13 @@
                 </div>
                 <div class="form-group">
                     <label>Выберите главы:</label>
-                    <div id="batchTranslateChapters" style="max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fafafa;">
+                    <div id="batchTranslateChapters"
+                        style="max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fafafa;">
                         <p style="color:#777;">Сначала выберите проект...</p>
                     </div>
                 </div>
-                <button onclick="startBatchTranslate()" id="batchTranslateBtn" disabled>Запустить пакетный перевод</button>
+                <button onclick="startBatchTranslate()" id="batchTranslateBtn" disabled>Запустить пакетный
+                    перевод</button>
             </div>
         </div>
         <div id="processingResponse" class="response" style="display: none;"></div>
@@ -305,44 +394,44 @@
 
     <!-- Блок Обработка и перевод перемещен вверх, сразу после Управление главами -->
 
-      <div class="container">
-         <h2>📝 Редактирование и удаление глав</h2>
-         <div class="grid">
-             <div>
-                 <h3>Выбрать главу</h3>
-                 <div class="form-group">
-                     <label for="manageChaptersProjectId">Проект:</label>
-                     <select id="manageChaptersProjectId" onchange="loadChaptersForManage()">
-                         <option value="">Выберите проект...</option>
-                     </select>
-                 </div>
-                 <div class="form-group">
-                     <label for="manageChapterId">Глава:</label>
-                     <select id="manageChapterId" disabled onchange="loadChapterForEdit()">
-                         <option value="">Сначала выберите проект...</option>
-                     </select>
-                 </div>
-                 <button id="deleteChapterBtn" onclick="deleteChapter()" disabled>❌ Удалить главу</button>
-             </div>
-             <div>
-                 <h3>Редактировать главу</h3>
-                 <div class="form-group">
-                     <label for="editChapterTitle">Название главы:</label>
-                     <input type="text" id="editChapterTitle" placeholder="Глава 1">
-                 </div>
-                 <div class="form-group">
-                     <label for="editChapterOriginal">Оригинальный текст:</label>
-                     <textarea id="editChapterOriginal" placeholder="Оригинальный текст..."></textarea>
-                 </div>
-                 <div class="form-group">
-                     <label for="editChapterTranslated">Переведенный текст (опционально):</label>
-                     <textarea id="editChapterTranslated" placeholder="Переведенный текст..."></textarea>
-                 </div>
-                 <button id="saveChapterBtn" onclick="saveChapter()" disabled>💾 Сохранить</button>
-             </div>
-         </div>
-         <div id="manageChaptersResponse" class="response" style="display:none;"></div>
-     </div>
+    <div class="container">
+        <h2>📝 Редактирование и удаление глав</h2>
+        <div class="grid">
+            <div>
+                <h3>Выбрать главу</h3>
+                <div class="form-group">
+                    <label for="manageChaptersProjectId">Проект:</label>
+                    <select id="manageChaptersProjectId" onchange="loadChaptersForManage()">
+                        <option value="">Выберите проект...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="manageChapterId">Глава:</label>
+                    <select id="manageChapterId" disabled onchange="loadChapterForEdit()">
+                        <option value="">Сначала выберите проект...</option>
+                    </select>
+                </div>
+                <button id="deleteChapterBtn" onclick="deleteChapter()" disabled>❌ Удалить главу</button>
+            </div>
+            <div>
+                <h3>Редактировать главу</h3>
+                <div class="form-group">
+                    <label for="editChapterTitle">Название главы:</label>
+                    <input type="text" id="editChapterTitle" placeholder="Глава 1">
+                </div>
+                <div class="form-group">
+                    <label for="editChapterOriginal">Оригинальный текст:</label>
+                    <textarea id="editChapterOriginal" placeholder="Оригинальный текст..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editChapterTranslated">Переведенный текст (опционально):</label>
+                    <textarea id="editChapterTranslated" placeholder="Переведенный текст..."></textarea>
+                </div>
+                <button id="saveChapterBtn" onclick="saveChapter()" disabled>💾 Сохранить</button>
+            </div>
+        </div>
+        <div id="manageChaptersResponse" class="response" style="display:none;"></div>
+    </div>
 
     <!-- Управление терминами (после Редактирование и удаление глав) -->
     <div class="container">
@@ -357,10 +446,11 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="manageTermsList">Термины (pending):</label>
-                    <select id="manageTermsList" disabled onchange="onPendingTermChange()">
-                        <option value="">Сначала выберите проект...</option>
-                    </select>
+                    <label>Термины (pending):</label>
+                    <div id="manageTermsGrid" class="term-grid">
+                        <p style="color:#777; padding:10px;">Сначала выберите проект...</p>
+                    </div>
+                    <input type="hidden" id="manageTermsList" onchange="onPendingTermChange()">
                 </div>
                 <button onclick="approveTerm()" id="approveBtn" disabled>✅ Утвердить</button>
                 <button onclick="rejectTerm()" id="rejectBtn" disabled>❌ Отклонить</button>
@@ -408,10 +498,11 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="editTermsList">Термин:</label>
-                    <select id="editTermsList" disabled onchange="loadTermForEdit()">
-                        <option value="">Сначала выберите проект...</option>
-                    </select>
+                    <label>Термин:</label>
+                    <div id="editTermsGrid" class="term-grid">
+                        <p style="color:#777; padding:10px;">Сначала выберите проект...</p>
+                    </div>
+                    <input type="hidden" id="editTermsList" onchange="loadTermForEdit()">
                 </div>
             </div>
             <div>
@@ -524,10 +615,10 @@
     </div>
 
     <script>
-                     // Определяем базовый URL API
-             const API_BASE_URL = window.location.hostname === 'localhost' 
-                 ? 'http://localhost:8000' 
-                 : 'https://p01--lightnovelnlp--95w5j7vcjd9s.code.run';
+        // Определяем базовый URL API
+        const API_BASE_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:8000'
+            : 'https://p01--lightnovelnlp--95w5j7vcjd9s.code.run';
 
         document.getElementById('currentUrl').textContent = API_BASE_URL;
 
@@ -544,12 +635,12 @@
                     ...options,
                     headers
                 });
-                
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
-                
+
                 const contentType = response.headers.get('content-type') || '';
                 if (contentType.includes('application/json')) {
                     const data = await response.json();
@@ -686,7 +777,7 @@
             // Обновим выпадающие списки проектов
             if (result.success) {
                 const projects = result.data;
-                const selects = ['chapterProjectId','getChaptersProjectId','termProjectId','getTermsProjectId','analyzeProjectId','translateProjectId','manageTermsProjectId','editTermsProjectId','deleteProjectId','uploadChapterProjectId','downloadProjectId','manageChaptersProjectId'];
+                const selects = ['chapterProjectId', 'getChaptersProjectId', 'termProjectId', 'getTermsProjectId', 'analyzeProjectId', 'translateProjectId', 'manageTermsProjectId', 'editTermsProjectId', 'deleteProjectId', 'uploadChapterProjectId', 'downloadProjectId', 'manageChaptersProjectId'];
                 selects.forEach(id => {
                     const sel = document.getElementById(id);
                     if (!sel) return;
@@ -719,35 +810,35 @@
             }
         }
 
-                     // Главы
-             async function createChapter() {
-                 const projectId = document.getElementById('chapterProjectId').value;
-                 const title = document.getElementById('chapterTitle').value;
-                 const text = document.getElementById('chapterText').value;
-     
-                 if (!projectId || !title || !text) {
-                     alert('Заполните все поля');
-                     return;
-                 }
-     
-                 showLoading('chaptersResponse', 'Создаем главу...');
-                 const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`, {
-                     method: 'POST',
-                     body: JSON.stringify({ title, original_text: text })
-                 });
-                 showResponse('chaptersResponse', result);
-             }
+        // Главы
+        async function createChapter() {
+            const projectId = document.getElementById('chapterProjectId').value;
+            const title = document.getElementById('chapterTitle').value;
+            const text = document.getElementById('chapterText').value;
 
-         async function getChapters() {
-                 const projectId = document.getElementById('getChaptersProjectId').value;
-                 if (!projectId) {
-                     alert('Выберите проект');
-                     return;
-                 }
-     
-                 const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
-                 showResponse('chaptersResponse', result);
-             }
+            if (!projectId || !title || !text) {
+                alert('Заполните все поля');
+                return;
+            }
+
+            showLoading('chaptersResponse', 'Создаем главу...');
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`, {
+                method: 'POST',
+                body: JSON.stringify({ title, original_text: text })
+            });
+            showResponse('chaptersResponse', result);
+        }
+
+        async function getChapters() {
+            const projectId = document.getElementById('getChaptersProjectId').value;
+            if (!projectId) {
+                alert('Выберите проект');
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+            showResponse('chaptersResponse', result);
+        }
 
         async function uploadChapterFile() {
             const projectId = document.getElementById('uploadChapterProjectId').value;
@@ -768,32 +859,32 @@
             finishProgress('chaptersResponse', result);
         }
 
-                     // Глоссарий
-             async function createTerm() {
-                 const projectId = document.getElementById('termProjectId').value;
-                 const sourceTerm = document.getElementById('sourceTerm').value;
-                 const translatedTerm = document.getElementById('translatedTerm').value;
-                 const category = document.getElementById('termCategory').value;
-                 const context = document.getElementById('termContext').value;
-     
-                 if (!projectId || !sourceTerm || !translatedTerm) {
-                     alert('Заполните обязательные поля');
-                     return;
-                 }
-     
-                 showLoading('glossaryResponse', 'Создаем термин...');
-                 const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
-                     method: 'POST',
-                     body: JSON.stringify({
-                         project_id: projectId,
-                         source_term: sourceTerm,
-                         translated_term: translatedTerm,
-                         category,
-                         context
-                     })
-                 });
-                 showResponse('glossaryResponse', result);
-             }
+        // Глоссарий
+        async function createTerm() {
+            const projectId = document.getElementById('termProjectId').value;
+            const sourceTerm = document.getElementById('sourceTerm').value;
+            const translatedTerm = document.getElementById('translatedTerm').value;
+            const category = document.getElementById('termCategory').value;
+            const context = document.getElementById('termContext').value;
+
+            if (!projectId || !sourceTerm || !translatedTerm) {
+                alert('Заполните обязательные поля');
+                return;
+            }
+
+            showLoading('glossaryResponse', 'Создаем термин...');
+            const result = await makeRequest(`${API_BASE_URL}/glossary/terms`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    project_id: projectId,
+                    source_term: sourceTerm,
+                    translated_term: translatedTerm,
+                    category,
+                    context
+                })
+            });
+            showResponse('glossaryResponse', result);
+        }
 
         async function getTerms() {
             const projectId = document.getElementById('getTermsProjectId').value;
@@ -809,14 +900,15 @@
         // Управление терминами
         async function loadTermsForManagement() {
             const projectId = document.getElementById('manageTermsProjectId').value;
-            const termsList = document.getElementById('manageTermsList');
+            const termsGrid = document.getElementById('manageTermsGrid');
+            const hiddenInput = document.getElementById('manageTermsList');
             const approveBtn = document.getElementById('approveBtn');
             const rejectBtn = document.getElementById('rejectBtn');
             const termsStatus = document.getElementById('termsStatus');
 
             if (!projectId) {
-                termsList.innerHTML = '<option value="">Сначала выберите проект...</option>';
-                termsList.disabled = true;
+                termsGrid.innerHTML = '<p style="color:#777; padding:10px;">Сначала выберите проект...</p>';
+                hiddenInput.value = "";
                 approveBtn.disabled = true;
                 rejectBtn.disabled = true;
                 termsStatus.innerHTML = '<p>Выберите проект для просмотра терминов</p>';
@@ -824,29 +916,75 @@
                 return;
             }
 
-            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}/pending`);
+            // FIX: Correct URL structure matches backend /{project_id}/terms/pending
+            const result = await makeRequest(`${API_BASE_URL}/glossary/${projectId}/terms/pending`);
             if (result.success) {
                 const terms = result.data;
-                termsList.innerHTML = '<option value="">Выберите термин для управления...</option>';
+                termsGrid.innerHTML = '';
+
+                if (terms.length === 0) {
+                    termsGrid.innerHTML = '<p style="padding:10px;">Нет терминов в ожидании утверждения.</p>';
+                    approveBtn.disabled = true;
+                    rejectBtn.disabled = true;
+                    termsStatus.innerHTML = '<p>Нет терминов в ожидании утверждения.</p>';
+                    setPendingEditFormEnabled(false);
+                    return;
+                }
+
                 terms.forEach(term => {
-                    const option = document.createElement('option');
-                    option.value = term.id;
-                    option.textContent = `${term.source_term} -> ${term.translated_term} (ID: ${term.id})`;
-                    termsList.appendChild(option);
+                    const card = document.createElement('div');
+                    card.className = 'term-card';
+                    card.dataset.id = term.id;
+                    card.onclick = () => selectManageTerm(term.id, card);
+
+                    const badge = document.createElement('div');
+                    badge.className = 'badge';
+                    badge.textContent = term.frequency ? `Freq: ${term.frequency}` : 'New';
+
+                    const source = document.createElement('div');
+                    source.className = 'source';
+                    source.textContent = term.source_term;
+
+                    const trans = document.createElement('div');
+                    trans.className = 'trans';
+                    trans.textContent = term.translated_term;
+
+                    card.appendChild(badge);
+                    card.appendChild(source);
+                    card.appendChild(trans);
+                    termsGrid.appendChild(card);
                 });
-                termsList.disabled = false;
-                approveBtn.disabled = false;
-                rejectBtn.disabled = false;
-                termsStatus.innerHTML = `<p>Найдено <strong>${terms.length}</strong> терминов в ожидании утверждения.</p>`;
-                setPendingEditFormEnabled(true);
-            } else {
-                termsList.innerHTML = '<option value="">Нет терминов в ожидании утверждения.</option>';
-                termsList.disabled = true;
+
+                hiddenInput.value = ""; // Reset selection
                 approveBtn.disabled = true;
                 rejectBtn.disabled = true;
-                termsStatus.innerHTML = '<p>Нет терминов в ожидании утверждения.</p>';
+                termsStatus.innerHTML = `<p>Найдено <strong>${terms.length}</strong> терминов в ожидании утверждения.</p>`;
+                setPendingEditFormEnabled(false);
+            } else {
+                termsGrid.innerHTML = '<p style="color:red; padding:10px;">Ошибка загрузки терминов.</p>';
+                hiddenInput.value = "";
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                termsStatus.innerHTML = '<p>Ошибка загрузки.</p>';
                 setPendingEditFormEnabled(false);
             }
+        }
+
+        function selectManageTerm(id, cardElement) {
+            // Update hidden input
+            const input = document.getElementById('manageTermsList');
+            input.value = id;
+
+            // Visual selection
+            document.querySelectorAll('#manageTermsGrid .term-card').forEach(c => c.classList.remove('selected'));
+            cardElement.classList.add('selected');
+
+            // Enable buttons
+            document.getElementById('approveBtn').disabled = false;
+            document.getElementById('rejectBtn').disabled = false;
+
+            // Trigger change handler
+            onPendingTermChange();
         }
 
         // Управление главами (редактирование/удаление)
@@ -924,7 +1062,7 @@
         }
 
         function setPendingEditFormEnabled(enabled) {
-            const ids = ['pendingSourceTerm','pendingTranslatedTerm','pendingTermCategory','pendingTermContext','pendingSaveBtn'];
+            const ids = ['pendingSourceTerm', 'pendingTranslatedTerm', 'pendingTermCategory', 'pendingTermContext', 'pendingSaveBtn'];
             ids.forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -936,6 +1074,7 @@
         async function onPendingTermChange() {
             const termId = document.getElementById('manageTermsList').value;
             if (!termId) { setPendingEditFormEnabled(false); return; }
+            // NOTE: Using the convenience endpoint we added or the details endpoint
             const res = await makeRequest(`${API_BASE_URL}/glossary/terms/${termId}/details`);
             if (res.success) {
                 const t = res.data;
@@ -996,32 +1135,70 @@
         // Редактирование терминов
         async function loadAllTermsForEdit() {
             const projectId = document.getElementById('editTermsProjectId').value;
-            const termsList = document.getElementById('editTermsList');
+            const termsGrid = document.getElementById('editTermsGrid');
+            const hiddenInput = document.getElementById('editTermsList');
             const updateBtn = document.getElementById('updateBtn');
 
             if (!projectId) {
-                termsList.innerHTML = '<option value="">Сначала выберите проект...</option>';
-                termsList.disabled = true;
+                termsGrid.innerHTML = '<p style="color:#777; padding:10px;">Сначала выберите проект...</p>';
+                hiddenInput.value = "";
                 updateBtn.disabled = true;
                 return;
             }
 
-            const result = await makeRequest(`${API_BASE_URL}/glossary/terms/${projectId}`);
+            // FIX: Correct URL structure matches backend /{project_id}/terms
+            const result = await makeRequest(`${API_BASE_URL}/glossary/${projectId}/terms`);
             if (result.success) {
                 const terms = result.data;
-                termsList.innerHTML = '<option value="">Выберите термин для редактирования...</option>';
+                termsGrid.innerHTML = '';
+
+                if (terms.length === 0) {
+                    termsGrid.innerHTML = '<p style="padding:10px;">Нет терминов в проекте.</p>';
+                    updateBtn.disabled = true;
+                    return;
+                }
+
                 terms.forEach(term => {
-                    const option = document.createElement('option');
-                    option.value = term.id;
-                    option.textContent = `${term.source_term} -> ${term.translated_term} (${term.status}) [ID: ${term.id}]`;
-                    termsList.appendChild(option);
+                    const card = document.createElement('div');
+                    card.className = 'term-card';
+                    card.dataset.id = term.id;
+                    card.onclick = () => selectEditTerm(term.id, card);
+
+                    const badge = document.createElement('div');
+                    badge.className = 'badge';
+                    badge.textContent = term.status;
+                    badge.style.background = term.status === 'approved' ? '#d4edda' : '#f8d7da';
+
+                    const source = document.createElement('div');
+                    source.className = 'source';
+                    source.textContent = term.source_term;
+
+                    const trans = document.createElement('div');
+                    trans.className = 'trans';
+                    trans.textContent = term.translated_term;
+
+                    card.appendChild(badge);
+                    card.appendChild(source);
+                    card.appendChild(trans);
+                    termsGrid.appendChild(card);
                 });
-                termsList.disabled = false;
+                hiddenInput.value = "";
+                updateBtn.disabled = true;
             } else {
-                termsList.innerHTML = '<option value="">Ошибка загрузки терминов</option>';
-                termsList.disabled = true;
+                termsGrid.innerHTML = '<p style="color:red; padding:10px;">Ошибка загрузки терминов.</p>';
+                hiddenInput.value = "";
                 updateBtn.disabled = true;
             }
+        }
+
+        function selectEditTerm(id, cardElement) {
+            const input = document.getElementById('editTermsList');
+            input.value = id;
+
+            document.querySelectorAll('#editTermsGrid .term-card').forEach(c => c.classList.remove('selected'));
+            cardElement.classList.add('selected');
+
+            loadTermForEdit();
         }
 
         async function loadTermForEdit() {
@@ -1074,7 +1251,7 @@
                 })
             });
             showResponse('editTermsResponse', result);
-            
+
             if (result.success) {
                 // Обновляем список терминов после успешного редактирования
                 loadAllTermsForEdit();
@@ -1094,313 +1271,324 @@
             showResponse('monitoringResponse', result);
         }
 
-                 // Функции для работы с выпадающими списками
-         async function loadProjects() {
-             const result = await makeRequest(`${API_BASE_URL}/projects/`);
-             if (result.success) {
-                 const projects = result.data;
-                 
-                 // Заполняем все селекты проектов
-                 const projectSelects = [
-                     'analyzeProjectId', 'translateProjectId', 'manageTermsProjectId',
-                     'chapterProjectId', 'getChaptersProjectId', 'termProjectId',
-                     'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId',
-                     'manageChaptersProjectId', 'batchAnalyzeProjectId', 'batchTranslateProjectId',
-                     'uploadChapterProjectId', 'deleteProjectId'
-                 ];
-                 projectSelects.forEach(selectId => {
-                     const select = document.getElementById(selectId);
-                     if (!select) return;
-                     select.innerHTML = '<option value="">Выберите проект...</option>';
-                     projects.forEach(project => {
-                         const option = document.createElement('option');
-                         option.value = project.id;
-                         const genreLabel = getGenreLabel(project.genre);
-                         option.textContent = `${project.name} (${genreLabel})`;
-                         select.appendChild(option);
-                     });
-                 });
-             }
-         }
-         // Загрузка глав для пакетной обработки
-         async function loadChaptersForBatch(mode) {
-             const projectId = document.getElementById(mode === 'analyze' ? 'batchAnalyzeProjectId' : 'batchTranslateProjectId').value;
-             const containerId = mode === 'analyze' ? 'batchAnalyzeChapters' : 'batchTranslateChapters';
-             const btnId = mode === 'analyze' ? 'batchAnalyzeBtn' : 'batchTranslateBtn';
-             const container = document.getElementById(containerId);
-             const btn = document.getElementById(btnId);
-             if (!projectId) {
-                 container.innerHTML = '<p style="color:#777;">Сначала выберите проект...</p>';
-                 btn.disabled = true;
-                 return;
-             }
-             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
-             if (result.success) {
-                 const chapters = result.data;
-                 if (!chapters.length) {
-                     container.innerHTML = '<p style="color:#777;">В проекте нет глав</p>';
-                     btn.disabled = true;
-                     return;
-                 }
-                 const list = document.createElement('div');
-                 chapters.forEach(ch => {
-                     const row = document.createElement('label');
-                     row.style.display = 'block';
-                     row.style.marginBottom = '6px';
-                     const cb = document.createElement('input');
-                     cb.type = 'checkbox';
-                     cb.value = ch.id;
-                     cb.style.marginRight = '8px';
-                     row.appendChild(cb);
-                     const status = mode === 'analyze' ? (ch.summary ? '✓ проанализирована' : '○ не проанализирована') : (ch.translated_text ? '✓ переведена' : '○ не переведена');
-                     row.appendChild(document.createTextNode(`${ch.title} (${status})`));
-                     list.appendChild(row);
-                 });
-                 container.innerHTML = '';
-                 container.appendChild(list);
-                 btn.disabled = false;
-             } else {
-                 container.innerHTML = '<p style="color:#777;">Ошибка загрузки глав</p>';
-                 btn.disabled = true;
-             }
-         }
+        // Функции для работы с выпадающими списками
+        async function loadProjects() {
+            const result = await makeRequest(`${API_BASE_URL}/projects/`);
+            if (result.success) {
+                const projects = result.data;
 
-         function getSelectedBatchChapterIds(mode) {
-             const containerId = mode === 'analyze' ? 'batchAnalyzeChapters' : 'batchTranslateChapters';
-             const container = document.getElementById(containerId);
-             const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
-             return Array.from(checkboxes).map(cb => parseInt(cb.value, 10)).filter(n => !isNaN(n));
-         }
+                // Заполняем все селекты проектов
+                const projectSelects = [
+                    'analyzeProjectId', 'translateProjectId', 'manageTermsProjectId',
+                    'chapterProjectId', 'getChaptersProjectId', 'termProjectId',
+                    'getTermsProjectId', 'editTermsProjectId', 'downloadProjectId',
+                    'manageChaptersProjectId', 'batchAnalyzeProjectId', 'batchTranslateProjectId',
+                    'uploadChapterProjectId', 'deleteProjectId'
+                ];
+                projectSelects.forEach(selectId => {
+                    const select = document.getElementById(selectId);
+                    if (!select) return;
+                    select.innerHTML = '<option value="">Выберите проект...</option>';
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.value = project.id;
+                        const genreLabel = getGenreLabel(project.genre);
+                        option.textContent = `${project.name} (${genreLabel})`;
+                        select.appendChild(option);
+                    });
+                });
+            }
+        }
+        // Загрузка глав для пакетной обработки
+        async function loadChaptersForBatch(mode) {
+            const projectId = document.getElementById(mode === 'analyze' ? 'batchAnalyzeProjectId' : 'batchTranslateProjectId').value;
+            const containerId = mode === 'analyze' ? 'batchAnalyzeChapters' : 'batchTranslateChapters';
+            const btnId = mode === 'analyze' ? 'batchAnalyzeBtn' : 'batchTranslateBtn';
+            const container = document.getElementById(containerId);
+            const btn = document.getElementById(btnId);
+            if (!projectId) {
+                container.innerHTML = '<p style="color:#777;">Сначала выберите проект...</p>';
+                btn.disabled = true;
+                return;
+            }
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+            if (result.success) {
+                const chapters = result.data;
+                if (!chapters.length) {
+                    container.innerHTML = '<p style="color:#777;">В проекте нет глав</p>';
+                    btn.disabled = true;
+                    return;
+                }
+                const list = document.createElement('div');
+                chapters.forEach(ch => {
+                    const row = document.createElement('label');
+                    row.style.display = 'block';
+                    row.style.marginBottom = '6px';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = ch.id;
+                    cb.style.marginRight = '8px';
+                    row.appendChild(cb);
+                    const status = mode === 'analyze' ? (ch.summary ? '✓ проанализирована' : '○ не проанализирована') : (ch.translated_text ? '✓ переведена' : '○ не переведена');
+                    row.appendChild(document.createTextNode(`${ch.title} (${status})`));
+                    list.appendChild(row);
+                });
+                container.innerHTML = '';
+                container.appendChild(list);
+                btn.disabled = false;
+            } else {
+                container.innerHTML = '<p style="color:#777;">Ошибка загрузки глав</p>';
+                btn.disabled = true;
+            }
+        }
 
-         async function startBatchAnalyze() {
-             const ids = getSelectedBatchChapterIds('analyze');
-             if (!ids.length) { alert('Выберите хотя бы одну главу'); return; }
-             startProgress('batchResponse', 'Создаем пакетный анализ...');
-             const result = await makeRequest(`${API_BASE_URL}/batch/analyze`, {
-                 method: 'POST',
-                 body: JSON.stringify(ids)
-             });
-             if (!result.success) { return finishProgress('batchResponse', result); }
-             const jobId = result.data.batch_job_id;
-             // Поллинг статуса
-             pollBatchStatus(jobId);
-         }
+        function getSelectedBatchChapterIds(mode) {
+            const containerId = mode === 'analyze' ? 'batchAnalyzeChapters' : 'batchTranslateChapters';
+            const container = document.getElementById(containerId);
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => parseInt(cb.value, 10)).filter(n => !isNaN(n));
+        }
 
-         async function startBatchTranslate() {
-             const ids = getSelectedBatchChapterIds('translate');
-             if (!ids.length) { alert('Выберите хотя бы одну главу'); return; }
-             startProgress('batchResponse', 'Создаем пакетный перевод...');
-             const result = await makeRequest(`${API_BASE_URL}/batch/translate`, {
-                 method: 'POST',
-                 body: JSON.stringify(ids)
-             });
-             if (!result.success) { return finishProgress('batchResponse', result); }
-             const jobId = result.data.batch_job_id;
-             pollBatchStatus(jobId);
-         }
+        async function startBatchAnalyze() {
+            const projectId = document.getElementById('batchAnalyzeProjectId').value;
+            const ids = getSelectedBatchChapterIds('analyze');
+            if (!ids.length) { alert('Выберите хотя бы одну главу'); return; }
+            startProgress('batchResponse', 'Создаем пакетный анализ...');
 
-         async function pollBatchStatus(jobId) {
-             try {
-                 const res = await makeRequest(`${API_BASE_URL}/batch/jobs/${jobId}`);
-                 if (res.success) {
-                     const job = res.data;
-                     // Простой расчет прогресса
-                     const total = job.result?.total_items || job.items?.length || 0;
-                     const processed = job.result?.processed_items || (job.items?.filter(i => i.status === 'completed').length || 0);
-                     const percent = total ? Math.min(100, Math.floor((processed / total) * 100)) : 0;
-                     // Обновляем прогресс-бар вручную
-                     const bar = document.getElementById('batchResponse-bar');
-                     const label = document.getElementById('batchResponse-percent');
-                     if (bar && label) {
-                         bar.style.width = `${percent}%`;
-                         label.textContent = `${percent}%`;
-                     }
-                     // Завершение
-                     if (job.status === 'completed' || job.status === 'failed') {
-                         return finishProgress('batchResponse', res);
-                     }
-                 }
-             } catch (_) {}
-             // Повторный поллинг
-             setTimeout(() => pollBatchStatus(jobId), 1500);
-         }
+            // FIX: Add projectId to URL
+            const result = await makeRequest(`${API_BASE_URL}/batch/${projectId}/analyze`, {
+                method: 'POST',
+                body: JSON.stringify(ids)
+            });
+            if (!result.success) { return finishProgress('batchResponse', result); }
+            const jobId = result.data.batch_job_id;
+            // Поллинг статуса
+            pollBatchStatus(jobId);
+        }
 
-         async function loadChaptersForAnalysis() {
-             const projectId = document.getElementById('analyzeProjectId').value;
-             const chapterSelect = document.getElementById('analyzeChapterId');
-             const analyzeBtn = document.getElementById('analyzeBtn');
-             
-             if (!projectId) {
-                 chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
-                 chapterSelect.disabled = true;
-                 analyzeBtn.disabled = true;
-                 return;
-             }
-             
-             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
-             if (result.success) {
-                 const chapters = result.data;
-                 chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
-                 chapters.forEach(chapter => {
-                     const option = document.createElement('option');
-                     option.value = chapter.id;
-                     const status = chapter.summary ? '✓ Проанализирована' : '○ Не проанализирована';
-                     option.textContent = `${chapter.title} (${status})`;
-                     chapterSelect.appendChild(option);
-                 });
-                 chapterSelect.disabled = false;
-                 analyzeBtn.disabled = false;
-             }
-         }
+        async function startBatchTranslate() {
+            const projectId = document.getElementById('batchTranslateProjectId').value;
+            const ids = getSelectedBatchChapterIds('translate');
+            if (!ids.length) { alert('Выберите хотя бы одну главу'); return; }
+            startProgress('batchResponse', 'Создаем пакетный перевод...');
 
-         async function loadChaptersForTranslation() {
-             const projectId = document.getElementById('translateProjectId').value;
-             const chapterSelect = document.getElementById('translateChapterId');
-             const translateBtn = document.getElementById('translateBtn');
-             
-             if (!projectId) {
-                 chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
-                 chapterSelect.disabled = true;
-                 translateBtn.disabled = true;
-                 return;
-             }
-             
-             const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
-             if (result.success) {
-                 const chapters = result.data;
-                 chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
-                 chapters.forEach(chapter => {
-                     const option = document.createElement('option');
-                     option.value = chapter.id;
-                     const status = chapter.translated_text ? '✓ Переведена' : '○ Не переведена';
-                     option.textContent = `${chapter.title} (${status})`;
-                     chapterSelect.appendChild(option);
-                 });
-                 chapterSelect.disabled = false;
-                 translateBtn.disabled = false;
-             }
-         }
+            // FIX: Add projectId to URL
+            const result = await makeRequest(`${API_BASE_URL}/batch/${projectId}/translate`, {
+                method: 'POST',
+                body: JSON.stringify(ids)
+            });
+            if (!result.success) { return finishProgress('batchResponse', result); }
+            const jobId = result.data.batch_job_id;
+            pollBatchStatus(jobId);
+        }
 
-         // Обновляем функции анализа и перевода
+        async function pollBatchStatus(jobId) {
+            try {
+                const res = await makeRequest(`${API_BASE_URL}/batch/jobs/${jobId}`);
+                if (res.success) {
+                    const job = res.data;
+                    // Простой расчет прогресса
+                    const total = job.result?.total_items || job.items?.length || 0;
+                    const processed = job.result?.processed_items || (job.items?.filter(i => i.status === 'completed').length || 0);
+                    const percent = total ? Math.min(100, Math.floor((processed / total) * 100)) : 0;
+                    // Обновляем прогресс-бар вручную
+                    const bar = document.getElementById('batchResponse-bar');
+                    const label = document.getElementById('batchResponse-percent');
+                    if (bar && label) {
+                        bar.style.width = `${percent}%`;
+                        label.textContent = `${percent}%`;
+                    }
+                    // Завершение
+                    if (job.status === 'completed' || job.status === 'failed') {
+                        return finishProgress('batchResponse', res);
+                    }
+                }
+            } catch (_) { }
+            // Повторный поллинг
+            setTimeout(() => pollBatchStatus(jobId), 1500);
+        }
+
+        async function loadChaptersForAnalysis() {
+            const projectId = document.getElementById('analyzeProjectId').value;
+            const chapterSelect = document.getElementById('analyzeChapterId');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            if (!projectId) {
+                chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
+                chapterSelect.disabled = true;
+                analyzeBtn.disabled = true;
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+            if (result.success) {
+                const chapters = result.data;
+                chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
+                chapters.forEach(chapter => {
+                    const option = document.createElement('option');
+                    option.value = chapter.id;
+                    const status = chapter.summary ? '✓ Проанализирована' : '○ Не проанализирована';
+                    option.textContent = `${chapter.title} (${status})`;
+                    chapterSelect.appendChild(option);
+                });
+                chapterSelect.disabled = false;
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        async function loadChaptersForTranslation() {
+            const projectId = document.getElementById('translateProjectId').value;
+            const chapterSelect = document.getElementById('translateChapterId');
+            const translateBtn = document.getElementById('translateBtn');
+
+            if (!projectId) {
+                chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
+                chapterSelect.disabled = true;
+                translateBtn.disabled = true;
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+            if (result.success) {
+                const chapters = result.data;
+                chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
+                chapters.forEach(chapter => {
+                    const option = document.createElement('option');
+                    option.value = chapter.id;
+                    const status = chapter.translated_text ? '✓ Переведена' : '○ Не переведена';
+                    option.textContent = `${chapter.title} (${status})`;
+                    chapterSelect.appendChild(option);
+                });
+                chapterSelect.disabled = false;
+                translateBtn.disabled = false;
+            }
+        }
+
+        // Обновляем функции анализа и перевода
         async function analyzeChapter() {
-             const chapterId = document.getElementById('analyzeChapterId').value;
-             if (!chapterId) {
-                 alert('Выберите главу для анализа');
-                 return;
-             }
+            const chapterId = document.getElementById('analyzeChapterId').value;
+            if (!chapterId) {
+                alert('Выберите главу для анализа');
+                return;
+            }
 
             startProgress('processingResponse', 'Анализируем главу...');
             const result = await makeRequest(`${API_BASE_URL}/processing/chapters/${chapterId}/analyze`, {
-                 method: 'POST'
-             });
+                method: 'POST'
+            });
             finishProgress('processingResponse', result);
-             
-             // Перезагружаем список глав после анализа
-             if (result.success) {
-                 setTimeout(loadChaptersForAnalysis, 1000);
-             }
-         }
+
+            // Перезагружаем список глав после анализа
+            if (result.success) {
+                setTimeout(loadChaptersForAnalysis, 1000);
+            }
+        }
 
         async function translateChapter() {
-             const chapterId = document.getElementById('translateChapterId').value;
-             const useGlossary = document.getElementById('useGlossary').checked;
+            const chapterId = document.getElementById('translateChapterId').value;
+            const useGlossary = document.getElementById('useGlossary').checked;
 
-             if (!chapterId) {
-                 alert('Выберите главу для перевода');
-                 return;
-             }
+            if (!chapterId) {
+                alert('Выберите главу для перевода');
+                return;
+            }
 
             startProgress('processingResponse', 'Переводим главу...');
             const result = await makeRequest(`${API_BASE_URL}/translation/chapters/${chapterId}/translate?use_glossary=${useGlossary}`, {
-                 method: 'POST'
-             });
+                method: 'POST'
+            });
             finishProgress('processingResponse', result);
-             
-             // Перезагружаем список глав после перевода
-             if (result.success) {
-                 setTimeout(loadChaptersForTranslation, 1000);
-             }
-         }
 
-         // Функция для получения русского названия жанра
-         function getGenreLabel(genre) {
-             const labels = {
-                 'fantasy': 'Фантастика',
-                 'scifi': 'Научная фантастика',
-                 'romance': 'Романтика',
-                 'action': 'Боевик',
-                 'mystery': 'Детектив',
-                 'horror': 'Ужасы',
-                 'slice_of_life': 'Повседневность',
-                 'adventure': 'Приключения',
-                 'other': 'Другое'
-             };
-             return labels[genre] || genre;
-         }
+            // Перезагружаем список глав после перевода
+            if (result.success) {
+                setTimeout(loadChaptersForTranslation, 1000);
+            }
+        }
 
-                   // Функции для скачивания глав
-          async function loadChaptersForDownload() {
-              const projectId = document.getElementById('downloadProjectId').value;
-              const chapterSelect = document.getElementById('downloadChapterId');
-              const downloadBtn = document.getElementById('downloadBtn');
-              
-              if (!projectId) {
-                  chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
-                  chapterSelect.disabled = true;
-                  downloadBtn.disabled = true;
-                  return;
-              }
-              
-              const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
-              if (result.success) {
-                  const chapters = result.data;
-                  chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
-                  chapters.forEach(chapter => {
-                      const option = document.createElement('option');
-                      option.value = chapter.id;
-                      const status = chapter.translated_text ? '✓ Переведена' : '○ Не переведена';
-                      option.textContent = `${chapter.title} (${status})`;
-                      chapterSelect.appendChild(option);
-                  });
-                  chapterSelect.disabled = false;
-                  downloadBtn.disabled = false;
-              }
-          }
+        // Функция для получения русского названия жанра
+        function getGenreLabel(genre) {
+            const labels = {
+                'fantasy': 'Фантастика',
+                'scifi': 'Научная фантастика',
+                'romance': 'Романтика',
+                'action': 'Боевик',
+                'mystery': 'Детектив',
+                'horror': 'Ужасы',
+                'slice_of_life': 'Повседневность',
+                'adventure': 'Приключения',
+                'wuxia': 'Wuxia (Боевое фэнтези)',
+                'xianxia': 'Xianxia (Культивация)',
+                'litrpg': 'LitRPG',
+                'isekai': 'Isekai (Попаданцы)',
+                'other': 'Другое'
+            };
+            return labels[genre] || genre;
+        }
 
-          async function downloadChapter() {
-              const projectId = document.getElementById('downloadProjectId').value;
-              const chapterId = document.getElementById('downloadChapterId').value;
-              
-              if (!projectId || !chapterId) {
-                  alert('Выберите проект и главу для скачивания');
-                  return;
-              }
-              
-              // Создаем ссылку для скачивания
-              const downloadUrl = `${API_BASE_URL}/projects/${projectId}/chapters/${chapterId}/download`;
-              const link = document.createElement('a');
-              link.href = downloadUrl;
-              link.download = `chapter_${chapterId}.txt`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-          }
+        // Функции для скачивания глав
+        async function loadChaptersForDownload() {
+            const projectId = document.getElementById('downloadProjectId').value;
+            const chapterSelect = document.getElementById('downloadChapterId');
+            const downloadBtn = document.getElementById('downloadBtn');
 
-          // Автоматически загружаем проекты и проверяем здоровье API при загрузке
-           window.addEventListener('load', async () => {
-               await checkHealth();
-               await loadProjects();
-               // Сброс контейнеров batch при старте
-               ['batchAnalyzeChapters','batchTranslateChapters'].forEach(id => {
-                   const c = document.getElementById(id);
-                   if (c) c.innerHTML = '<p style="color:#777;">Сначала выберите проект...</p>';
-               });
-               // Явно дизейблим кнопки запуска батча до выбора проектов
-               const ba = document.getElementById('batchAnalyzeBtn');
-               const bt = document.getElementById('batchTranslateBtn');
-               if (ba) ba.disabled = true;
-               if (bt) bt.disabled = true;
-           });
+            if (!projectId) {
+                chapterSelect.innerHTML = '<option value="">Сначала выберите проект...</option>';
+                chapterSelect.disabled = true;
+                downloadBtn.disabled = true;
+                return;
+            }
+
+            const result = await makeRequest(`${API_BASE_URL}/projects/${projectId}/chapters`);
+            if (result.success) {
+                const chapters = result.data;
+                chapterSelect.innerHTML = '<option value="">Выберите главу...</option>';
+                chapters.forEach(chapter => {
+                    const option = document.createElement('option');
+                    option.value = chapter.id;
+                    const status = chapter.translated_text ? '✓ Переведена' : '○ Не переведена';
+                    option.textContent = `${chapter.title} (${status})`;
+                    chapterSelect.appendChild(option);
+                });
+                chapterSelect.disabled = false;
+                downloadBtn.disabled = false;
+            }
+        }
+
+        async function downloadChapter() {
+            const projectId = document.getElementById('downloadProjectId').value;
+            const chapterId = document.getElementById('downloadChapterId').value;
+
+            if (!projectId || !chapterId) {
+                alert('Выберите проект и главу для скачивания');
+                return;
+            }
+
+            // Создаем ссылку для скачивания
+            const downloadUrl = `${API_BASE_URL}/projects/${projectId}/chapters/${chapterId}/download`;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `chapter_${chapterId}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Автоматически загружаем проекты и проверяем здоровье API при загрузке
+        window.addEventListener('load', async () => {
+            await checkHealth();
+            await loadProjects();
+            // Сброс контейнеров batch при старте
+            ['batchAnalyzeChapters', 'batchTranslateChapters'].forEach(id => {
+                const c = document.getElementById(id);
+                if (c) c.innerHTML = '<p style="color:#777;">Сначала выберите проект...</p>';
+            });
+            // Явно дизейблим кнопки запуска батча до выбора проектов
+            const ba = document.getElementById('batchAnalyzeBtn');
+            const bt = document.getElementById('batchTranslateBtn');
+            if (ba) ba.disabled = true;
+            if (bt) bt.disabled = true;
+        });
     </script>
 </body>
+
 </html>

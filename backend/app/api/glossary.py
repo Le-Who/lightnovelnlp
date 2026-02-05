@@ -99,6 +99,12 @@ def get_glossary_term_details(term_id: int, db: Session = Depends(get_db)) -> Gl
     return db_term
 
 
+@router.get("/terms/{term_id}", response_model=GlossaryTermRead)
+def get_glossary_term_direct(term_id: int, db: Session = Depends(get_db)) -> GlossaryTerm:
+    """Convenience alias for getting term details."""
+    return get_glossary_term_details(term_id, db)
+
+
 @router.post("/terms", response_model=GlossaryTermRead, status_code=status.HTTP_201_CREATED)
 def create_glossary_term(term: GlossaryTermCreate, db: Session = Depends(get_db)) -> GlossaryTerm:
     """Создать новый термин в глоссарии."""

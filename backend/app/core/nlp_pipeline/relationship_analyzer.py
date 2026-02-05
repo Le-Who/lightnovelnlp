@@ -48,8 +48,8 @@ class RelationshipAnalyzer:
             logger.info("[REL] Calling Gemini API...")
             # Используем новую поддержку response_schema в GeminiClient
             response = self.client.complete(
-                prompt, 
-                max_tokens=4096,  # Reduced from 8192 to speed up
+                prompt,
+                # max_tokens removed to use default (8192 for Flash)
                 response_schema=RelationshipResponse
             )
             logger.info(f"[REL] Gemini returned response of type: {type(response).__name__}")

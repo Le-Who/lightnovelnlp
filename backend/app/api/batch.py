@@ -69,8 +69,8 @@ def create_batch_analyze_all_chapters(
     
     db.commit()
     
-    # Запускаем обработку в фоне (Async via Celery)
-    process_batch_analyze_task.delay(batch_job.id)
+    # Запускаем обработку в фоне (через BackgroundTasks)
+    background_tasks.add_task(process_batch_analyze_task, batch_job.id)
     
     return {
         "batch_job_id": batch_job.id,
@@ -122,8 +122,8 @@ def create_batch_translate_all_chapters(
     
     db.commit()
     
-    # Запускаем обработку в фоне (Async via Celery)
-    process_batch_translate_task.delay(batch_job.id)
+    # Запускаем обработку в фоне (через BackgroundTasks)
+    background_tasks.add_task(process_batch_translate_task, batch_job.id)
     
     return {
         "batch_job_id": batch_job.id,
@@ -214,8 +214,7 @@ def create_batch_analyze_job(
     db.commit()
     
     # Запускаем обработку в фоне
-    # Запускаем обработку в фоне (Async via Celery)
-    process_batch_analyze_task.delay(batch_job.id)
+    background_tasks.add_task(process_batch_analyze_task, batch_job.id)
     
     return {
         "batch_job_id": batch_job.id,
@@ -269,8 +268,7 @@ def create_batch_translate_job(
     db.commit()
     
     # Запускаем обработку в фоне
-    # Запускаем обработку в фоне (Async via Celery)
-    process_batch_translate_task.delay(batch_job.id)
+    background_tasks.add_task(process_batch_translate_task, batch_job.id)
     
     return {
         "batch_job_id": batch_job.id,
@@ -313,3 +311,16 @@ def get_batch_job_status(job_id: int, db: Session = Depends(get_db)) -> dict:
             for item in job_items
         ]
     }
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_batch_job(job_id: int, db: Session = Depends(get_db)):
+    """Удалить пакетную задачу и все связанные элементы."""
+    batch_job = db.get(BatchJob, job_id)
+    if not batch_job:
+        raise HTTPException(status_code=404, detail="Batch job not found")
+    
+    # Cascade delete is configured in model relationship
+    db.delete(batch_job)
+    db.commit()
+    return None
