@@ -266,10 +266,21 @@ class CacheService:
                 pass
         # TCP fallback
         try:
-            keys = self.redis_client.keys(pattern)
-            if keys:
-                return int(self.redis_client.delete(*keys) or 0)
-            return 0
+            count = 0
+            keys_batch = []
+            # Use scan_iter for non-blocking iteration over keys
+            for key in self.redis_client.scan_iter(match=pattern, count=100):
+                keys_batch.append(key)
+                if len(keys_batch) >= 100:
+                    deleted = self.redis_client.delete(*keys_batch)
+                    count += int(deleted or 0)
+                    keys_batch = []
+
+            if keys_batch:
+                deleted = self.redis_client.delete(*keys_batch)
+                count += int(deleted or 0)
+
+            return count
         except Exception as e:
             self.logger.warning(f"Cache delete pattern error: {e}")
             return 0
