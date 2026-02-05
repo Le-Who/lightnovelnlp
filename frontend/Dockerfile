@@ -1,38 +1,36 @@
-# Stage 1: Builder
-FROM node:20-alpine AS builder
+# Этап сборки
+FROM node:18-alpine AS builder
 
-# Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Copy dependency definitions first to leverage Docker cache
-COPY package.json pnpm-lock.yaml ./
+# Копируем файлы зависимостей
+COPY package*.json ./
 
-# Install dependencies (frozen-lockfile ensures reproducibility)
-RUN pnpm install --frozen-lockfile
+# Устанавливаем зависимости
+RUN npm install
 
-# Copy the rest of the source code
+# Копируем исходный код
 COPY . .
 
-# Build argument for API URL (required for Vite at build time)
+# API URL для сборки (передается через Build Arguments в Northflank)
 ARG VITE_API_URL=https://p01--lightnovelnlp--95w5j7vcjd9s.code.run
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build the application
-RUN pnpm run build
+# Собираем приложение
+RUN npm run build
 
-# Stage 2: Production
+# Этап продакшена
 FROM nginx:alpine
 
-# Copy built assets from builder stage
+# Копируем собранные файлы
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx config (ensure this file exists in your frontend directory)
+# Копируем конфигурацию nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 8080 (standard for cloud runners)
+# Открываем порт
 EXPOSE 8080
 
-# Start Nginx
+# Запускаем nginx
 CMD ["nginx", "-g", "daemon off;"]
