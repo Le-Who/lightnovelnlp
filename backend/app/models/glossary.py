@@ -54,8 +54,8 @@ class TermRelationship(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    source_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False)
-    target_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False)
+    source_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
+    target_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
     relation_type = Column(String(50), nullable=False)
     confidence = Column(Integer, nullable=True)  # 0-100
     context = Column(Text, nullable=True)
@@ -111,7 +111,7 @@ class BatchJobItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    batch_job_id = Column(Integer, ForeignKey("batch_jobs.id"), nullable=False)
+    batch_job_id = Column(Integer, ForeignKey("batch_jobs.id"), nullable=False, index=True)
     item_type = Column(String(50), nullable=False)  # 'chapter', 'term', etc.
     item_id = Column(Integer, nullable=False)  # ID элемента (главы, термина и т.д.)
     status = Column(String(20), default="pending")  # pending, processing, completed, failed
