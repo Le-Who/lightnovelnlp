@@ -18,13 +18,29 @@ export default function GlossaryEditor({ projectId }) {
   const loadTerms = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/glossary/${projectId}/terms`, {
-        params: {
-          sort_by: sortBy,
-          order: sortOrder
+      const res = await api.get(`/glossary/${projectId}/terms`)
+
+      // Frontend sorting to ensure it works regardless of backend implementation
+      const sortedTerms = [...res.data].sort((a, b) => {
+        let valA = a[sortBy]
+        let valB = b[sortBy]
+
+        // Handle nulls
+        if (valA === null || valA === undefined) valA = ''
+        if (valB === null || valB === undefined) valB = ''
+
+        // String comparison for text fields
+        if (typeof valA === 'string') {
+          return sortOrder === 'asc'
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA)
         }
+
+        // Number comparison
+        return sortOrder === 'asc' ? valA - valB : valB - valA
       })
-      setTerms(res.data)
+
+      setTerms(sortedTerms)
     } catch (e) {
       console.error('Error loading terms:', e)
     } finally {
@@ -96,11 +112,11 @@ export default function GlossaryEditor({ projectId }) {
           <CardTitle>Глоссарий</CardTitle>
 
           <div className="flex gap-2 items-center text-sm">
-            <span className="text-slate-500">Сортировка:</span>
+            <span className="text-muted-foreground">Сортировка:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
             >
               <option value="id">ID</option>
               <option value="source_term">Название</option>
@@ -112,7 +128,7 @@ export default function GlossaryEditor({ projectId }) {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
             >
               <option value="asc">По возр.</option>
               <option value="desc">По убыв.</option>
@@ -122,7 +138,7 @@ export default function GlossaryEditor({ projectId }) {
       </CardHeader>
       <CardContent>
         {terms.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
+          <div className="text-center py-12 text-muted-foreground">
             Термины отсутствуют. Запустите анализ главы для извлечения терминов.
           </div>
         ) : (
@@ -141,15 +157,15 @@ export default function GlossaryEditor({ projectId }) {
               <TableBody>
                 {terms.map((term) => (
                   <TableRow key={term.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-card-foreground">
                       {term.source_term}
                       {term.context && (
-                        <div className="text-xs text-slate-500 mt-1 italic whitespace-normal">
+                        <div className="text-xs text-muted-foreground mt-1 italic whitespace-normal">
                           {term.context}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-card-foreground">
                       {editingTerm?.id === term.id ? (
                         <div className="flex items-center gap-2">
                           <Input
@@ -165,8 +181,8 @@ export default function GlossaryEditor({ projectId }) {
                         term.translated_term
                       )}
                     </TableCell>
-                    <TableCell>{getCategoryLabel(term.category)}</TableCell>
-                    <TableCell>{term.frequency || 1}</TableCell>
+                    <TableCell className="text-card-foreground">{getCategoryLabel(term.category)}</TableCell>
+                    <TableCell className="text-card-foreground">{term.frequency || 1}</TableCell>
                     <TableCell>{getStatusBadge(term.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -186,7 +202,7 @@ export default function GlossaryEditor({ projectId }) {
                               variant="ghost"
                               onClick={() => setEditingTerm(null)}
                             >
-                              <X className="h-4 w-4 text-slate-500" />
+                              <X className="h-4 w-4 text-muted-foreground" />
                             </Button>
                           </>
                         ) : (
@@ -196,7 +212,7 @@ export default function GlossaryEditor({ projectId }) {
                               variant="ghost"
                               onClick={() => setEditingTerm(term)}
                             >
-                              <Edit2 className="h-4 w-4" />
+                              <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                             </Button>
                             {term.status === 'pending' && (
                               <Button
@@ -212,7 +228,7 @@ export default function GlossaryEditor({ projectId }) {
                               variant="ghost"
                               onClick={() => deleteTerm(term.id)}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </>
                         )}

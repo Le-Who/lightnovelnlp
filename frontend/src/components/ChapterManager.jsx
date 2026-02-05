@@ -243,7 +243,7 @@ export default function ChapterManager({ projectId }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h3 className="text-xl font-semibold text-slate-900">Главы проекта</h3>
+        <h3 className="text-xl font-semibold text-foreground">Главы проекта</h3>
         <div className="flex gap-2">
           <Button onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -258,7 +258,7 @@ export default function ChapterManager({ projectId }) {
           <CardTitle className="text-base">Загрузить главы из файла</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             <div className="space-y-2">
               <Label htmlFor="chapter-pattern">Паттерн разделения глав</Label>
               <Input
@@ -272,21 +272,24 @@ export default function ChapterManager({ projectId }) {
               </p>
             </div>
 
-            <div className="flex gap-2 items-center">
-              <Input
-                type="file"
-                accept=".txt"
-                onChange={handleFileSelect}
-                className="cursor-pointer"
-              />
-              <Button
-                onClick={uploadChaptersFromFile}
-                disabled={uploadingChapters || !selectedFile}
-                className="whitespace-nowrap"
-              >
-                {uploadingChapters ? <Spinner className="w-4 h-4 mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                Загрузить
-              </Button>
+            <div className="space-y-2">
+              <Label>Файл с главами</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="file"
+                  accept=".txt"
+                  onChange={handleFileSelect}
+                  className="cursor-pointer file:text-foreground"
+                />
+                <Button
+                  onClick={uploadChaptersFromFile}
+                  disabled={uploadingChapters || !selectedFile}
+                  className="whitespace-nowrap"
+                >
+                  {uploadingChapters ? <Spinner className="w-4 h-4 mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Загрузить
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -305,17 +308,17 @@ export default function ChapterManager({ projectId }) {
                 <div className="flex flex-col md:flex-row gap-4 justify-between">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-medium text-slate-900">{chapter.title}</h4>
+                      <h4 className="text-lg font-medium text-card-foreground">{chapter.title}</h4>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => deleteChapter(chapter.id)}
-                        className="h-8 w-8 text-slate-400 hover:text-red-600 md:hidden"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive md:hidden"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
                         {chapter.original_text.length} симв.
@@ -327,7 +330,7 @@ export default function ChapterManager({ projectId }) {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-slate-600 line-clamp-2">
+                    <p className="text-sm text-muted-foreground line-clamp-2">
                       {chapter.original_text}
                     </p>
                   </div>
@@ -380,7 +383,7 @@ export default function ChapterManager({ projectId }) {
                     <Button
                       variant="ghost"
                       onClick={() => deleteChapter(chapter.id)}
-                      className="hidden md:flex text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      className="hidden md:flex text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Удалить
@@ -446,14 +449,14 @@ export default function ChapterManager({ projectId }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
               <div className="flex flex-col h-full">
                 <h4 className="font-medium mb-2">Оригинал</h4>
-                <div className="border rounded-md p-4 bg-slate-50 overflow-auto flex-1 text-sm whitespace-pre-wrap">
+                <div className="border rounded-md p-4 bg-muted overflow-auto flex-1 text-sm whitespace-pre-wrap text-foreground">
                   {previewData.original_text}
                 </div>
               </div>
 
               <div className="flex flex-col h-full">
                 <h4 className="font-medium mb-2">Перевод</h4>
-                <div className="border rounded-md p-4 bg-white overflow-auto flex-1 text-sm whitespace-pre-wrap">
+                <div className="border rounded-md p-4 bg-card overflow-auto flex-1 text-sm whitespace-pre-wrap text-card-foreground">
                   {previewData.translated_text}
                 </div>
               </div>
