@@ -11,9 +11,14 @@ from app.schemas.nlp import TermExtractionResponse
 logger = logging.getLogger(__name__)
 
 
+import re
+import pymorphy3
+from collections import Counter
+
 class TermExtractor:
     def __init__(self):
         self.client = gemini_client
+        self.morph = pymorphy3.MorphAnalyzer()
 
     def extract_terms(
         self, 
@@ -59,7 +64,8 @@ class TermExtractor:
 
     def count_term_frequency(self, text: str, terms: List[str]) -> Dict[str, int]:
         """
-        Подсчитывает частоту встречаемости терминов в тексте.
+        Подсчитывает частоту встречаемости терминов с учетом морфологии (lemmatization).
+        Использует pymorphy2 для приведения слов к нормальной форме.
         
         Args:
             text: Текст для анализа
@@ -68,14 +74,53 @@ class TermExtractor:
         Returns:
             Dict[str, int]: Словарь {термин: частота}
         """
+        if not terms or not text:
+            return {}
+
+        # 1. Токенизация и лемматизация текста (один проход)
+        # Разбиваем на слова, оставляя только буквенные токены
+        tokens = re.findall(r'\w+', text.lower())
+        
+        # Кэш для ускорения лемматизации повторяющихся слов
+        lemma_cache = {}
+        
+        def get_lemma(word):
+            if word in lemma_cache:
+                return lemma_cache[word]
+            # Берем наиболее вероятную нормальную форму
+            lemma = self.morph.parse(word)[0].normal_form
+            lemma_cache[word] = lemma
+            return lemma
+
+        # Получаем список лемм из текста
+        text_lemmas = [get_lemma(token) for token in tokens]
+        
+        # Считаем частоту каждой леммы в тексте
+        lemma_counts = Counter(text_lemmas)
+        
         frequency = {}
-        text_lower = text.lower()
-        
         for term in terms:
-            # Простой подсчет вхождений (можно улучшить с помощью regex)
-            count = text_lower.count(term.lower())
+            # Лемматизируем и сам искомый термин (если он состоит из нескольких слов - берем каждое)
+            # Для простых терминов (одно слово)
+            if ' ' not in term:
+                term_lemma = get_lemma(term.lower())
+                count = lemma_counts.get(term_lemma, 0)
+            else:
+                # Для составных терминов (например "Огненный шар") сложнее.
+                # Пока используем упрощенный подход: ищем точное совпадение исходной строки без морфологии,
+                # либо (лучше) проверяем вхождение последовательности лемм.
+                # Реализуем поиск последовательности лемм для составных:
+                term_tokens = re.findall(r'\w+', term.lower())
+                term_lemmas = tuple(get_lemma(t) for t in term_tokens)
+                
+                # Сложность поиска подстроки лемм в списке лемм.
+                # Для производительности пока оставим `text.lower().count()` для составных фраз,
+                # так как pymorphy лучше всего работает с отдельными словами.
+                # TODO: можно улучшить поиск n-грамм лемм.
+                count = text.lower().count(term.lower())
+            
             frequency[term] = count
-        
+            
         return frequency
 
     def extract_terms_with_frequency(self, text: str, project_genre: ProjectGenre = ProjectGenre.OTHER) -> List[Dict[str, Any]]:
