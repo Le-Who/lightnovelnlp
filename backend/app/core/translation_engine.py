@@ -23,10 +23,11 @@ class TranslationEngine:
         relationships: List[Dict[str, Any]] | None = None,
         genre: str | None = None,
         source_language: str = "en",
-        custom_genre_instructions: str | None = None
+        custom_genre_instructions: str | None = None,
+        previous_context: str | None = None
     ) -> str:
         """
-        Переводит текст с использованием утвержденного глоссария и контекста.
+        Переводит текст с использованием утвержденного глоссария, контекста и текста предыдущей главы.
         
         Args:
             text: Оригинальный текст для перевода
@@ -37,13 +38,15 @@ class TranslationEngine:
             genre: Жанр проекта для настройки стиля
             source_language: Язык оригинала (zh, ja, ko, en)
             custom_genre_instructions: Кастомные инструкции для жанра/стиля
+            previous_context: Текст концовки предыдущей главы (опционально)
             
         Returns:
             str: Переведенный текст
         """
         prompt = self._build_translation_prompt(
             text, glossary_terms, context_summary, project_summary, 
-            relationships, genre, source_language, custom_genre_instructions
+            relationships, genre, source_language, custom_genre_instructions,
+            previous_context
         )
         
         try:
@@ -62,7 +65,8 @@ class TranslationEngine:
         relationships: List[Dict[str, Any]] | None = None,
         genre: str | None = None,
         source_language: str = "en",
-        custom_genre_instructions: str | None = None
+        custom_genre_instructions: str | None = None,
+        previous_context: str | None = None
     ) -> str:
         """Строит промпт для перевода с учетом глоссария и контекста."""
         # Нормализуем входной текст: приводим переводы строк к \n и убираем лишние пустые
@@ -139,6 +143,16 @@ class TranslationEngine:
             prompt += f"""
 КОНТЕКСТ ТЕКУЩЕЙ ГЛАВЫ:
 {context_summary}
+
+"""
+
+        # Добавляем контекст предыдущей главы, если есть
+        if previous_context:
+            prompt += f"""
+КОНТЕКСТ ПРЕДЫДУЩЕЙ ГЛАВЫ (последние события, для связности):
+...
+{previous_context}
+...
 
 """
         

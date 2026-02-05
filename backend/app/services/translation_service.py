@@ -63,6 +63,19 @@ class TranslationService:
         # 3. Контекст проекта
         project_summary = TranslationService._get_project_summary(db, chapter.project_id)
         
+        # 3.1 Контекст предыдущей главы
+        previous_context = None
+        previous_chapter = db.query(Chapter).filter(
+            Chapter.project_id == chapter.project_id, 
+            Chapter.order < chapter.order
+        ).order_by(Chapter.order.desc()).first()
+        
+        if previous_chapter and previous_chapter.original_text:
+            # Берем последние 1000 символов оригинала предыдущей главы
+            text_len = len(previous_chapter.original_text)
+            start_pos = max(0, text_len - 1000)
+            previous_context = previous_chapter.original_text[start_pos:]
+        
         # 4. Перевод
         translated_text = translation_engine.translate_with_glossary(
             text=chapter.original_text,
@@ -70,7 +83,8 @@ class TranslationService:
             context_summary=chapter.summary,
             project_summary=project_summary,
             relationships=relevant_relationships,
-            genre=chapter.project.genre
+            genre=chapter.project.genre,
+            previous_context=previous_context
         )
         
         # 5. Сохранение
@@ -118,13 +132,26 @@ class TranslationService:
             
         project_summary = TranslationService._get_project_summary(db, chapter.project_id)
         
+        # Контекст предыдущей главы
+        previous_context = None
+        previous_chapter = db.query(Chapter).filter(
+            Chapter.project_id == chapter.project_id, 
+            Chapter.order < chapter.order
+        ).order_by(Chapter.order.desc()).first()
+        
+        if previous_chapter and previous_chapter.original_text:
+            text_len = len(previous_chapter.original_text)
+            start_pos = max(0, text_len - 1000)
+            previous_context = previous_chapter.original_text[start_pos:]
+        
         translated_text = translation_engine.translate_with_glossary(
             text=chapter.original_text,
             glossary_terms=glossary_terms,
             context_summary=chapter.summary,
             project_summary=project_summary,
             relationships=relevant_relationships,
-            genre=chapter.project.genre
+            genre=chapter.project.genre,
+            previous_context=previous_context
         )
         
         return {
@@ -161,17 +188,20 @@ class TranslationService:
         
         glossary_terms = GlossaryService.filter_terms_by_text(chapter.original_text, all_terms)
         
-        review_prompt = f"""
-        Please conduct a stylistic and grammatical review of the translation from Russian to English.
+        source_lang = chapter.project.source_language
+        target_lang = chapter.project.target_language
         
-        Original text (Russian):
+        review_prompt = f"""
+        Please conduct a stylistic and grammatical review of the translation from {source_lang} to {target_lang}.
+        
+        Original text ({source_lang}):
         {chapter.original_text[:1000]}...
         
-        Current translation (English):
+        Current translation ({target_lang}):
         {chapter.translated_text}
         
         Approved glossary terms:
-        {chr(10).join([f"- {t.source_term} → {t.translated_term}" for t in glossary_terms[:10]])}
+        {chr(10).join([f"- {t.source_term} -> {t.translated_term}" for t in glossary_terms[:10]])}
         
         Please analyze the translation and provide:
         1. Overall translation quality score (1-10)

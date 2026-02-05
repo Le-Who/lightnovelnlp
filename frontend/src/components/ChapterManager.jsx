@@ -9,15 +9,17 @@ import { Label } from './ui/Label'
 import { Modal } from './ui/Modal'
 import { Spinner } from './ui/Spinner'
 import { Alert } from './ui/Alert'
-import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, Trash2 } from 'lucide-react'
+import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, FileSearch } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
   const [loading, setLoading] = useState(false)
   const [analyzing, setAnalyzing] = useState({})  // chapterId -> status string
   const [translating, setTranslating] = useState({})  // chapterId -> status string
+  const [reviewing, setReviewing] = useState({}) // chapterId -> boolean
   const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
   const [previewData, setPreviewData] = useState(null)
+  const [reviewData, setReviewData] = useState(null)
   const [uploadingChapters, setUploadingChapters] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
@@ -79,7 +81,7 @@ export default function ChapterManager({ projectId }) {
     if (!confirm('Вы уверены, что хотите удалить эту главу?')) return
 
     try {
-      await api.delete(`/projects/${projectId}/chapters/${chapterId}`)
+      await api.delete(`/projects/chapters/${chapterId}`)
       loadChapters()
     } catch (e) {
       console.error('Error deleting chapter:', e)
@@ -208,6 +210,19 @@ export default function ChapterManager({ projectId }) {
     }
   }
 
+  const reviewTranslation = async (chapterId) => {
+    setReviewing(prev => ({ ...prev, [chapterId]: true }))
+    try {
+      const res = await api.post(`/translation/chapters/${chapterId}/review`)
+      setReviewData(res.data)
+    } catch (e) {
+      console.error('Error reviewing translation:', e)
+      alert('Ошибка получения рецензии: ' + (e.response?.data?.detail || e.message))
+    } finally {
+      setReviewing(prev => ({ ...prev, [chapterId]: false }))
+    }
+  }
+
   const previewTranslation = async (chapterId) => {
     try {
       const res = await api.get(`/translation/chapters/${chapterId}/translation-preview`)
@@ -222,6 +237,10 @@ export default function ChapterManager({ projectId }) {
     setPreviewData(null)
   }
 
+  const closeReview = () => {
+    setReviewData(null)
+  }
+
   useEffect(() => {
     if (previewData && modalRef.current) {
       modalRef.current.focus()
@@ -230,13 +249,14 @@ export default function ChapterManager({ projectId }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && previewData) {
-        setPreviewData(null)
+      if (e.key === 'Escape') {
+        if (previewData) setPreviewData(null)
+        if (reviewData) setReviewData(null)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [previewData])
+  }, [previewData, reviewData])
 
   if (loading) return <div>Загрузка глав...</div>
 
@@ -380,6 +400,24 @@ export default function ChapterManager({ projectId }) {
                       )}
                     </Button>
 
+                    {chapter.translated_text && (
+                      <Button
+                        onClick={() => reviewTranslation(chapter.id)}
+                        disabled={reviewing[chapter.id]}
+                        variant="warning"
+                        className="flex-1"
+                      >
+                        {reviewing[chapter.id] ? (
+                          <Spinner className="w-4 h-4" />
+                        ) : (
+                          <>
+                            <FileSearch className="w-4 h-4 mr-2" />
+                            Рецензия
+                          </>
+                        )}
+                      </Button>
+                    )}
+
                     <Button
                       variant="ghost"
                       onClick={() => deleteChapter(chapter.id)}
@@ -467,6 +505,27 @@ export default function ChapterManager({ projectId }) {
             {previewData?.message}
           </div>
         )}
+      </Modal>
+
+      {/* Модальное окно рецензии */}
+      <Modal
+        isOpen={!!reviewData}
+        onClose={closeReview}
+        title="Рецензия на перевод (AI)"
+        className="max-w-3xl"
+      >
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          {reviewData?.review_text ? (
+            <div className="prose dark:prose-invert max-w-none whitespace-pre-line text-foreground">
+              {reviewData.review_text}
+            </div>
+          ) : (
+            <div className="text-yellow-500">Нет данных рецензии</div>
+          )}
+          <div className="text-xs text-muted-foreground pt-4 border-t">
+            ID главы: {reviewData?.chapter_id}
+          </div>
+        </div>
       </Modal>
     </div>
   )
