@@ -195,11 +195,3 @@ docker-compose up --build -d
 | `GEMINI_API_KEY` | Ключ или список ключей (через запятую) для Google AI |
 | `REDIS_URL` | Адрес Redis сервера |
 | `ENVIRONMENT` | `development` или `production` |
-
-## 🤝 Вклад в проект
-
-1.  Форкните репозиторий
-2.  Создайте ветку под фичу (`git checkout -b feature/AmazingFeature`)
-3.  Закоммитьте изменения (`git commit -m 'Add some AmazingFeature'`)
-4.  Запушьте (`git push origin feature/AmazingFeature`)
-5.  Откройте Pull Request
