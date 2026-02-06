@@ -80,12 +80,12 @@ export default function ChapterViewer({ projectId }) {
                 <div>
                   <h4 className="font-semibold text-lg">{chapter.title}</h4>
                   <div className="text-sm text-slate-500 flex gap-2 items-center">
-                    <span>Символов: {chapter.original_text.length}</span>
+                    <span>Символов: {(chapter.original_text || '').length}</span>
                     <ArrowRight className="h-3 w-3" />
-                    <span>{chapter.translated_text.length}</span>
+                    <span>{(chapter.translated_text || '').length}</span>
                   </div>
                   <p className="text-sm text-slate-500 italic mt-1 line-clamp-1">
-                    {chapter.translated_text.substring(0, 100)}...
+                    {(chapter.translated_text || '').substring(0, 100)}...
                   </p>
                 </div>
 

@@ -341,7 +341,7 @@ export default function ChapterManager({ projectId }) {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
-                        {chapter.original_text.length} симв.
+                        {(chapter.original_text || '').length} симв.
                       </span>
                       {chapter.translated_text && (
                         <Badge variant="success" className="gap-1">

@@ -59,85 +59,86 @@ export default function DashboardPage() {
     }
   }
 
-  // If a specific theme view exists for Dashboard, render it
-  if (Views.Dashboard) {
-    return (
-      <Views.Dashboard
-        projects={projects}
-        onCreateProject={(n, g) => createProject(null, n, g)}
-        loading={loading}
-        creating={creating}
-      />
-    );
-  }
+
 
   // Default View (Original)
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Проекты</h2>
-          <p className="text-muted-foreground">Управляйте вашими переводами новелл</p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Создать новый проект</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={(e) => createProject(e)} className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="grid w-full gap-1.5">
-              <Label htmlFor="project-name">Название</Label>
-              <Input
-                id="project-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Например: Overlord"
-              />
-            </div>
-
-            <div className="grid w-full gap-1.5">
-              <Label htmlFor="project-genre">Жанр</Label>
-              <Input
-                id="project-genre"
-                list="genreOptions"
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                placeholder="Выберите или введите..."
-              />
-              <datalist id="genreOptions">
-                <option value="fantasy">Фантастика</option>
-                <option value="scifi">Научная фантастика</option>
-                <option value="romance">Романтика</option>
-                <option value="action">Боевик</option>
-                <option value="mystery">Детектив/Мистерия</option>
-                <option value="horror">Ужасы</option>
-                <option value="slice_of_life">Повседневность</option>
-                <option value="adventure">Приключения</option>
-                <option value="wuxia">Wuxia (Китайское боевое фэнтези)</option>
-                <option value="xianxia">Xianxia (Культивация бессмертия)</option>
-                <option value="litrpg">LitRPG (Игровые механики)</option>
-                <option value="isekai">Isekai (Попаданцы)</option>
-                <option value="other">Другое</option>
-              </datalist>
-            </div>
-
-            <Button type="submit" disabled={creating}>
-              {creating ? <Spinner className="mr-2" /> : <Plus className="mr-2 h-4 w-4" />}
-              {creating ? 'Создание...' : 'Создать'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Spinner className="h-8 w-8 text-muted-foreground" />
-        </div>
+    <>
+      {Views.Dashboard ? (
+        <Views.Dashboard
+          projects={projects}
+          onCreateProject={(n, g) => createProject(null, n, g)}
+          loading={loading}
+          creating={creating}
+        />
       ) : (
-        <ProjectList projects={projects} />
-      )}
-    </div>
+        <div className="space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">Проекты</h2>
+              <p className="text-muted-foreground">Управляйте вашими переводами новелл</p>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Создать новый проект</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => createProject(e)} className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="grid w-full gap-1.5">
+                  <Label htmlFor="project-name">Название</Label>
+                  <Input
+                    id="project-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Например: Overlord"
+                  />
+                </div>
+
+                <div className="grid w-full gap-1.5">
+                  <Label htmlFor="project-genre">Жанр</Label>
+                  <Input
+                    id="project-genre"
+                    list="genreOptions"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    placeholder="Выберите или введите..."
+                  />
+                  <datalist id="genreOptions">
+                    <option value="fantasy">Фантастика</option>
+                    <option value="scifi">Научная фантастика</option>
+                    <option value="romance">Романтика</option>
+                    <option value="action">Боевик</option>
+                    <option value="mystery">Детектив/Мистерия</option>
+                    <option value="horror">Ужасы</option>
+                    <option value="slice_of_life">Повседневность</option>
+                    <option value="adventure">Приключения</option>
+                    <option value="wuxia">Wuxia (Китайское боевое фэнтези)</option>
+                    <option value="xianxia">Xianxia (Культивация бессмертия)</option>
+                    <option value="litrpg">LitRPG (Игровые механики)</option>
+                    <option value="isekai">Isekai (Попаданцы)</option>
+                    <option value="other">Другое</option>
+                  </datalist>
+                </div>
+
+                <Button type="submit" disabled={creating}>
+                  {creating ? <Spinner className="mr-2" /> : <Plus className="mr-2 h-4 w-4" />}
+                  {creating ? 'Создание...' : 'Создать'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Spinner className="h-8 w-8 text-muted-foreground" />
+            </div>
+          ) : (
+            <ProjectList projects={projects} />
+          )}
+        </div>
+      }
+    </>
   )
 }
