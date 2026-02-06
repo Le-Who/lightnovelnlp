@@ -138,7 +138,7 @@ export default function DashboardPage() {
             <ProjectList projects={projects} />
           )}
         </div>
-      }
+      )}
     </>
   )
 }
