@@ -1,5 +1,5 @@
 import React from 'react';
-import PropTypes from 'prop-types';
+
 import { Terminal, Database, Cpu, Activity, Plus, Play, ChevronRight } from 'lucide-react';
 
 export function NeonDashboard({ projects, onCreateProject, loading, creating }) {
@@ -152,9 +152,4 @@ const StatBlock = ({ label, value, color = "text-white" }) => (
     </div>
 );
 
-NeonDashboard.propTypes = {
-    projects: PropTypes.array,
-    onCreateProject: PropTypes.func,
-    loading: PropTypes.bool,
-    creating: PropTypes.bool
-};
+
