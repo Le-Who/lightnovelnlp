@@ -200,7 +200,7 @@ export function NeonChapterManager({ projectId }) {
                                     <FileText className="w-3 h-3 mr-2 text-accent opacity-50 group-hover:opacity-100" />
                                     <span className="group-hover:text-accent transition-colors">{chapter.title}</span>
                                 </div>
-                                <div className="col-span-2 text-xs text-muted-foreground font-mono">{chapter.original_text.length}B</div>
+                                <div className="col-span-2 text-xs text-muted-foreground font-mono">{(chapter.original_text || '').length}B</div>
                                 <div className="col-span-2">
                                     {(analyzing[chapter.id] || translating[chapter.id]) ? (
                                         <span className="text-yellow-500 text-xs flex items-center animate-pulse">
