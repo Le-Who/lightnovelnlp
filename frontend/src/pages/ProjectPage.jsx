@@ -10,11 +10,22 @@ import GlossaryVersionManager from '../components/GlossaryVersionManager.jsx'
 import BatchProcessor from '../components/BatchProcessor.jsx'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs'
 import { Spinner } from '../components/ui/Spinner'
+import { useThemeView } from '../hooks/useThemeView'
 
 export default function ProjectPage() {
   const { projectId } = useParams()
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  // Theme View Resolver
+  const Views = useThemeView();
+
+  // If a specific theme view exists for ProjectPage, render it
+  // Note: We need to handle data loading inside the view OR pass it down.
+  // NeonProjectPage handles its own loading for now to simpler refactoring.
+  if (Views.ProjectPage) {
+    return <Views.ProjectPage />;
+  }
 
   const loadProject = async () => {
     setLoading(true)
@@ -52,8 +63,8 @@ export default function ProjectPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />

@@ -63,7 +63,7 @@ export default function ChapterViewer({ projectId }) {
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold tracking-tight">Переведенные главы</h3>
       </div>
-      
+
       {translatedChapters.length === 0 ? (
         <div className="text-center py-12 border border-dashed rounded-lg text-slate-500">
           Переведенные главы отсутствуют. Сначала переведите главы в разделе &quot;Главы&quot;.
@@ -72,7 +72,7 @@ export default function ChapterViewer({ projectId }) {
         <div className="grid gap-4">
           {translatedChapters.map((chapter) => (
             <Card
-              key={chapter.id} 
+              key={chapter.id}
               className="cursor-pointer hover:border-slate-300 transition-colors"
               onClick={() => setSelectedChapter(chapter)}
             >
@@ -90,14 +90,14 @@ export default function ChapterViewer({ projectId }) {
                 </div>
 
                 <div className="flex gap-2">
-                   <Button
-                      size="sm"
-                      variant="outline"
-                      className="whitespace-nowrap"
-                   >
-                     <Eye className="mr-2 h-4 w-4" /> Читать
-                   </Button>
-                   <Button
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    <Eye className="mr-2 h-4 w-4" /> Читать
+                  </Button>
+                  <Button
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation()
@@ -133,7 +133,7 @@ export default function ChapterViewer({ projectId }) {
                   {selectedChapter.original_text}
                 </div>
               </div>
-              
+
               <div className="flex flex-col min-h-0">
                 <h4 className="font-semibold text-sm text-slate-500 uppercase mb-2">Перевод</h4>
                 <div className="flex-1 overflow-y-auto p-4 bg-white rounded-md border text-sm whitespace-pre-wrap leading-relaxed shadow-sm">
@@ -141,27 +141,27 @@ export default function ChapterViewer({ projectId }) {
                 </div>
               </div>
             </div>
-            
+
             {/* Review Section */}
             {(reviewData[selectedChapter.id] || !reviewData[selectedChapter.id]) && (
-               <div className="mt-4 border-t pt-4 shrink-0">
-                 {!reviewData[selectedChapter.id] ? (
-                    <div className="flex justify-end">
-                      <Button onClick={() => requestReview(selectedChapter.id)}>
-                        <MessageSquare className="mr-2 h-4 w-4" /> Запросить рецензию AI
-                      </Button>
-                    </div>
-                 ) : (
-                   <div className="max-h-40 overflow-y-auto p-4 bg-yellow-50 border border-yellow-100 rounded-md">
-                     <h4 className="font-semibold text-yellow-900 mb-2 flex items-center">
-                       <MessageSquare className="mr-2 h-4 w-4" /> Рецензия AI
-                     </h4>
-                     <p className="text-sm text-yellow-800 whitespace-pre-wrap">
-                       {reviewData[selectedChapter.id]}
-                     </p>
-                   </div>
-                 )}
-               </div>
+              <div className="mt-4 border-t pt-4 shrink-0">
+                {!reviewData[selectedChapter.id] ? (
+                  <div className="flex justify-end">
+                    <Button onClick={() => requestReview(selectedChapter.id)}>
+                      <MessageSquare className="mr-2 h-4 w-4" /> Запросить рецензию AI
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto p-4 bg-yellow-50 border border-yellow-100 rounded-md">
+                    <h4 className="font-semibold text-yellow-900 mb-2 flex items-center">
+                      <MessageSquare className="mr-2 h-4 w-4" /> Рецензия AI
+                    </h4>
+                    <p className="text-sm text-yellow-800 whitespace-pre-wrap">
+                      {reviewData[selectedChapter.id]}
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
