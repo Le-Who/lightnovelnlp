@@ -107,17 +107,6 @@ export default function GlossaryEditor({ projectId }) {
   if (loading && terms.length === 0) return <div className="flex justify-center p-8"><Spinner /></div>
 
   return (
-  // ... imports
-
-  // ... state logic
-
-  // Helper to detect if running in Neon theme (dark mode)
-  // Ideally this should be passed in or detected via context, but for now we can infer or just use neutral visibility styling
-  // Or better, explicit neon-friendly classes if needed.
-  // Since this is a shared component, we should be careful. 
-  // We will force "outline" badges to have explicit text colors that work on both, or use a custom class.
-  
-  return (
     <Card className="overflow-hidden">
       <CardHeader>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
