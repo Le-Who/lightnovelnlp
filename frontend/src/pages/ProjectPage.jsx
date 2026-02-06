@@ -72,7 +72,7 @@ export default function ProjectPage() {
         project={project}
         loading={loading}
         projectId={projectId}
-        refresh={loadProject}
+        onRefresh={loadProject}
       />
     );
   }

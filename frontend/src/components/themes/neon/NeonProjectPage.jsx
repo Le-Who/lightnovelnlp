@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database } from 'lucide-react'
+import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database, Edit2 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import { Spinner } from '@/components/ui/Spinner'
+import api from '@/services/apiClient'
 
 import { NeonChapterManager } from './NeonChapterManager'
 import { NeonReader } from './NeonReader'
@@ -10,8 +16,31 @@ import BatchProcessor from '@/components/BatchProcessor.jsx'
 import GlossaryVersionManager from '@/components/GlossaryVersionManager.jsx'
 import ChapterViewer from '@/components/ChapterViewer.jsx'
 
-export function NeonProjectPage({ project, loading, projectId }) {
+export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
     const [activeModule, setActiveModule] = useState('chapters')
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [editFormData, setEditFormData] = useState({ name: '', genre: '' })
+    const [updating, setUpdating] = useState(false)
+
+    const openEditModal = () => {
+        setEditFormData({ name: project.name, genre: project.genre || '' })
+        setIsEditModalOpen(true)
+    }
+
+    const handleUpdateProject = async () => {
+        if (!editFormData.name.trim()) return
+        setUpdating(true)
+        try {
+            await api.put(`/projects/${projectId}`, editFormData)
+            if (onRefresh) await onRefresh()
+            setIsEditModalOpen(false)
+        } catch (e) {
+            console.error('Error updating project:', e)
+            alert('Failed to update project')
+        } finally {
+            setUpdating(false)
+        }
+    }
 
     if (loading) return <div className="flex h-[50vh] items-center justify-center text-accent animate-pulse font-mono">LOADING_PROJECT_DATA...</div>
     if (!project) return <div className="text-center py-12 text-destructive font-mono">ERROR: PROJECT_NOT_FOUND</div>
@@ -38,6 +67,9 @@ export function NeonProjectPage({ project, loading, projectId }) {
                         <h1 className="text-2xl font-bold text-accent tracking-tighter uppercase flex items-center">
                             <Cpu className="w-5 h-5 mr-3 animate-pulse" />
                             {project.name}
+                            <button onClick={openEditModal} className="ml-3 text-muted-foreground hover:text-accent transition-colors">
+                                <Edit2 className="w-4 h-4" />
+                            </button>
                         </h1>
                         <div className="flex gap-4 text-[10px] text-muted-foreground mt-1">
                             <span>ID: {project.id}</span>
@@ -134,6 +166,50 @@ export function NeonProjectPage({ project, loading, projectId }) {
               background: rgba(0, 255, 148, 0.6);
           }
       `}</style>
+            {/* Edit Modal */}
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                title="MODIFY_PROJECT_PARAMETERS"
+            >
+                <div className="space-y-4 font-mono">
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-name" className="text-xs uppercase">PROJECT_DESIGNATION</Label>
+                        <Input
+                            id="edit-name"
+                            value={editFormData.name}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                            className="bg-background border-accent/20 focus:border-accent text-accent"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-genre" className="text-xs uppercase">GENRE_CLASS</Label>
+                        <Input
+                            id="edit-genre"
+                            value={editFormData.genre}
+                            onChange={(e) => setEditFormData(prev => ({ ...prev, genre: e.target.value }))}
+                            className="bg-background border-accent/20 focus:border-accent text-accent"
+                            list="neon-genre-options"
+                        />
+                        <datalist id="neon-genre-options">
+                            <option value="wuxia" />
+                            <option value="xianxia" />
+                            <option value="litrpg" />
+                            <option value="scifi" />
+                            <option value="fantasy" />
+                        </datalist>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2 border-t border-accent/10 mt-4">
+                        <Button variant="ghost" onClick={() => setIsEditModalOpen(false)} disabled={updating} className="text-muted-foreground hover:text-destructive">
+                            ABORT
+                        </Button>
+                        <Button onClick={handleUpdateProject} disabled={updating} className="bg-accent/10 text-accent border border-accent hover:bg-accent hover:text-background">
+                            {updating ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                            COMMIT_CHANGES
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }

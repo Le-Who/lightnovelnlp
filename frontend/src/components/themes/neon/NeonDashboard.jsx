@@ -56,18 +56,22 @@ export function NeonDashboard({ projects, onCreateProject, loading, creating }) 
                             <label className="text-xs text-muted-foreground block mb-1">GENRE_CLASS</label>
                             <div className="flex items-center border border-border bg-bg px-2">
                                 <span className="text-accent mr-2">&gt;</span>
-                                <select
-                                    className="bg-transparent border-none focus:outline-none w-full py-2 text-text appearance-none"
+                                <input
+                                    className="bg-transparent border-none focus:outline-none w-full py-2 text-text placeholder:text-muted-foreground/30"
+                                    list="genre-options"
+                                    placeholder="SELECT_OR_TYPE..."
                                     value={localGenre}
                                     onChange={(e) => setLocalGenre(e.target.value)}
-                                >
-                                    <option value="" className="bg-bg">SELECT_CLASS...</option>
-                                    <option value="wuxia" className="bg-bg">WUXIA</option>
-                                    <option value="xianxia" className="bg-bg">XIANXIA</option>
-                                    <option value="litrpg" className="bg-bg">LITRPG</option>
-                                    <option value="scifi" className="bg-bg">SCI-FI</option>
-                                    <option value="fantasy" className="bg-bg">FANTASY</option>
-                                </select>
+                                />
+                                <datalist id="genre-options">
+                                    <option value="wuxia" />
+                                    <option value="xianxia" />
+                                    <option value="litrpg" />
+                                    <option value="scifi" />
+                                    <option value="fantasy" />
+                                    <option value="romance" />
+                                    <option value="system" />
+                                </datalist>
                             </div>
                         </div>
                         <button
