@@ -37,6 +37,10 @@ class GlossaryTermRead(GlossaryTermBase):
     first_chapter_id: Optional[int] = None
     last_chapter_id: Optional[int] = None
     
+    # Visualization metrics
+    occurrences_data: Optional[List[Dict[str, int]]] = None  # [{chapter_id: 1, freq: 5}, ...]
+    centrality_score: Optional[int] = 0
+
     # We could add nested chapter info here if we define a schema for it
     # first_chapter: Optional[ChapterInfo] = None 
     # But for now, let's stick to IDs or let frontend handle it if it has the map.

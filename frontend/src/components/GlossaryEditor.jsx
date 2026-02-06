@@ -7,6 +7,7 @@ import { Badge } from './ui/Badge'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
 import { Spinner } from './ui/Spinner'
 import { Save, X, Edit2, Check, Trash2 } from 'lucide-react'
+import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
 
 export default function GlossaryEditor({ projectId }) {
   const [terms, setTerms] = useState([])
@@ -150,6 +151,8 @@ export default function GlossaryEditor({ projectId }) {
                   <TableHead>Перевод</TableHead>
                   <TableHead>Категория</TableHead>
                   <TableHead>Частота</TableHead>
+                  <TableHead className="w-[100px]">Плотность</TableHead>
+                  <TableHead>Центральность</TableHead>
                   <TableHead>Первое появление</TableHead>
                   <TableHead>Последнее появление</TableHead>
                   <TableHead>Статус</TableHead>
@@ -185,6 +188,24 @@ export default function GlossaryEditor({ projectId }) {
                     </TableCell>
                     <TableCell className="text-card-foreground">{getCategoryLabel(term.category)}</TableCell>
                     <TableCell className="text-card-foreground">{term.frequency || 1}</TableCell>
+                    <TableCell className="h-12 w-[100px] p-0">
+                      {term.occurrences_data && term.occurrences_data.length > 0 ? (
+                        <div className="h-full w-full py-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={term.occurrences_data}>
+                              <Line type="monotone" dataKey="freq" stroke="#8884d8" strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={term.centrality_score > 0 ? "default" : "secondary"}>
+                        {term.centrality_score || 0}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-card-foreground">
                       {term.first_chapter_id ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.first_chapter_id}</Badge> : '-'}
                     </TableCell>

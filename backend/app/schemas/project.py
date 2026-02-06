@@ -12,7 +12,7 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    pass
+    custom_genre_instructions: Optional[str] = None
 
 
 class ProjectRead(ProjectBase):

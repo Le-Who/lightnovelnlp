@@ -50,7 +50,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         extracted_terms = term_extractor.extract_terms_with_frequency(
             text=chapter.original_text, 
             project_genre=project_genre,
-            source_language=project.source_language
+            source_language=project.source_language,
+            custom_instructions=project.custom_genre_instructions
         )
         logger.info(f"[STEP 2 DONE] Extracted {len(extracted_terms)} terms")
         

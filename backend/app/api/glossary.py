@@ -4,7 +4,8 @@ from typing import List
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
+from operator import attrgetter
 
 from app.deps import get_db
 from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, GlossaryVersion
@@ -35,6 +36,14 @@ def get_glossary_terms(
 ) -> List[GlossaryTerm]:
     """Получить все термины глоссария для проекта с пагинацией/поиском/сортировкой."""
     q = db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id)
+    
+    # Eager load for metrics
+    q = q.options(
+        selectinload(GlossaryTerm.occurrences),
+        selectinload(GlossaryTerm.source_relationships),
+        selectinload(GlossaryTerm.target_relationships)
+    )
+
     if search:
         s = f"%{search}%"
         q = q.filter((GlossaryTerm.source_term.ilike(s)) | (GlossaryTerm.translated_term.ilike(s)))
@@ -45,7 +54,7 @@ def get_glossary_terms(
         "translated_term": GlossaryTerm.translated_term,
         "created_at": GlossaryTerm.created_at,
         "status": GlossaryTerm.status,
-        "frequency": GlossaryTerm.frequency,  # Добавляем сортировку по частоте
+        "frequency": GlossaryTerm.frequency,
     }
     sort_col = sort_map.get(sort_by, GlossaryTerm.id)
     q = q.order_by(sort_col.desc() if order.lower() == "desc" else sort_col.asc())
@@ -53,7 +62,15 @@ def get_glossary_terms(
         q = q.offset(offset)
     if limit:
         q = q.limit(limit)
-    return q.all()
+    
+    results = q.all()
+    
+    # Populate computed fields
+    for term in results:
+        term.centrality_score = len(term.source_relationships) + len(term.target_relationships)
+        term.occurrences_data = [{"chapter_id": occ.chapter_id, "freq": occ.frequency} for occ in term.occurrences]
+        
+    return results
 
 
 @router.get("/{project_id}/terms/pending", response_model=List[GlossaryTermRead])

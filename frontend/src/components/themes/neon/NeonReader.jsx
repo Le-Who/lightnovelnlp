@@ -45,9 +45,9 @@ export function NeonReader({ projectId }) {
                 </div>
 
                 {/* Split View */}
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
                     {/* Original Panel */}
-                    <div className="flex flex-col border border-accent/20 bg-surface/10 relative group">
+                    <div className="flex-1 min-h-0 flex flex-col border border-accent/20 bg-surface/10 relative group">
                         <div className="absolute top-0 left-0 bg-accent/10 px-2 py-1 text-[10px] text-accent font-bold uppercase border-b border-r border-accent/20">SOURCE_DATA</div>
                         <div className="flex-1 overflow-auto p-6 pt-8 font-mono text-xs md:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed custom-scrollbar">
                             {selectedChapter.original_text}
@@ -55,7 +55,7 @@ export function NeonReader({ projectId }) {
                     </div>
 
                     {/* Translation Panel */}
-                    <div className="flex flex-col border border-accent/50 bg-surface/20 relative shadow-[0_0_20px_rgba(0,255,148,0.05)]">
+                    <div className="flex-1 min-h-0 flex flex-col border border-accent/50 bg-surface/20 relative shadow-[0_0_20px_rgba(0,255,148,0.05)]">
                         <div className="absolute top-0 left-0 bg-accent text-bg px-2 py-1 text-[10px] font-bold uppercase">COMPILED_OUTPUT</div>
                         <div className="flex-1 overflow-auto p-6 pt-8 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-relaxed custom-scrollbar relative">
                             {/* Scanline effect */}

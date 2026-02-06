@@ -147,7 +147,8 @@ class TermExtractor:
         self, 
         text: str, 
         project_genre: ProjectGenre = ProjectGenre.OTHER,
-        source_language: str = "en"
+        source_language: str = "en",
+        custom_instructions: str | None = None
     ) -> List[Dict[str, Any]]:
         """
         Извлекает термины и подсчитывает их частоту встречаемости.
@@ -161,7 +162,7 @@ class TermExtractor:
             List[Dict]: Список терминов с дополнительным полем frequency
         """
         # Извлекаем термины
-        terms = self.extract_terms(text, project_genre, source_language)
+        terms = self.extract_terms(text, project_genre, source_language, custom_instructions)
         
         # Подсчитываем частоту для каждого термина
         term_texts = [term["source_term"] for term in terms]

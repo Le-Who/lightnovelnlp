@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState([])
   const [name, setName] = useState('')
   const [genre, setGenre] = useState('')
+  const [customInstructions, setCustomInstructions] = useState('')
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
 
@@ -47,9 +48,14 @@ export default function DashboardPage() {
 
     setCreating(true)
     try {
-      await api.post('/projects/', { name: pName, genre: pGenre || 'other' })
+      await api.post('/projects/', {
+        name: pName,
+        genre: pGenre || 'other',
+        custom_genre_instructions: customInstructions
+      })
       setName('')
       setGenre('')
+      setCustomInstructions('')
       load()
     } catch (e) {
       console.error(e)
@@ -85,7 +91,7 @@ export default function DashboardPage() {
               <CardTitle>Создать новый проект</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => createProject(e)} className="flex flex-col md:flex-row gap-4 items-end">
+              <form onSubmit={(e) => createProject(e)} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                 <div className="grid w-full gap-1.5">
                   <Label htmlFor="project-name">Название</Label>
                   <Input
@@ -120,6 +126,22 @@ export default function DashboardPage() {
                     <option value="isekai">Isekai (Попаданцы)</option>
                     <option value="other">Другое</option>
                   </datalist>
+                </div>
+
+                <div className="grid w-full gap-1.5 md:col-span-2 mt-2">
+                  <Label htmlFor="custom-instructions">
+                    Кастомные инструкции для жанра <span className="text-xs text-muted-foreground font-normal">(опционально)</span>
+                  </Label>
+                  <textarea
+                    id="custom-instructions"
+                    value={customInstructions}
+                    onChange={(e) => setCustomInstructions(e.target.value)}
+                    placeholder="Например: Фокус на кибернетике, используй термины из Shadowrun..."
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Эти инструкции будут добавлены в промпт для AI при анализе глав.
+                  </p>
                 </div>
 
                 <Button type="submit" disabled={creating}>

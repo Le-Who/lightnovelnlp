@@ -22,7 +22,12 @@ class ProjectService:
             raise HTTPException(status_code=400, detail="Project with this name already exists")
         
         genre_value = getattr(payload.genre, "value", payload.genre)
-        project = Project(name=payload.name, genre=genre_value)
+        genre_value = getattr(payload.genre, "value", payload.genre)
+        project = Project(
+            name=payload.name, 
+            genre=genre_value,
+            custom_genre_instructions=payload.custom_genre_instructions
+        )
         db.add(project)
         db.commit()
         db.refresh(project)
