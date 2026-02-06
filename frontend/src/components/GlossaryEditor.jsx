@@ -117,6 +117,7 @@ export default function GlossaryEditor({ projectId }) {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+              aria-label="Сортировать по"
             >
               <option value="id">ID</option>
               <option value="source_term">Название</option>
@@ -129,6 +130,7 @@ export default function GlossaryEditor({ projectId }) {
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+              aria-label="Порядок сортировки"
             >
               <option value="asc">По возр.</option>
               <option value="desc">По убыв.</option>
@@ -194,6 +196,8 @@ export default function GlossaryEditor({ projectId }) {
                               onClick={() => updateTerm(term.id, {
                                 translated_term: editingTerm.translated_term
                               })}
+                              aria-label="Сохранить"
+                              title="Сохранить"
                             >
                               <Save className="h-4 w-4 text-green-600" />
                             </Button>
@@ -201,6 +205,8 @@ export default function GlossaryEditor({ projectId }) {
                               size="sm"
                               variant="ghost"
                               onClick={() => setEditingTerm(null)}
+                              aria-label="Отменить"
+                              title="Отменить"
                             >
                               <X className="h-4 w-4 text-muted-foreground" />
                             </Button>
@@ -211,6 +217,8 @@ export default function GlossaryEditor({ projectId }) {
                               size="sm"
                               variant="ghost"
                               onClick={() => setEditingTerm(term)}
+                              aria-label="Редактировать"
+                              title="Редактировать"
                             >
                               <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                             </Button>
@@ -219,6 +227,8 @@ export default function GlossaryEditor({ projectId }) {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => approveTerm(term.id)}
+                                aria-label="Утвердить"
+                                title="Утвердить"
                               >
                                 <Check className="h-4 w-4 text-green-600" />
                               </Button>
@@ -227,6 +237,8 @@ export default function GlossaryEditor({ projectId }) {
                               size="sm"
                               variant="ghost"
                               onClick={() => deleteTerm(term.id)}
+                              aria-label="Удалить"
+                              title="Удалить"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
