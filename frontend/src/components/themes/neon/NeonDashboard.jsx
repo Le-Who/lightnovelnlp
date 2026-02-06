@@ -123,7 +123,7 @@ const NeonProjectCard = ({ project }) => (
         <div className="space-y-1 text-xs text-muted-foreground mt-4 font-mono">
             <div className="flex justify-between">
                 <span>ID:</span>
-                <span>{project.id.substring(0, 8)}...</span>
+                <span>{String(project.id).substring(0, 8)}...</span>
             </div>
             <div className="flex justify-between">
                 <span>CREATED:</span>
