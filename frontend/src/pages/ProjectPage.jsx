@@ -111,9 +111,9 @@ export default function ProjectPage() {
               </Button>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
-               <span className="capitalize bg-muted px-2 py-0.5 rounded text-sm">{project.genre || 'Other'}</span>
-               <span>•</span>
-               <span>Создан: {new Date(project.created_at).toLocaleDateString()}</span>
+              <span className="capitalize bg-muted px-2 py-0.5 rounded text-sm">{project.genre || 'Other'}</span>
+              <span>•</span>
+              <span>Создан: {new Date(project.created_at).toLocaleDateString()}</span>
             </div>
           </div>
         </div>
@@ -167,7 +167,6 @@ export default function ProjectPage() {
             <BatchProcessor projectId={projectId} />
           </TabsContent>
         </div>
-      </Tabs>
       </Tabs>
 
       <Modal
