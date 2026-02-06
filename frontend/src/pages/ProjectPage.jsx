@@ -23,15 +23,27 @@ export default function ProjectPage() {
   // If a specific theme view exists for ProjectPage, render it
   // Note: We need to handle data loading inside the view OR pass it down.
   // NeonProjectPage handles its own loading for now to simpler refactoring.
+  if (Views.ProjectPage) {
+    return <Views.ProjectPage />;
+  }
+
+  const loadProject = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get(`/projects/${projectId}`)
+      setProject(res.data)
+    } catch (e) {
+      console.error('Error loading project:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (projectId && !Views.ProjectPage) {
       loadProject()
     }
   }, [projectId, Views.ProjectPage])
-
-  if (Views.ProjectPage) {
-    return <Views.ProjectPage />;
-  }
 
   if (loading) return (
     <div className="flex h-[50vh] items-center justify-center">
