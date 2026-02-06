@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input'
 import { Label } from '../components/ui/Label'
 import { Spinner } from '../components/ui/Spinner'
 import { Plus } from 'lucide-react'
+import { useThemeView } from '../hooks/useThemeView'
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState([])
@@ -14,6 +15,9 @@ export default function DashboardPage() {
   const [genre, setGenre] = useState('')
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
+
+  // Theme View Resolver
+  const Views = useThemeView();
 
   const load = async () => {
     setLoading(true)
@@ -31,13 +35,19 @@ export default function DashboardPage() {
     load()
   }, [])
 
-  const createProject = async (e) => {
-    e.preventDefault()
-    if (!name.trim()) return
+  const createProject = async (e, localName, localGenre) => {
+    // If called from a form event (default view), separate logic
+    // If called from Neon view, args are passed directly
+    if (e && e.preventDefault) e.preventDefault();
+
+    const pName = localName || name;
+    const pGenre = localGenre || genre;
+
+    if (!pName.trim()) return
 
     setCreating(true)
     try {
-      await api.post('/projects/', { name, genre: genre || 'other' })
+      await api.post('/projects/', { name: pName, genre: pGenre || 'other' })
       setName('')
       setGenre('')
       load()
@@ -49,6 +59,19 @@ export default function DashboardPage() {
     }
   }
 
+  // If a specific theme view exists for Dashboard, render it
+  if (Views.Dashboard) {
+    return (
+      <Views.Dashboard
+        projects={projects}
+        onCreateProject={(n, g) => createProject(null, n, g)}
+        loading={loading}
+        creating={creating}
+      />
+    );
+  }
+
+  // Default View (Original)
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -63,7 +86,7 @@ export default function DashboardPage() {
           <CardTitle>Создать новый проект</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={createProject} className="flex flex-col md:flex-row gap-4 items-end">
+          <form onSubmit={(e) => createProject(e)} className="flex flex-col md:flex-row gap-4 items-end">
             <div className="grid w-full gap-1.5">
               <Label htmlFor="project-name">Название</Label>
               <Input
