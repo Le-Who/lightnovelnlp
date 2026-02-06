@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database } from 'lucide-react'
-import api from '@/services/apiClient'
+
 import { NeonChapterManager } from './NeonChapterManager'
 import { NeonReader } from './NeonReader'
 import GlossaryEditor from '@/components/GlossaryEditor.jsx'
@@ -10,21 +10,8 @@ import BatchProcessor from '@/components/BatchProcessor.jsx'
 import GlossaryVersionManager from '@/components/GlossaryVersionManager.jsx'
 import ChapterViewer from '@/components/ChapterViewer.jsx'
 
-export function NeonProjectPage() {
-    const { projectId } = useParams()
-    const [project, setProject] = useState(null)
-    const [loading, setLoading] = useState(false)
+export function NeonProjectPage({ project, loading, projectId }) {
     const [activeModule, setActiveModule] = useState('chapters')
-
-    const loadProject = async () => {
-        setLoading(true)
-        try {
-            const res = await api.get(`/projects/${projectId}`)
-            setProject(res.data)
-        } catch (e) { console.error(e) } finally { setLoading(false) }
-    }
-
-    useEffect(() => { if (projectId) loadProject() }, [projectId])
 
     if (loading) return <div className="flex h-[50vh] items-center justify-center text-accent animate-pulse font-mono">LOADING_PROJECT_DATA...</div>
     if (!project) return <div className="text-center py-12 text-destructive font-mono">ERROR: PROJECT_NOT_FOUND</div>

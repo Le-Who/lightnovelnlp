@@ -33,13 +33,20 @@ export default function ProjectPage() {
   }
 
   useEffect(() => {
-    if (projectId && !Views.ProjectPage) {
+    if (projectId) {
       loadProject()
     }
-  }, [projectId, Views.ProjectPage])
+  }, [projectId])
 
   if (Views.ProjectPage) {
-    return <Views.ProjectPage />;
+    return (
+      <Views.ProjectPage
+        project={project}
+        loading={loading}
+        projectId={projectId}
+        refresh={loadProject}
+      />
+    );
   }
 
   if (loading) return (

@@ -9,12 +9,18 @@ import React from 'react';
 // Neon Views
 import { NeonDashboard } from '../components/themes/neon/NeonDashboard';
 import { NeonProjectPage } from '../components/themes/neon/NeonProjectPage';
+import { AetherDashboard } from '../components/themes/aether/AetherDashboard';
+import { AetherProjectPage } from '../components/themes/aether/AetherProjectPage';
 
 // Mapping
 const themeViews = {
     'neon-operator': {
         Dashboard: NeonDashboard,
         ProjectPage: NeonProjectPage,
+    },
+    'aether-lens': {
+        Dashboard: AetherDashboard,
+        ProjectPage: AetherProjectPage,
     },
     // Future themes...
     'default': {
