@@ -50,6 +50,8 @@ class GlossaryTerm(Base):
     # Chapter relationships
     first_chapter = relationship("Chapter", foreign_keys=[first_chapter_id])
     last_chapter = relationship("Chapter", foreign_keys=[last_chapter_id])
+    
+    occurrences = relationship("TermOccurrence", back_populates="term", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_glossary_terms_project_id", "project_id"),
@@ -131,3 +133,22 @@ class BatchJobItem(Base):
     # Связи
     project = relationship("Project", back_populates="batch_job_items")
     batch_job = relationship("BatchJob", back_populates="items")
+
+
+class TermOccurrence(Base):
+    __tablename__ = "term_occurrences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
+    chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=False)
+    frequency = Column(Integer, nullable=False, default=1)
+
+    # Relationships
+    project = relationship("Project")
+    term = relationship("GlossaryTerm", back_populates="occurrences")
+    chapter = relationship("Chapter")
+    
+    __table_args__ = (
+        UniqueConstraint("term_id", "chapter_id", name="uq_term_occurrence"),
+    )

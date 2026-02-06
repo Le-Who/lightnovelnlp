@@ -8,7 +8,8 @@ from app.models.project import Chapter, Project, ProjectGenre, AnalysisStatus
 from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
-from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship
+from app.core.nlp_pipeline.context_summarizer import context_summarizer
+from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, TermOccurrence
 from app.services.cache_service import cache_service
 
 router = APIRouter()
@@ -69,7 +70,24 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 new_frequency = term_data.get("frequency", 1)
                 existing_term.frequency += new_frequency
                 
-                # Обновляем first/last chapter
+                # Update TermOccurrence for this chapter
+                occurrence = local_db.query(TermOccurrence).filter(
+                    TermOccurrence.term_id == existing_term.id,
+                    TermOccurrence.chapter_id == chapter.id
+                ).first()
+                
+                if occurrence:
+                    occurrence.frequency += new_frequency
+                else:
+                    occurrence = TermOccurrence(
+                        project_id=chapter.project_id,
+                        term_id=existing_term.id,
+                        chapter_id=chapter.id,
+                        frequency=new_frequency
+                    )
+                    local_db.add(occurrence)
+                
+                # Обновляем first/last chapter (logic remains same)
                 if existing_term.first_chapter_id:
                      # Check if current chapter order is lower
                      if chapter.order < (existing_term.first_chapter.order if existing_term.first_chapter else float('inf')):
@@ -107,6 +125,16 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                     last_chapter_id=chapter.id
                 )
                 local_db.add(term)
+                local_db.flush()  # To get term.id
+                
+                occurrence = TermOccurrence(
+                    project_id=chapter.project_id,
+                    term_id=term.id,
+                    chapter_id=chapter.id,
+                    frequency=term_data.get("frequency", 1)
+                )
+                local_db.add(occurrence)
+                
                 saved_terms.append(term)
         
         logger.info(f"[STEP 3] Saved {len(saved_terms)} new terms to DB")

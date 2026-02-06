@@ -11,7 +11,7 @@ from app.schemas.nlp import TermExtractionResponse
 logger = logging.getLogger(__name__)
 
 
-import re
+
 import spacy
 from collections import Counter
 
