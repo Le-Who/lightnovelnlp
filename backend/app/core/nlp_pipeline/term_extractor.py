@@ -62,14 +62,16 @@ class TermExtractor:
             logger.error(f"Error extracting terms: {e}", exc_info=True)
             return []
 
-    def count_term_frequency(self, text: str, terms: List[str]) -> Dict[str, int]:
+    def count_term_frequency(self, text: str, terms: List[str], source_language: str = "en") -> Dict[str, int]:
         """
-        Подсчитывает частоту встречаемости терминов с учетом морфологии (lemmatization).
-        Использует pymorphy2 для приведения слов к нормальной форме.
+        Подсчитывает частоту встречаемости терминов.
+        Для русского языка использует pymorphy3 для нормализации.
+        Для остальных языков использует поиск подстроки (case-insensitive).
         
         Args:
             text: Текст для анализа
             terms: Список терминов для подсчета
+            source_language: Язык текста (ru, en, ja, zh, etc.)
             
         Returns:
             Dict[str, int]: Словарь {термин: частота}
@@ -77,69 +79,77 @@ class TermExtractor:
         if not terms or not text:
             return {}
 
-        # 1. Токенизация и лемматизация текста (один проход)
-        # Разбиваем на слова, оставляя только буквенные токены
-        tokens = re.findall(r'\w+', text.lower())
-        
-        # Кэш для ускорения лемматизации повторяющихся слов
-        lemma_cache = {}
-        
-        def get_lemma(word):
-            if word in lemma_cache:
-                return lemma_cache[word]
-            # Берем наиболее вероятную нормальную форму
-            lemma = self.morph.parse(word)[0].normal_form
-            lemma_cache[word] = lemma
-            return lemma
-
-        # Получаем список лемм из текста
-        text_lemmas = [get_lemma(token) for token in tokens]
-        
-        # Считаем частоту каждой леммы в тексте
-        lemma_counts = Counter(text_lemmas)
-        
-        frequency = {}
-        for term in terms:
-            # Лемматизируем и сам искомый термин (если он состоит из нескольких слов - берем каждое)
-            # Для простых терминов (одно слово)
-            if ' ' not in term:
-                term_lemma = get_lemma(term.lower())
-                count = lemma_counts.get(term_lemma, 0)
-            else:
-                # Для составных терминов (например "Огненный шар") сложнее.
-                # Пока используем упрощенный подход: ищем точное совпадение исходной строки без морфологии,
-                # либо (лучше) проверяем вхождение последовательности лемм.
-                # Реализуем поиск последовательности лемм для составных:
-                term_tokens = re.findall(r'\w+', term.lower())
-                term_lemmas = tuple(get_lemma(t) for t in term_tokens)
-                
-                # Сложность поиска подстроки лемм в списке лемм.
-                # Для производительности пока оставим `text.lower().count()` для составных фраз,
-                # так как pymorphy лучше всего работает с отдельными словами.
-                # TODO: можно улучшить поиск n-грамм лемм.
-                count = text.lower().count(term.lower())
+        # Если язык русский - используем морфологический анализ
+        if source_language == "ru":
+            # 1. Токенизация и лемматизация текста (один проход)
+            # Разбиваем на слова, оставляя только буквенные токены
+            tokens = re.findall(r'\w+', text.lower())
             
-            frequency[term] = count
+            # Кэш для ускорения лемматизации повторяющихся слов
+            lemma_cache = {}
+            
+            def get_lemma(word):
+                if word in lemma_cache:
+                    return lemma_cache[word]
+                # Берем наиболее вероятную нормальную форму
+                lemma = self.morph.parse(word)[0].normal_form
+                lemma_cache[word] = lemma
+                return lemma
+
+            # Получаем список лемм из текста
+            text_lemmas = [get_lemma(token) for token in tokens]
+            
+            # Считаем частоту каждой леммы в тексте
+            lemma_counts = Counter(text_lemmas)
+            
+            frequency = {}
+            for term in terms:
+                # Лемматизируем и сам искомый термин
+                if ' ' not in term:
+                    term_lemma = get_lemma(term.lower())
+                    count = lemma_counts.get(term_lemma, 0)
+                else:
+                    # Для составных терминов пока используем простой поиск по тексту,
+                    # так как pymorphy лучше всего работает с отдельными словами
+                    count = text.lower().count(term.lower())
+                
+                frequency[term] = count
+                
+        else:
+            # Для остальных языков используем простой поиск подстроки (case-insensitive)
+            # Это более надежно для английского/китайского, чем русская морфология
+            text_lower = text.lower()
+            frequency = {}
+            for term in terms:
+                # Используем count для подсчета вхождений
+                count = text_lower.count(term.lower())
+                frequency[term] = count
             
         return frequency
 
-    def extract_terms_with_frequency(self, text: str, project_genre: ProjectGenre = ProjectGenre.OTHER) -> List[Dict[str, Any]]:
+    def extract_terms_with_frequency(
+        self, 
+        text: str, 
+        project_genre: ProjectGenre = ProjectGenre.OTHER,
+        source_language: str = "en"
+    ) -> List[Dict[str, Any]]:
         """
         Извлекает термины и подсчитывает их частоту встречаемости.
         
         Args:
             text: Текст для анализа
             project_genre: Жанр проекта для оптимизации промптов
+            source_language: Язык оригинала
             
         Returns:
             List[Dict]: Список терминов с дополнительным полем frequency
         """
         # Извлекаем термины
-        terms = self.extract_terms(text, project_genre)
+        terms = self.extract_terms(text, project_genre, source_language)
         
         # Подсчитываем частоту для каждого термина
         term_texts = [term["source_term"] for term in terms]
-        frequencies = self.count_term_frequency(text, term_texts)
+        frequencies = self.count_term_frequency(text, term_texts, source_language)
         
         # Добавляем частоту к каждому термину
         for term in terms:

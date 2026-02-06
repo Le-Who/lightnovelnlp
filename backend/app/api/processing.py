@@ -46,7 +46,11 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 project_genre = ProjectGenre(project_genre)
             except Exception:
                 project_genre = ProjectGenre.OTHER
-        extracted_terms = term_extractor.extract_terms_with_frequency(chapter.original_text, project_genre)
+        extracted_terms = term_extractor.extract_terms_with_frequency(
+            text=chapter.original_text, 
+            project_genre=project_genre,
+            source_language=project.source_language
+        )
         logger.info(f"[STEP 2 DONE] Extracted {len(extracted_terms)} terms")
         
         # Сохраняем термины в БД с автоматическим утверждением

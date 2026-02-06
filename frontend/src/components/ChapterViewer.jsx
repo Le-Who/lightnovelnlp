@@ -4,7 +4,7 @@ import { Card } from './ui/Card'
 import { Button } from './ui/Button'
 import { Modal } from './ui/Modal'
 import { Spinner } from './ui/Spinner'
-import { MessageSquare, ArrowRight, Eye } from 'lucide-react'
+import { MessageSquare, ArrowRight, Eye, Download } from 'lucide-react'
 
 export default function ChapterViewer({ projectId }) {
   const [chapters, setChapters] = useState([])
@@ -54,6 +54,43 @@ export default function ChapterViewer({ projectId }) {
     }
   }
 
+  const handleDownload = async (chapter) => {
+    if (!chapter || !chapter.translated_text) return;
+    try {
+      const response = await api.get(`/projects/${projectId}/chapters/${chapter.id}/download`, {
+        responseType: 'blob', // Important for file download
+      });
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Try to extract filename from headers, fallback to constructed name
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `chapter_${chapter.id}.txt`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch.length === 2)
+          filename = filenameMatch[1];
+      } else {
+        // Fallback filename
+        filename = `${chapter.id}_${chapter.title}.txt`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      }
+
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download chapter.");
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Spinner /></div>
 
   const translatedChapters = chapters.filter(ch => ch.translated_text)
@@ -94,6 +131,18 @@ export default function ChapterViewer({ projectId }) {
                     size="sm"
                     variant="outline"
                     className="whitespace-nowrap"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(chapter);
+                    }}
+                    title="Скачать"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
                   >
                     <Eye className="mr-2 h-4 w-4" /> Читать
                   </Button>
@@ -122,10 +171,15 @@ export default function ChapterViewer({ projectId }) {
         isOpen={!!selectedChapter}
         onClose={() => setSelectedChapter(null)}
         title={selectedChapter?.title}
-        className="max-w-7xl h-[90vh]"
+        className="max-w-7xl h-[90vh] flex flex-col"
       >
         {selectedChapter && (
-          <div className="flex flex-col h-full overflow-hidden">
+          <div className="flex flex-col h-full min-h-0">
+            <div className="flex justify-end mb-2">
+              <Button variant="outline" size="sm" onClick={() => handleDownload(selectedChapter)}>
+                <Download className="mr-2 h-4 w-4" /> Скачать TXT
+              </Button>
+            </div>
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
               <div className="flex flex-col min-h-0">
                 <h4 className="font-semibold text-sm text-slate-500 uppercase mb-2">Оригинал</h4>
