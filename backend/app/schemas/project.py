@@ -15,6 +15,12 @@ class ProjectCreate(ProjectBase):
     custom_genre_instructions: Optional[str] = None
 
 
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    genre: Optional[str] = None
+    custom_genre_instructions: Optional[str] = None
+
+
 class ProjectRead(ProjectBase):
     id: int
     created_at: datetime

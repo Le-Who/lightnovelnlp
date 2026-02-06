@@ -41,6 +41,22 @@ def get_project(project_id: int, db: Session = Depends(get_db)) -> Project:
     return project
 
 
+@router.put("/{project_id}", response_model=ProjectRead)
+def update_project(project_id: int, payload: ProjectCreate, db: Session = Depends(get_db)) -> Project: # Using ProjectCreate as base or ProjectUpdate if defined in schema
+    from app.schemas.project import ProjectUpdate
+    project = ProjectService.get_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    updates = payload.dict(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(project, field, value)
+        
+    db.commit()
+    db.refresh(project)
+    return project
+
+
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project(project_id: int, db: Session = Depends(get_db)):
     ProjectService.delete_project(db, project_id)

@@ -124,7 +124,7 @@ export default function ChapterManager({ projectId }) {
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0]
-    if (file && file.type === 'text/plain') {
+    if (file && (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt'))) {
       setSelectedFile(file)
     } else {
       alert('Пожалуйста, выберите текстовый файл (.txt)')
@@ -347,6 +347,12 @@ export default function ChapterManager({ projectId }) {
                         <Badge variant="success" className="gap-1">
                           <CheckCircle2 className="h-3 w-3" />
                           Переведено
+                        </Badge>
+                      )}
+                      {!chapter.translated_text && chapter.analysis_status === 'completed' && (
+                        <Badge variant="secondary" className="gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Проанализировано
                         </Badge>
                       )}
                     </div>

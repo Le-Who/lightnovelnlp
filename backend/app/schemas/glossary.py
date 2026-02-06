@@ -36,6 +36,8 @@ class GlossaryTermRead(GlossaryTermBase):
     approved_at: Optional[datetime] = None
     first_chapter_id: Optional[int] = None
     last_chapter_id: Optional[int] = None
+    first_chapter_order: Optional[int] = None  # Новое поле: порядковый номер
+    last_chapter_order: Optional[int] = None   # Новое поле: порядковый номер
     
     # Visualization metrics
     occurrences_data: Optional[List[Dict[str, int]]] = None  # [{chapter_id: 1, freq: 5}, ...]

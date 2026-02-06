@@ -123,6 +123,7 @@ export default function GlossaryEditor({ projectId }) {
               <option value="source_term">Название</option>
               <option value="frequency">Частота</option>
               <option value="category">Категория</option>
+              <option value="status">Статус</option>
               <option value="created_at">Дата создания</option>
             </select>
 
@@ -207,10 +208,10 @@ export default function GlossaryEditor({ projectId }) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-card-foreground">
-                      {term.first_chapter_id ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.first_chapter_id}</Badge> : '-'}
+                      {term.first_chapter_order ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.first_chapter_order}</Badge> : '-'}
                     </TableCell>
                     <TableCell className="text-card-foreground">
-                      {term.last_chapter_id ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.last_chapter_id}</Badge> : '-'}
+                      {term.last_chapter_order ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.last_chapter_order}</Badge> : '-'}
                     </TableCell>
                     <TableCell>{getStatusBadge(term.status)}</TableCell>
                     <TableCell className="text-right">

@@ -96,6 +96,10 @@ class TermExtractor:
         if not terms or not text:
             return {}
         
+        # Для CJK языков используем простой подсчет вхождений, так как spaCy модели могут быть недоступны или токенизация сложнее
+        if source_language in ["zh", "ja", "ko"]:
+             return {term: text.count(term) for term in terms}
+
         # Определяем модель spaCy (ru или en/other)
         lang_code = "ru" if source_language == "ru" else "en"
         

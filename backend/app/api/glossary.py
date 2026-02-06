@@ -41,7 +41,9 @@ def get_glossary_terms(
     q = q.options(
         selectinload(GlossaryTerm.occurrences),
         selectinload(GlossaryTerm.source_relationships),
-        selectinload(GlossaryTerm.target_relationships)
+        selectinload(GlossaryTerm.target_relationships),
+        selectinload(GlossaryTerm.first_chapter),
+        selectinload(GlossaryTerm.last_chapter)
     )
 
     if search:
@@ -69,7 +71,11 @@ def get_glossary_terms(
     for term in results:
         term.centrality_score = len(term.source_relationships) + len(term.target_relationships)
         term.occurrences_data = [{"chapter_id": occ.chapter_id, "freq": occ.frequency} for occ in term.occurrences]
-        
+        if term.first_chapter:
+            term.first_chapter_order = term.first_chapter.order
+        if term.last_chapter:
+            term.last_chapter_order = term.last_chapter.order
+            
     return results
 
 
