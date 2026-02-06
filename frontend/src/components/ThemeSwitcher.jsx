@@ -7,9 +7,9 @@ export function ThemeSwitcher() {
     const themes = [
         { id: 'paper-zen', name: 'Paper Zen' },
         { id: 'neon-operator', name: 'Neon Operator' },
-        { id: 'ink-blade', name: 'Ink & Blade' },
-        { id: 'aether-lens', name: 'Aether Lens' },
-        { id: 'brutalist-grid', name: 'Brutalist Grid' },
+        // { id: 'ink-blade', name: 'Ink & Blade' },
+        // { id: 'aether-lens', name: 'Aether Lens' },
+        // { id: 'brutalist-grid', name: 'Brutalist Grid' },
     ];
 
     return (
