@@ -3,14 +3,13 @@ import api from '@/services/apiClient'
 import { Modal } from '@/components/ui/Modal'
 import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
-import { Terminal, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, FileSearch, Upload, Activity, Cpu, AlertTriangle } from 'lucide-react'
+import { Terminal, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode } from 'lucide-react'
 
 export function NeonChapterManager({ projectId }) {
     const [chapters, setChapters] = useState([])
     const [loading, setLoading] = useState(false)
     const [analyzing, setAnalyzing] = useState({})
     const [translating, setTranslating] = useState({})
-    const [reviewing, setReviewing] = useState({})
     const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
     const [previewData, setPreviewData] = useState(null)
     const [reviewData, setReviewData] = useState(null)
@@ -18,15 +17,14 @@ export function NeonChapterManager({ projectId }) {
     const [selectedFile, setSelectedFile] = useState(null)
     const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-    const modalRef = useRef(null)
 
     const getStatusLabel = (status) => {
         switch (status) {
             case 'pending': return 'PENDING'
-            case 'extracting': return 'EXTRACTING...'
-            case 'relationships': return 'ANALYZING_NET...'
-            case 'summarizing': return 'SUMMARIZING...'
-            case 'translating': return 'TRANSLATING...'
+            case 'extracting': return 'EXTRACTING'
+            case 'relationships': return 'NET_ANALYSIS'
+            case 'summarizing': return 'SUMMARIZING'
+            case 'translating': return 'TRANSLATING'
             case 'completed': return 'COMPLETED'
             case 'failed': return 'FAILED'
             default: return status?.toUpperCase() || ''
@@ -54,7 +52,7 @@ export function NeonChapterManager({ projectId }) {
     }
 
     const deleteChapter = async (chapterId) => {
-        if (!confirm('CONFIRM DELETION?')) return
+        if (!confirm('CONFIRM_DELETION_SEQUENCE?')) return
         try {
             await api.delete(`/projects/chapters/${chapterId}`)
             loadChapters()
@@ -126,14 +124,6 @@ export function NeonChapterManager({ projectId }) {
         } catch (e) { setTranslating(prev => ({ ...prev, [chapterId]: null })); alert('INIT FAIL') }
     }
 
-    const reviewTranslation = async (chapterId) => {
-        setReviewing(prev => ({ ...prev, [chapterId]: true }))
-        try {
-            const res = await api.post(`/translation/chapters/${chapterId}/review`)
-            setReviewData(res.data)
-        } catch (e) { alert('Review Error') } finally { setReviewing(prev => ({ ...prev, [chapterId]: false })) }
-    }
-
     const previewTranslation = async (chapterId) => {
         try {
             const res = await api.get(`/translation/chapters/${chapterId}/translation-preview`)
@@ -146,28 +136,28 @@ export function NeonChapterManager({ projectId }) {
             {/* Controls */}
             <div className="flex flex-col md:flex-row justify-between items-end border-b border-accent/20 pb-4 gap-4">
                 <div>
-                    <div className="text-xs text-muted-foreground mb-1">CURRENT_DIRECTORY</div>
-                    <div className="text-xl text-accent font-bold flex items-center">
-                        <span className="mr-2">/PROJECT/CHAPTERS/</span>
+                    <div className="text-[10px] text-muted-foreground mb-1 tracking-widest uppercase">Current_Directory</div>
+                    <div className="text-xl text-accent font-bold flex items-center tracking-tighter shadow-accent">
+                        <span className="mr-2 text-secondary-accent">/ROOT/CHAPTERS/</span>
                         <span className="animate-pulse">_</span>
                     </div>
                 </div>
-                <div className="flex gap-2 items-center">
-                    <div className="flex items-center gap-2 border border-accent/30 p-1 bg-surface/50">
+                <div className="flex gap-4 items-center">
+                    <div className="group flex items-center gap-2 border-b border-accent/30 p-1 bg-surface/50 hover:border-accent transition-colors">
                         <input
-                            className="bg-transparent border-none text-xs w-24 px-2 focus:outline-none placeholder:text-muted-foreground"
+                            className="bg-transparent border-none text-xs w-32 px-2 focus:outline-none placeholder:text-muted-foreground text-text font-bold"
                             value={chapterPattern}
                             onChange={(e) => setChapterPattern(e.target.value)}
-                            placeholder="PATTERN..."
+                            placeholder="REGEX_PATTERN..."
                         />
-                        <label className="flex items-center px-3 py-1 bg-accent/10 hover:bg-accent/20 text-accent transition-colors uppercase text-xs font-bold cursor-pointer">
+                        <label className="flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider">
                             <Upload className="w-3 h-3 mr-2" />
-                            UPLOAD
+                            UPLOAD_BATCH
                             <input type="file" className="hidden" onChange={(e) => { setSelectedFile(e.target.files[0]); if (e.target.files[0]) uploadChaptersFromFile(); }} />
                         </label>
                     </div>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-4 py-2 bg-accent text-bg hover:bg-accent/90 transition-colors uppercase text-xs tracking-widest font-bold">
-                        <Plus className="w-4 h-4 mr-2" />
+                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-6 py-2 bg-accent text-bg hover:bg-secondary-accent transition-colors uppercase text-[10px] tracking-widest font-bold shadow-[0_0_10px_rgba(0,243,255,0.3)]">
+                        <Plus className="w-3 h-3 mr-2" />
                         NEW_FILE
                     </button>
                 </div>
@@ -176,54 +166,55 @@ export function NeonChapterManager({ projectId }) {
             {/* File List */}
             <div className="border border-accent/30 bg-surface/20 min-h-[400px] relative">
                 {/* Decorative Grid Lines */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,148,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,148,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-                <div className="grid grid-cols-12 gap-4 p-2 border-b border-accent/20 text-[10px] text-accent/70 bg-surface/50 font-bold tracking-wider relative z-10">
-                    <div className="col-span-1">ID</div>
-                    <div className="col-span-4">FILENAME_TITLE</div>
-                    <div className="col-span-2">SIZE</div>
-                    <div className="col-span-2">STATUS</div>
-                    <div className="col-span-3 text-right">OPERATIONS</div>
+                <div className="grid grid-cols-12 gap-4 p-3 border-b border-accent/20 text-[10px] text-accent/70 bg-surface/80 font-bold tracking-widest relative z-10 uppercase">
+                    <div className="col-span-1">ID_Tag</div>
+                    <div className="col-span-4">Filename</div>
+                    <div className="col-span-2">Size_B</div>
+                    <div className="col-span-2">Process_Status</div>
+                    <div className="col-span-3 text-right">Execute</div>
                 </div>
 
                 {loading ? (
-                    <div className="p-12 flex flex-col items-center justify-center text-accent animate-pulse">
+                    <div className="p-24 flex flex-col items-center justify-center text-accent animate-pulse">
                         <Activity className="w-8 h-8 mb-4" />
-                        <div>SCANNING_SECTORS...</div>
+                        <div className="tracking-widest text-xs">SCANNING_SECTOR_DATA...</div>
                     </div>
                 ) : (
-                    <div className="divide-y divide-accent/10 relative z-10">
+                    <div className="divide-y divide-accent/5 relative z-10">
                         {chapters.map((chapter, idx) => (
-                            <div key={chapter.id} className="grid grid-cols-12 gap-4 p-3 items-center hover:bg-accent/5 transition-colors group">
-                                <div className="col-span-1 text-muted-foreground text-xs font-mono opacity-50">{String(idx + 1).padStart(3, '0')}</div>
+                            <div key={chapter.id} className="grid grid-cols-12 gap-4 p-3 items-center hover:bg-accent/5 transition-all group border-l-2 border-transparent hover:border-accent">
+                                <div className="col-span-1 text-muted-foreground text-[10px] font-mono opacity-50 group-hover:text-accent transition-colors">{String(idx + 1).padStart(3, '0')}</div>
                                 <div className="col-span-4 font-bold text-text truncate flex items-center">
-                                    <FileText className="w-3 h-3 mr-2 text-accent opacity-50 group-hover:opacity-100" />
-                                    <span className="group-hover:text-accent transition-colors">{chapter.title}</span>
+                                    <FileCode className="w-3 h-3 mr-3 text-secondary-accent opacity-50 group-hover:opacity-100" />
+                                    <span className="group-hover:text-accent group-hover:translate-x-1 transition-all duration-300">{chapter.title}</span>
                                 </div>
-                                <div className="col-span-2 text-xs text-muted-foreground font-mono">{(chapter.original_text || '').length}B</div>
+                                <div className="col-span-2 text-[10px] text-muted-foreground font-mono">{(chapter.original_text || '').length.toLocaleString()}</div>
                                 <div className="col-span-2">
                                     {(analyzing[chapter.id] || translating[chapter.id]) ? (
-                                        <span className="text-yellow-500 text-xs flex items-center animate-pulse">
-                                            <Spinner className="w-3 h-3 mr-1" />
+                                        <span className="text-secondary-accent text-[10px] flex items-center animate-pulse tracking-widest">
+                                            <Spinner className="w-3 h-3 mr-2" />
                                             {getStatusLabel(analyzing[chapter.id] || translating[chapter.id])}
                                         </span>
                                     ) : chapter.translated_text ? (
-                                        <span className="text-accent text-xs flex items-center"><CheckCircle2 className="w-3 h-3 mr-1" /> COMPLETED</span>
+                                        <span className="text-accent text-[10px] flex items-center tracking-widest shadow-accent"><CheckCircle2 className="w-3 h-3 mr-2" /> READY</span>
                                     ) : (
-                                        <span className="text-muted-foreground text-xs opacity-50">PENDING</span>
+                                        <span className="text-muted-foreground text-[10px] opacity-30 tracking-widest">PENDING</span>
                                     )}
                                 </div>
-                                <div className="col-span-3 flex justify-end gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => analyzeChapter(chapter.id)} title="ANALYZE" className="hover:text-accent disabled:opacity-50"><Activity className="w-4 h-4" /></button>
-                                    <button onClick={() => translateChapter(chapter.id)} title="TRANSLATE" className="hover:text-accent disabled:opacity-50"><Languages className="w-4 h-4" /></button>
-                                    <button onClick={() => previewTranslation(chapter.id)} title="VIEW" className="hover:text-accent disabled:opacity-50"><Eye className="w-4 h-4" /></button>
-                                    <button onClick={() => deleteChapter(chapter.id)} title="DELETE" className="hover:text-destructive disabled:opacity-50"><Trash2 className="w-4 h-4" /></button>
+                                <div className="col-span-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-200">
+                                    <ActionButton onClick={() => analyzeChapter(chapter.id)} icon={Activity} label="ANALYZE" />
+                                    <ActionButton onClick={() => translateChapter(chapter.id)} icon={Languages} label="TRANSLATE" />
+                                    <ActionButton onClick={() => previewTranslation(chapter.id)} icon={Eye} label="VIEW" />
+                                    <ActionButton onClick={() => deleteChapter(chapter.id)} icon={Trash2} label="PURGE" variant="destructive" />
                                 </div>
                             </div>
                         ))}
                         {chapters.length === 0 && (
-                            <div className="p-8 text-center text-muted-foreground border-t border-accent/10 border-dashed">
-                                NO_FILES_FOUND. INITIATE UPLOAD OR CREATE NEW FILE.
+                            <div className="p-16 text-center text-muted-foreground border-t border-accent/10 border-dashed flex flex-col items-center">
+                                <AlertTriangle className="w-8 h-8 mb-4 opacity-50" />
+                                <span className="tracking-widest text-xs">NO_FILES_FOUND. INITIATE UPLOAD OR CREATE NEW FILE.</span>
                             </div>
                         )}
                     </div>
@@ -232,24 +223,24 @@ export function NeonChapterManager({ projectId }) {
 
             {/* Create Modal - Custom Neon Style */}
             {isCreateModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                    <div className="w-full max-w-lg border border-accent bg-bg p-1 relative shadow-[0_0_30px_rgba(0,255,148,0.2)]">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+                    <div className="w-full max-w-lg border-2 border-accent bg-bg p-1 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]">
                         {/* Corners */}
-                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-accent" />
-                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-accent" />
-                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-accent" />
-                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-accent" />
+                        <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-accent" />
+                        <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-accent" />
+                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-accent" />
+                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-accent" />
 
-                        <div className="p-6">
-                            <h3 className="text-accent text-lg font-bold mb-6 flex items-center">
+                        <div className="p-6 bg-surface/90">
+                            <h3 className="text-accent text-lg font-bold mb-6 flex items-center tracking-widest uppercase">
                                 <Terminal className="w-5 h-5 mr-2" />
                                 NEW_CHAPTER_ENTRY
                             </h3>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs text-muted-foreground block mb-1">Filename / Title</label>
+                                    <label className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Filename / Title</label>
                                     <input
-                                        className="w-full bg-surface/50 border border-border p-2 text-text focus:border-accent focus:outline-none"
+                                        className="w-full bg-bg border-b border-accent/50 p-2 text-text focus:border-accent focus:outline-none font-bold"
                                         value={newChapter.title}
                                         onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
                                         placeholder="CHAPTER_01..."
@@ -257,53 +248,53 @@ export function NeonChapterManager({ projectId }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-muted-foreground block mb-1">Content Data</label>
+                                    <label className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Content Data</label>
                                     <Textarea
-                                        className="w-full h-40 bg-surface/50 border border-border p-2 text-text focus:border-accent focus:outline-none resize-none font-mono text-xs"
+                                        className="w-full h-40 bg-bg border border-accent/20 p-2 text-text focus:border-accent focus:outline-none resize-none font-mono text-xs"
                                         value={newChapter.original_text}
                                         onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
                                         placeholder="PASTE_TEXT_DATA..."
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-4 mt-6">
-                                <button onClick={() => setIsCreateModalOpen(false)} className="text-muted-foreground hover:text-text px-4 py-2 uppercase text-xs font-bold">CANCEL</button>
-                                <button onClick={createChapter} className="bg-accent text-bg px-6 py-2 uppercase text-xs font-bold hover:bg-accent/90">EXECUTE_WRITE</button>
+                            <div className="flex justify-end gap-4 mt-8">
+                                <button onClick={() => setIsCreateModalOpen(false)} className="text-muted-foreground hover:text-destructive px-4 py-2 uppercase text-[10px] font-bold tracking-widest transition-colors">ABORT</button>
+                                <button onClick={createChapter} className="bg-accent text-bg px-6 py-2 uppercase text-[10px] font-bold hover:bg-white transition-colors tracking-widest shadow-[0_0_15px_rgba(0,243,255,0.4)]">EXECUTE_WRITE</button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Review/Preview Modals Reuse standard for now but wrapped in neon container if possible. 
-          For now, just render standard modals as they verify functionality, can style later. 
-          Actually, let's skip re-implementing the full Preview Modal content for brevity and rely on default Modal styling which is already themed via index.css */}
             <Modal
                 isOpen={!!previewData}
                 onClose={() => setPreviewData(null)}
                 title="DATA_PREVIEW"
                 className="max-w-4xl border-accent"
             >
-                {/* Reuse existing logic for preview content */}
                 {previewData && (
                     <div className="grid grid-cols-2 gap-4 h-[60vh]">
-                        <div className="border border-border p-2 overflow-auto font-mono text-xs text-muted-foreground whitespace-pre-wrap">{previewData.original_text}</div>
-                        <div className="border border-accent/50 p-2 overflow-auto font-mono text-xs text-accent whitespace-pre-wrap bg-accent/5">{previewData.translated_text}</div>
+                        <div className="border border-border bg-bg/50 p-4 overflow-auto font-mono text-xs text-muted-foreground whitespace-pre-wrap">{previewData.original_text}</div>
+                        <div className="border border-accent/30 bg-accent/5 p-4 overflow-auto font-mono text-xs text-text whitespace-pre-wrap shadow-inner">{previewData.translated_text}</div>
                     </div>
                 )}
             </Modal>
-
-            <Modal
-                isOpen={!!reviewData}
-                onClose={() => setReviewData(null)}
-                title="AI_ANALYSIS_LOG"
-                className="max-w-2xl border-accent"
-            >
-                <div className="prose prose-invert max-w-none font-mono text-xs">
-                    {reviewData?.review_text}
-                </div>
-            </Modal>
-
         </div>
     )
 }
+
+const ActionButton = ({ onClick, icon: Icon, label, variant = 'default' }) => (
+    <button
+        onClick={onClick}
+        title={label}
+        className={`
+            p-2 transition-all duration-200 border border-transparent
+            ${variant === 'destructive'
+                ? 'hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10'
+                : 'hover:text-accent hover:border-accent/30 hover:bg-accent/10'
+            }
+        `}
+    >
+        <Icon className="w-4 h-4" />
+    </button>
+);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import api from '@/services/apiClient'
-import { Terminal, FileText, ArrowRight, Eye, MessageSquare, X, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Terminal, FileText, ArrowRight, Eye, MessageSquare, X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Hash } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 
 export function NeonReader({ projectId }) {
@@ -19,50 +19,96 @@ export function NeonReader({ projectId }) {
 
     useEffect(() => { if (projectId) loadChapters() }, [projectId])
 
-    if (loading) return <div className="p-12 text-center text-accent animate-pulse">LOADING_READER_MODULE...</div>
+    if (loading) return (
+        <div className="flex items-center justify-center p-24 text-accent animate-pulse font-mono tracking-widest text-xs">
+            <Spinner className="w-6 h-6 mr-3" />
+            LOADING_READER_MODULE...
+        </div>
+    )
 
     // Reader View
     if (selectedChapter) {
         return (
-            <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-bg p-4' : 'min-h-[600px]'}`}>
+            <div className={`flex flex-col ${isFullScreen ? 'fixed inset-0 z-[100] bg-bg p-4' : 'h-[800px]'} transition-all duration-300`}>
                 {/* Reader Toolbar */}
-                <div className="flex justify-between items-center border-b border-accent/30 pb-2 mb-4 bg-surface/50 p-2">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setSelectedChapter(null)} className="flex items-center text-muted-foreground hover:text-accent font-bold uppercase text-xs">
-                            <ChevronLeft className="w-4 h-4 mr-1" /> BACK_TO_LIST
+                <div className="flex justify-between items-center border-b-2 border-accent/20 pb-4 mb-4 bg-surface/80 p-4 shadow-[0_5px_15px_rgba(0,0,0,0.5)] backdrop-blur-md">
+                    <div className="flex items-center gap-6">
+                        <button
+                            onClick={() => setSelectedChapter(null)}
+                            className="group flex items-center text-muted-foreground hover:text-accent font-bold uppercase text-[10px] tracking-widest transition-colors"
+                        >
+                            <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+                            Abort_Read
                         </button>
-                        <div className="h-4 w-[1px] bg-accent/20" />
-                        <div className="text-accent font-bold text-sm tracking-wider flex items-center">
-                            <FileText className="w-4 h-4 mr-2" />
-                            {selectedChapter.title}
+                        <div className="h-6 w-[2px] bg-accent/20" />
+                        <div className="flex flex-col">
+                            <div className="text-[10px] text-accent/50 uppercase tracking-[0.2em] mb-1">Active_File</div>
+                            <div className="text-text font-bold text-sm tracking-wider flex items-center shadow-accent">
+                                <FileText className="w-4 h-4 mr-2" />
+                                {selectedChapter.title}
+                            </div>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => setIsFullScreen(!isFullScreen)} className="text-accent hover:text-white p-1">
+                    <div className="flex gap-4 items-center">
+                        <div className="text-[10px] text-muted-foreground hidden md:block">
+                            <span className="text-secondary-accent">SRC_SIZE:</span> {selectedChapter.original_text.length}B
+                            <span className="mx-2">|</span>
+                            <span className="text-accent">OUT_SIZE:</span> {selectedChapter.translated_text.length}B
+                        </div>
+                        <button
+                            onClick={() => setIsFullScreen(!isFullScreen)}
+                            className="text-accent hover:text-white p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]"
+                        >
                             {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
                     </div>
                 </div>
 
                 {/* Split View */}
-                <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0 overflow-hidden">
                     {/* Original Panel */}
-                    <div className="flex-1 min-h-0 flex flex-col border border-accent/20 bg-surface/10 relative group">
-                        <div className="absolute top-0 left-0 bg-accent/10 px-2 py-1 text-[10px] text-accent font-bold uppercase border-b border-r border-accent/20">SOURCE_DATA</div>
-                        <div className="flex-1 overflow-auto p-6 pt-8 font-mono text-xs md:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed custom-scrollbar">
+                    <div className="flex-1 min-h-0 flex flex-col border border-accent/10 bg-[#0a0a0c] relative group">
+                        {/* Tech Header */}
+                        <div className="absolute top-0 left-0 right-0 h-8 bg-surface/50 border-b border-accent/10 flex items-center px-4 justify-between">
+                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Raw_Input_Stream</span>
+                            <div className="flex gap-1">
+                                <div className="w-2 h-2 rounded-full bg-red-500/20" />
+                                <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
+                                <div className="w-2 h-2 rounded-full bg-green-500/20" />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-auto p-6 pt-12 font-mono text-xs md:text-sm text-text-muted/60 whitespace-pre-wrap leading-relaxed custom-scrollbar selection:bg-secondary-accent/20 selection:text-secondary-accent">
                             {selectedChapter.original_text}
                         </div>
                     </div>
 
                     {/* Translation Panel */}
-                    <div className="flex-1 min-h-0 flex flex-col border border-accent/50 bg-surface/20 relative shadow-[0_0_20px_rgba(0,255,148,0.05)]">
-                        <div className="absolute top-0 left-0 bg-accent text-bg px-2 py-1 text-[10px] font-bold uppercase">COMPILED_OUTPUT</div>
-                        <div className="flex-1 overflow-auto p-6 pt-8 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-relaxed custom-scrollbar relative">
-                            {/* Scanline effect */}
-                            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-0 pointer-events-none bg-[length:100%_4px,3px_100%]" />
-                            <div className="relative z-10">
-                                {selectedChapter.translated_text}
+                    <div className="flex-1 min-h-0 flex flex-col border border-accent/40 bg-black relative shadow-[0_0_30px_rgba(0,243,255,0.05)]">
+                        {/* Tech Header */}
+                        <div className="absolute top-0 left-0 right-0 h-8 bg-accent/5 border-b border-accent/20 flex items-center px-4 justify-between">
+                            <span className="text-[10px] text-accent font-bold uppercase tracking-widest flex items-center">
+                                <Terminal className="w-3 h-3 mr-2" />
+                                Compiled_Output
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 bg-accent animate-pulse rounded-full shadow-[0_0_5px_#00f3ff]" />
+                                <span className="text-[8px] text-accent">LIVE</span>
                             </div>
+                        </div>
+
+                        {/* Scanner Line Animation Container */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 z-0">
+                            <div className="w-full h-full bg-[linear-gradient(transparent_0%,rgba(0,243,255,0.1)_50%,transparent_100%)] bg-[length:100%_4px] animate-scan" />
+                        </div>
+
+                        <div className="flex-1 overflow-auto p-8 pt-12 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-loose custom-scrollbar relative z-10 selection:bg-accent/30 selection:text-white">
+                            {selectedChapter.translated_text}
+                        </div>
+
+                        {/* Footer Info */}
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-accent/5 border-t border-accent/10 flex items-center px-4 justify-end text-[10px] text-accent/50 font-mono">
+                            <span>EOF_MARKER_DETECTED</span>
                         </div>
                     </div>
                 </div>
@@ -72,38 +118,64 @@ export function NeonReader({ projectId }) {
 
     // List View
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="text-accent font-bold uppercase tracking-widest flex items-center">
-                    <Eye className="w-4 h-4 mr-2" />
-                    AVAILABLE_TRANSLATIONS
-                </h3>
-                <div className="text-[10px] text-muted-foreground">COUNT: {chapters.length}</div>
+        <div className="space-y-6 max-w-[1200px] mx-auto">
+            <div className="flex items-center justify-between mb-8 border-b border-accent/20 pb-4">
+                <div className="flex flex-col">
+                    <div className="text-[10px] text-secondary-accent uppercase tracking-widest mb-1">Module_Status</div>
+                    <h3 className="text-2xl text-text font-bold uppercase tracking-tighter flex items-center">
+                        <Eye className="w-6 h-6 mr-3 text-accent" />
+                        Read_Interface
+                    </h3>
+                </div>
+                <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Available_Files</div>
+                    <div className="text-3xl font-bold text-accent font-mono leading-none mt-1">{String(chapters.length).padStart(2, '0')}</div>
+                </div>
             </div>
 
             {chapters.length === 0 ? (
-                <div className="border border-dashed border-accent/20 p-12 text-center text-muted-foreground">
-                    NO_TRANSLATED_DATA_FOUND. INITIATE_TRANSLATION_SEQUENCE.
+                <div className="border-2 border-dashed border-accent/20 p-16 text-center">
+                    <Hash className="w-12 h-12 text-accent/20 mx-auto mb-4" />
+                    <div className="text-accent/50 tracking-widest uppercase text-sm font-bold">No_Compiled_Data_Found</div>
+                    <div className="text-xs text-muted-foreground mt-2">Initiate translation sequence in Chapter Manager to generate readable output.</div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {chapters.map(chapter => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {chapters.map((chapter, idx) => (
                         <div
                             key={chapter.id}
                             onClick={() => setSelectedChapter(chapter)}
-                            className="border border-accent/20 bg-surface/30 p-4 cursor-pointer hover:bg-accent/10 hover:border-accent transition-all group relative overflow-hidden"
+                            className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
                         >
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="font-bold text-text group-hover:text-accent truncate pr-4">{chapter.title}</div>
-                                <ArrowRight className="w-4 h-4 text-accent opacity-0 group-hover:opacity-100 transition-opacity transform -translate-x-2 group-hover:translate-x-0" />
-                            </div>
-                            <div className="text-[10px] text-muted-foreground font-mono flex gap-4 mt-4">
-                                <span>SRC: {chapter.original_text.length}B</span>
-                                <span>OUT: {chapter.translated_text.length}B</span>
+                            {/* Hover Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <div className="text-xs font-mono text-secondary-accent px-2 py-1 bg-secondary-accent/10 border border-secondary-accent/20">
+                                    ID_{String(idx + 1).padStart(3, '0')}
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-accent opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
                             </div>
 
-                            {/* Decorative corner */}
-                            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-accent opacity-50 group-hover:opacity-100" />
+                            <h4 className="font-bold text-text group-hover:text-accent truncate mb-6 text-lg tracking-tight relative z-10 transition-colors">
+                                {chapter.title}
+                            </h4>
+
+                            <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground font-mono relative z-10 border-t border-accent/10 pt-4">
+                                <div className="flex flex-col">
+                                    <span className="uppercase opacity-50 mb-1">Source</span>
+                                    <span>{chapter.original_text.length.toLocaleString()}B</span>
+                                </div>
+                                <div className="flex flex-col text-right">
+                                    <span className="uppercase opacity-50 mb-1">Output</span>
+                                    <span className="text-text">{chapter.translated_text.length.toLocaleString()}B</span>
+                                </div>
+                            </div>
+
+                            {/* Decorative styles */}
+                            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent/0 group-hover:bg-accent/50 transition-colors duration-500 scale-x-0 group-hover:scale-x-100 origin-left" />
+                            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                     ))}
                 </div>

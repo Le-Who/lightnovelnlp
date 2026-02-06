@@ -106,31 +106,61 @@
   ========================================
 */
 [data-theme="neon-operator"] {
-    --bg: #0A0B10;
-    --surface: #13151F;
-    --text: #E0E6ED;
-    --accent: #00FF94;
-    --border: #2A2F3D;
+    /* 
+       Neon Operator - Refined 
+       Philosophy: High contrast, Cyberpunk, Data-Dense, Glowing
+    */
+    --bg: #050508; /* Deepest Void */
+    --surface: #0f111a; /* Dark Tech Plate */
+    --surface-highlight: #1a1d2e; /* Slightly lighter surface for hover/cards */
+    
+    --text: #e2e8f0; /* Crisp White/Grey */
+    --text-muted: #94a3b8; /* Muted tech text */
+    
+    /* Primary Neon: Cyber Cyan */
+    --accent: #00f3ff; 
+    --accent-glow: rgba(0, 243, 255, 0.5);
+    
+    /* Secondary Neon: Matrix Green */
+    --secondary-accent: #0aff68;
+    
+    /* Warning/Error Neon: System Error Red */
+    --destructive: #ff2a6d;
+    
+    /* Borders */
+    --border: rgba(0, 243, 255, 0.2); /* Subtle glow border */
+    --border-hover: rgba(0, 243, 255, 0.6);
+    
     --font-heading: 'Space Mono', monospace;
     --font-body: 'Inter', sans-serif;
 
+    /* Tailwind / ShadCN Mappings */
     --background: var(--bg);
     --foreground: var(--text);
+    
     --card: var(--surface);
     --card-foreground: var(--text);
+    
     --popover: var(--surface);
     --popover-foreground: var(--text);
+    
     --primary: var(--accent);
-    --primary-foreground: #000;
-    --secondary: #1F2937;
-    --secondary-foreground: var(--text);
-    --muted: #1F2937;
-    --muted-foreground: #6B7280;
-    --destructive: #FF0055;
-    --destructive-foreground: #fff;
-    --input: var(--border);
+    --primary-foreground: #000000;
+    
+    --secondary: var(--surface-highlight);
+    --secondary-foreground: var(--accent);
+    
+    --muted: #1e293b;
+    --muted-foreground: var(--text-muted);
+    
+    --destructive: var(--destructive);
+    --destructive-foreground: #ffffff;
+    
+    --border: var(--border);
+    --input: #1e293b;
     --ring: var(--accent);
-    --radius: 0;
+    
+    --radius: 2px; /* Sharp technical corners */
 }
 
 /* 

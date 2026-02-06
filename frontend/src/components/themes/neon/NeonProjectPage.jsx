@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database, Edit2 } from 'lucide-react'
+import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database, Edit2, Activity, ShieldCheck, AlertCircle } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,7 +14,6 @@ import GlossaryEditor from '@/components/GlossaryEditor.jsx'
 import RelationshipsViewer from '@/components/RelationshipsViewer.jsx'
 import BatchProcessor from '@/components/BatchProcessor.jsx'
 import GlossaryVersionManager from '@/components/GlossaryVersionManager.jsx'
-import ChapterViewer from '@/components/ChapterViewer.jsx'
 
 export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
     const [activeModule, setActiveModule] = useState('chapters')
@@ -42,8 +41,16 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
         }
     }
 
-    if (loading) return <div className="flex h-[50vh] items-center justify-center text-accent animate-pulse font-mono">LOADING_PROJECT_DATA...</div>
-    if (!project) return <div className="text-center py-12 text-destructive font-mono">ERROR: PROJECT_NOT_FOUND</div>
+    if (loading) return (
+        <div className="flex h-[50vh] items-center justify-center font-mono">
+            <div className="flex flex-col items-center">
+                <Activity className="w-12 h-12 text-accent animate-spin mb-4" />
+                <span className="text-secondary-accent tracking-widest animate-pulse">ESTABLISHING_UPLINK...</span>
+            </div>
+        </div>
+    )
+
+    if (!project) return <div className="text-center py-24 text-destructive font-mono text-xl border border-destructive/50 bg-destructive/10">ERROR: NULL_TARGGET_DATA</div>
 
     const modules = [
         { id: 'chapters', label: 'CHAPTER_LOG', icon: Book },
@@ -55,37 +62,45 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
     ]
 
     return (
-        <div className="space-y-6 font-mono text-sm max-w-[1400px] mx-auto">
-            {/* Header Info */}
-            <div className="flex items-center justify-between border-b border-accent/20 pb-4">
-                <div className="flex items-center gap-4">
-                    <Link to="/" className="text-muted-foreground hover:text-accent transition-colors flex items-center text-xs uppercase tracking-widest">
-                        <ArrowLeft className="w-3 h-3 mr-1" /> RETURN_ROOT
-                    </Link>
-                    <div className="h-6 w-[1px] bg-accent/20" />
-                    <div>
-                        <h1 className="text-2xl font-bold text-accent tracking-tighter uppercase flex items-center">
-                            <Cpu className="w-5 h-5 mr-3 animate-pulse" />
-                            {project.name}
-                            <button onClick={openEditModal} className="ml-3 text-muted-foreground hover:text-accent transition-colors">
-                                <Edit2 className="w-4 h-4" />
-                            </button>
-                        </h1>
-                        <div className="flex gap-4 text-[10px] text-muted-foreground mt-1">
-                            <span>ID: {project.id}</span>
-                            <span>GENRE: {project.genre.toUpperCase()}</span>
-                            <span>CREATED: {new Date(project.created_at).toLocaleDateString()}</span>
+        <div className="space-y-6 font-mono text-sm max-w-[1600px] mx-auto p-4">
+            {/* Mission Briefing Header */}
+            <header className="border-b border-accent/30 pb-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Cpu className="w-64 h-64 text-accent animate-pulse" />
+                </div>
+
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                    <div className="space-y-4 w-full md:w-auto">
+                        <Link to="/" className="group flex items-center text-xs text-text-muted hover:text-accent transition-colors w-fit">
+                            <ArrowLeft className="w-3 h-3 mr-2 group-hover:-translate-x-1 transition-transform" />
+                            <span className="tracking-widest">RETURN_ROOT_DIR</span>
+                        </Link>
+
+                        <div className="flex items-center gap-4">
+                            <div className="w-2 h-12 bg-accent shadow-[0_0_15px_rgba(0,243,255,0.5)]" />
+                            <div>
+                                <div className="text-[10px] text-secondary-accent uppercase tracking-[0.2em] mb-1">Target Designation</div>
+                                <h1 className="text-4xl font-bold text-text uppercase tracking-tighter flex items-center shadow-accent">
+                                    {project.name}
+                                    <button onClick={openEditModal} className="ml-4 text-text-muted hover:text-accent transition-colors opacity-50 hover:opacity-100">
+                                        <Edit2 className="w-5 h-5" />
+                                    </button>
+                                </h1>
+                            </div>
                         </div>
                     </div>
+
+                    {/* HUD Stats Grid */}
+                    <div className="grid grid-cols-3 gap-1 bg-surface/50 border border-border p-1">
+                        <HudStat label="GENRE_CLASS" value={project.genre} icon={<Database className="w-3 h-3" />} />
+                        <HudStat label="SEC_LEVEL" value="ALPHA" icon={<ShieldCheck className="w-3 h-3 text-secondary-accent" />} />
+                        <HudStat label="STATUS" value="ACTIVE" icon={<Activity className="w-3 h-3 text-accent" />} />
+                    </div>
                 </div>
-                <div className="text-right hidden md:block">
-                    <div className="text-[10px] text-accent">SYSTEM_STATUS</div>
-                    <div className="text-xl font-bold">ONLINE</div>
-                </div>
-            </div>
+            </header>
 
             {/* Navigation Modules (Tabs) */}
-            <div className="flex flex-wrap gap-2 border-b-2 border-accent/10 pb-1">
+            <nav className="flex flex-wrap gap-2 pt-2">
                 {modules.map(mod => {
                     const Icon = mod.icon;
                     const isActive = activeModule === mod.id;
@@ -94,101 +109,104 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
                             key={mod.id}
                             onClick={() => setActiveModule(mod.id)}
                             className={`
-                        flex items-center px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all
-                        ${isActive
-                                    ? 'bg-accent text-bg shadow-[0_0_15px_rgba(0,255,148,0.3)] clip-path-slant'
-                                    : 'bg-surface/50 text-muted-foreground hover:text-accent hover:bg-accent/10'
+                                flex items-center px-6 py-3 text-xs font-bold uppercase tracking-widest transition-all relative overflow-hidden group
+                                ${isActive
+                                    ? 'text-bg bg-accent clip-path-tech'
+                                    : 'text-text-muted hover:text-accent border border-accent/20 hover:border-accent/60 bg-surface/20 hover:bg-surface/50 clip-path-tech'
                                 }
-                    `}
-                            style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
+                            `}
                         >
-                            <Icon className="w-3 h-3 mr-2" />
+                            <div className={`absolute inset-0 bg-secondary-accent/20 transform -skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-700 ${isActive ? 'hidden' : 'block'}`} />
+                            <Icon className="w-4 h-4 mr-3" />
                             {mod.label}
                         </button>
                     )
                 })}
-            </div>
+            </nav>
 
-            {/* Content Area */}
-            <div className="border border-accent/10 bg-surface/10 p-4 relative min-h-[600px]">
-                {/* Decorative Corner Brackets */}
-                <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-accent opacity-50" />
-                <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-accent opacity-50" />
-                <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-accent opacity-50" />
-                <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-accent opacity-50" />
+            {/* Main Content Viewport */}
+            <main className="min-h-[600px] border-2 border-accent/10 bg-surface/30 backdrop-blur-sm relative p-1">
+                {/* Tech Corners */}
+                <div className="absolute -top-[2px] -left-[2px] w-4 h-4 border-t-2 border-l-2 border-accent" />
+                <div className="absolute -top-[2px] -right-[2px] w-4 h-4 border-t-2 border-r-2 border-accent" />
+                <div className="absolute -bottom-[2px] -left-[2px] w-4 h-4 border-b-2 border-l-2 border-accent" />
+                <div className="absolute -bottom-[2px] -right-[2px] w-4 h-4 border-b-2 border-r-2 border-accent" />
 
-                {activeModule === 'chapters' && <NeonChapterManager projectId={projectId} />}
-                {activeModule === 'glossary' && <div className="neon-wrapper"><GlossaryEditor projectId={projectId} /></div>}
-                {activeModule === 'relationships' && <div className="neon-wrapper"><RelationshipsViewer projectId={projectId} /></div>}
-                {activeModule === 'translations' && <NeonReader projectId={projectId} />}
-                {activeModule === 'versions' && <div className="neon-wrapper"><GlossaryVersionManager projectId={projectId} /></div>}
-                {activeModule === 'batch' && <div className="neon-wrapper"><BatchProcessor projectId={projectId} /></div>}
-            </div>
+                {/* Scanline Effect */}
+                <div className="absolute inset-0 bg-scanline pointer-events-none opacity-5" />
 
+                <div className="p-6 relative z-10">
+                    {activeModule === 'chapters' && <NeonChapterManager projectId={projectId} />}
+                    {activeModule === 'glossary' && <NeonWrapper><GlossaryEditor projectId={projectId} /></NeonWrapper>}
+                    {activeModule === 'relationships' && <NeonWrapper><RelationshipsViewer projectId={projectId} /></NeonWrapper>}
+                    {activeModule === 'translations' && <NeonReader projectId={projectId} />}
+                    {activeModule === 'versions' && <NeonWrapper><GlossaryVersionManager projectId={projectId} /></NeonWrapper>}
+                    {activeModule === 'batch' && <NeonWrapper><BatchProcessor projectId={projectId} /></NeonWrapper>}
+                </div>
+            </main>
+
+            {/* Global Styles for transparent overrides */}
             <style>{`
-          /* Quick CSS override for nested components to force transparent backgrounds */
-          .neon-wrapper .card, 
-          .neon-wrapper .bg-card, 
-          .neon-wrapper .bg-background {
-              background-color: transparent !important;
-              border: none !important;
-              box-shadow: none !important;
-          }
-          .neon-wrapper table {
-              border-collapse: separate;
-              border-spacing: 0 4px;
-          }
-          .neon-wrapper th {
-              background-color: rgba(0, 255, 148, 0.1) !important;
-              color: var(--color-accent) !important;
-              font-family: monospace;
-              text-transform: uppercase;
-              font-size: 0.75rem;
-          }
-          .neon-wrapper td {
-              font-family: monospace;
-              font-size: 0.8rem;
-              border-bottom: 1px solid rgba(0, 255, 148, 0.1);
-          }
-          /* Custom Scrollbar for Neon pages */
-          .custom-scrollbar::-webkit-scrollbar {
-              width: 8px;
-              height: 8px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-              background: rgba(0, 255, 148, 0.05);
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(0, 255, 148, 0.3);
-              border-radius: 0;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: rgba(0, 255, 148, 0.6);
-          }
-      `}</style>
+                .clip-path-tech {
+                    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+                }
+                .neon-force-transparent .card, 
+                .neon-force-transparent .bg-card, 
+                .neon-force-transparent .bg-background {
+                    background-color: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                .neon-force-transparent table {
+                    border-collapse: separate;
+                    border-spacing: 0 2px;
+                }
+                .neon-force-transparent th {
+                    background-color: rgba(0, 243, 255, 0.05) !important;
+                    color: var(--color-accent) !important;
+                    font-family: 'Space Mono', monospace;
+                    text-transform: uppercase;
+                    font-size: 0.7rem;
+                    letter-spacing: 0.1em;
+                    border-bottom: 1px solid var(--color-accent);
+                    padding: 12px !important;
+                }
+                .neon-force-transparent td {
+                    font-family: 'Space Mono', monospace;
+                    font-size: 0.8rem;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                    padding: 12px !important;
+                    color: var(--color-text-muted);
+                }
+                .neon-force-transparent tr:hover td {
+                    background-color: rgba(0, 243, 255, 0.05);
+                    color: var(--color-text);
+                }
+            `}</style>
+
             {/* Edit Modal */}
-            <Modal
+            <NeonModal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
-                title="MODIFY_PROJECT_PARAMETERS"
+                title="MODIFY_TARGET_PARAMETERS"
             >
-                <div className="space-y-4 font-mono">
+                <div className="space-y-6 font-mono">
                     <div className="space-y-2">
-                        <Label htmlFor="edit-name" className="text-xs uppercase">PROJECT_DESIGNATION</Label>
+                        <Label htmlFor="edit-name" className="text-[10px] uppercase text-accent tracking-widest">Designation</Label>
                         <Input
                             id="edit-name"
                             value={editFormData.name}
                             onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="bg-background border-accent/20 focus:border-accent text-accent"
+                            className="bg-bg/50 border-accent/30 text-text font-bold text-lg h-12 focus:border-accent"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="edit-genre" className="text-xs uppercase">GENRE_CLASS</Label>
+                        <Label htmlFor="edit-genre" className="text-[10px] uppercase text-accent tracking-widest">Classification</Label>
                         <Input
                             id="edit-genre"
                             value={editFormData.genre}
                             onChange={(e) => setEditFormData(prev => ({ ...prev, genre: e.target.value }))}
-                            className="bg-background border-accent/20 focus:border-accent text-accent"
+                            className="bg-bg/50 border-accent/30 text-text h-12 focus:border-accent"
                             list="neon-genre-options"
                         />
                         <datalist id="neon-genre-options">
@@ -199,17 +217,66 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
                             <option value="fantasy" />
                         </datalist>
                     </div>
-                    <div className="flex justify-end gap-2 pt-2 border-t border-accent/10 mt-4">
-                        <Button variant="ghost" onClick={() => setIsEditModalOpen(false)} disabled={updating} className="text-muted-foreground hover:text-destructive">
-                            ABORT
+                    <div className="flex justify-end gap-4 pt-6 mt-4 border-t border-accent/10">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsEditModalOpen(false)}
+                            disabled={updating}
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 uppercase tracking-wider"
+                        >
+                            ABORT_SEQUENCE
                         </Button>
-                        <Button onClick={handleUpdateProject} disabled={updating} className="bg-accent/10 text-accent border border-accent hover:bg-accent hover:text-background">
-                            {updating ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                            COMMIT_CHANGES
+                        <Button
+                            onClick={handleUpdateProject}
+                            disabled={updating}
+                            className="bg-accent text-bg hover:bg-secondary-accent font-bold uppercase tracking-wider min-w-[140px]"
+                        >
+                            {updating ? <Spinner className="mr-2 h-4 w-4" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                            COMMIT
                         </Button>
                     </div>
                 </div>
-            </Modal>
+            </NeonModal>
         </div>
     )
 }
+
+// Helper Components
+const HudStat = ({ label, value, icon }) => (
+    <div className="flex flex-col items-center justify-center p-2 bg-bg hover:bg-surface transition-colors cursor-default">
+        <div className="text-[10px] text-text-muted uppercase mb-1 flex items-center gap-1">
+            {icon} {label}
+        </div>
+        <div className="text-secondary-accent font-bold text-sm uppercase tracking-wider">{value}</div>
+    </div>
+);
+
+const NeonWrapper = ({ children }) => (
+    <div className="neon-force-transparent">
+        {children}
+    </div>
+);
+
+const NeonModal = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="w-full max-w-lg border border-accent bg-surface/95 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]">
+                <div className="flex items-center justify-between p-4 border-b border-accent/20 bg-accent/5">
+                    <h3 className="text-accent font-bold uppercase tracking-widest flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2" /> {title}
+                    </h3>
+                    <button onClick={onClose} className="text-text-muted hover:text-destructive transition-colors text-xl font-bold">&times;</button>
+                </div>
+                <div className="p-6">
+                    {children}
+                </div>
+                {/* Corner Accents */}
+                <div className="absolute top-0 left-0 w-2 h-2 bg-accent" />
+                <div className="absolute top-0 right-0 w-2 h-2 bg-accent" />
+                <div className="absolute bottom-0 left-0 w-2 h-2 bg-accent" />
+                <div className="absolute bottom-0 right-0 w-2 h-2 bg-accent" />
+            </div>
+        </div>
+    );
+};
