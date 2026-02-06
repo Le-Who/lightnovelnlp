@@ -34,6 +34,14 @@ class GlossaryTermRead(GlossaryTermBase):
     status: str
     created_at: datetime
     approved_at: Optional[datetime] = None
+    first_chapter_id: Optional[int] = None
+    last_chapter_id: Optional[int] = None
+    
+    # We could add nested chapter info here if we define a schema for it
+    # first_chapter: Optional[ChapterInfo] = None 
+    # But for now, let's stick to IDs or let frontend handle it if it has the map.
+    # actually, let's include a minimal string representation or similar if feasible.
+
 
 
 class TermRelationshipBase(BaseModel):

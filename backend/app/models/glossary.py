@@ -38,10 +38,18 @@ class GlossaryTerm(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     approved_at = Column(DateTime, nullable=True)  # When the term was approved/rejected
     
+    # New metrics
+    first_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True)
+    last_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True)
+    
     # Связи
     project = relationship("Project", back_populates="glossary_terms")
     source_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.source_term_id", back_populates="source_term")
     target_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.target_term_id", back_populates="target_term")
+    
+    # Chapter relationships
+    first_chapter = relationship("Chapter", foreign_keys=[first_chapter_id])
+    last_chapter = relationship("Chapter", foreign_keys=[last_chapter_id])
 
     __table_args__ = (
         Index("ix_glossary_terms_project_id", "project_id"),

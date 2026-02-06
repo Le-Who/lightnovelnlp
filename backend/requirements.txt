@@ -12,5 +12,4 @@ alembic==1.13.1
 pytz==2023.3
 PyPDF2==3.0.1
 celery>=5.0.0
-pymorphy3>=2.0.0
-pymorphy3-dicts-ru
+spacy>=3.7.0

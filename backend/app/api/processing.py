@@ -68,6 +68,22 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 # Обновляем частоту существующего термина
                 new_frequency = term_data.get("frequency", 1)
                 existing_term.frequency += new_frequency
+                
+                # Обновляем first/last chapter
+                if existing_term.first_chapter_id:
+                     # Check if current chapter order is lower
+                     if chapter.order < (existing_term.first_chapter.order if existing_term.first_chapter else float('inf')):
+                          existing_term.first_chapter_id = chapter.id
+                else:
+                     existing_term.first_chapter_id = chapter.id
+                     
+                if existing_term.last_chapter_id:
+                     # Check if current chapter order is higher
+                     if chapter.order > (existing_term.last_chapter.order if existing_term.last_chapter else -1):
+                          existing_term.last_chapter_id = chapter.id
+                else:
+                     existing_term.last_chapter_id = chapter.id
+
                 # Можно также обновить контекст, если он пустой, но пока оставим как есть
                 # existing_term.context = existing_term.context or term_data.get("context", "")
             else:
@@ -86,7 +102,9 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                     status=initial_status,
                     context=term_data.get("context", ""),
                     frequency=term_data.get("frequency", 1),
-                    approved_at=datetime.now(timezone.utc) if auto_approve else None
+                    approved_at=datetime.now(timezone.utc) if auto_approve else None,
+                    first_chapter_id=chapter.id,
+                    last_chapter_id=chapter.id
                 )
                 local_db.add(term)
                 saved_terms.append(term)

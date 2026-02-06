@@ -12,13 +12,32 @@ logger = logging.getLogger(__name__)
 
 
 import re
-import pymorphy3
+import spacy
 from collections import Counter
 
 class TermExtractor:
     def __init__(self):
         self.client = gemini_client
-        self.morph = pymorphy3.MorphAnalyzer()
+        self.nlp_models = {}
+
+    def _get_nlp(self, lang: str):
+        """Lazy load spaCy models to avoid startup overhead."""
+        if lang not in self.nlp_models:
+            try:
+                if lang == "ru":
+                    logger.info("Loading spaCy model: ru_core_news_sm")
+                    self.nlp_models[lang] = spacy.load("ru_core_news_sm")
+                else:
+                    # Default to English for everything else for now, or add specific models
+                    logger.info("Loading spaCy model: en_core_web_sm")
+                    self.nlp_models[lang] = spacy.load("en_core_web_sm")
+            except OSError:
+                logger.error(f"spaCy model for {lang} not found. Please run download_models.py")
+                # Fallback to English or blank
+                if lang != "en":
+                     return self._get_nlp("en")
+                raise
+        return self.nlp_models[lang]
 
     def extract_terms(
         self, 
@@ -64,67 +83,64 @@ class TermExtractor:
 
     def count_term_frequency(self, text: str, terms: List[str], source_language: str = "en") -> Dict[str, int]:
         """
-        Подсчитывает частоту встречаемости терминов.
-        Для русского языка использует pymorphy3 для нормализации.
-        Для остальных языков использует поиск подстроки (case-insensitive).
+        Подсчитывает частоту встречаемости терминов с использованием spaCy.
         
         Args:
             text: Текст для анализа
             terms: Список терминов для подсчета
-            source_language: Язык текста (ru, en, ja, zh, etc.)
+            source_language: Язык текста (ru, en, etc.)
             
         Returns:
             Dict[str, int]: Словарь {термин: частота}
         """
         if not terms or not text:
             return {}
-
-        # Если язык русский - используем морфологический анализ
-        if source_language == "ru":
-            # 1. Токенизация и лемматизация текста (один проход)
-            # Разбиваем на слова, оставляя только буквенные токены
-            tokens = re.findall(r'\w+', text.lower())
-            
-            # Кэш для ускорения лемматизации повторяющихся слов
-            lemma_cache = {}
-            
-            def get_lemma(word):
-                if word in lemma_cache:
-                    return lemma_cache[word]
-                # Берем наиболее вероятную нормальную форму
-                lemma = self.morph.parse(word)[0].normal_form
-                lemma_cache[word] = lemma
-                return lemma
-
-            # Получаем список лемм из текста
-            text_lemmas = [get_lemma(token) for token in tokens]
-            
-            # Считаем частоту каждой леммы в тексте
-            lemma_counts = Counter(text_lemmas)
-            
-            frequency = {}
-            for term in terms:
-                # Лемматизируем и сам искомый термин
-                if ' ' not in term:
-                    term_lemma = get_lemma(term.lower())
-                    count = lemma_counts.get(term_lemma, 0)
-                else:
-                    # Для составных терминов пока используем простой поиск по тексту,
-                    # так как pymorphy лучше всего работает с отдельными словами
-                    count = text.lower().count(term.lower())
-                
-                frequency[term] = count
-                
-        else:
-            # Для остальных языков используем простой поиск подстроки (case-insensitive)
-            # Это более надежно для английского/китайского, чем русская морфология
+        
+        # Определяем модель spaCy (ru или en/other)
+        lang_code = "ru" if source_language == "ru" else "en"
+        
+        try:
+            nlp = self._get_nlp(lang_code)
+        except Exception as e:
+            logger.error(f"Failed to load NLP model for frequency counting: {e}")
+            # Fallback to simple string counting
             text_lower = text.lower()
-            frequency = {}
-            for term in terms:
-                # Используем count для подсчета вхождений
-                count = text_lower.count(term.lower())
-                frequency[term] = count
+            return {term: text_lower.count(term.lower()) for term in terms}
+
+        # Обрабатываем текст с помощью spaCy
+        # Для ускорения отключаем ненужные пайплайны (ner, parser), оставляем только tagger/lemmatizer
+        doc = nlp(text, disable=["ner", "parser"])
+        
+        # Получаем леммы из текста (в нижнем регистре)
+        text_lemmas = [token.lemma_.lower() for token in doc if not token.is_punct and not token.is_space]
+        lemma_counts = Counter(text_lemmas)
+        
+        frequency = {}
+        for term in terms:
+            # Лемматизируем и сам термин
+            term_doc = nlp(term, disable=["ner", "parser"])
+            term_lemmas = [t.lemma_.lower() for t in term_doc if not t.is_punct and not t.is_space]
             
+            if not term_lemmas:
+                 frequency[term] = 0
+                 continue
+                 
+            # Если термин состоит из одного слова
+            if len(term_lemmas) == 1:
+                frequency[term] = lemma_counts.get(term_lemmas[0], 0)
+            else:
+                # Для составных терминов (фразы) 
+                # Простой подход: ищем последовательность лемм в тексте лемм
+                # (Это не самый быстрый способ для больших текстов, но точный)
+                
+                # Ищем подстроку term_lemmas внутри text_lemmas
+                count = 0
+                n = len(term_lemmas)
+                for i in range(len(text_lemmas) - n + 1):
+                    if text_lemmas[i:i+n] == term_lemmas:
+                        count += 1
+                frequency[term] = count
+                
         return frequency
 
     def extract_terms_with_frequency(

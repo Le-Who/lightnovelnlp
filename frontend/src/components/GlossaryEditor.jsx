@@ -150,6 +150,8 @@ export default function GlossaryEditor({ projectId }) {
                   <TableHead>Перевод</TableHead>
                   <TableHead>Категория</TableHead>
                   <TableHead>Частота</TableHead>
+                  <TableHead>Первое появление</TableHead>
+                  <TableHead>Последнее появление</TableHead>
                   <TableHead>Статус</TableHead>
                   <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
@@ -183,6 +185,12 @@ export default function GlossaryEditor({ projectId }) {
                     </TableCell>
                     <TableCell className="text-card-foreground">{getCategoryLabel(term.category)}</TableCell>
                     <TableCell className="text-card-foreground">{term.frequency || 1}</TableCell>
+                    <TableCell className="text-card-foreground">
+                      {term.first_chapter_id ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.first_chapter_id}</Badge> : '-'}
+                    </TableCell>
+                    <TableCell className="text-card-foreground">
+                      {term.last_chapter_id ? <Badge variant="outline" className="font-mono text-xs">Ch. {term.last_chapter_id}</Badge> : '-'}
+                    </TableCell>
                     <TableCell>{getStatusBadge(term.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
