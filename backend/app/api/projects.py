@@ -18,6 +18,7 @@ except Exception:
 
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.services.project_service import ProjectService
+from app.core.regex_utils import safe_finditer
 import re
 
 router = APIRouter()
@@ -183,9 +184,13 @@ def upload_chapters_from_file(
         content = file.file.read().decode('utf-8')
         
         # Разделяем текст на главы по паттерну
-        pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
-        # Находим все совпадения с их позициями
-        matches = list(pattern.finditer(content))
+        try:
+            matches = safe_finditer(f"\\n({chapter_pattern})", content, flags=re.IGNORECASE)
+        except TimeoutError:
+            raise HTTPException(
+                status_code=400,
+                detail="Regex processing timed out. Please simplify your chapter pattern."
+            )
         
         if not matches:
             raise HTTPException(
