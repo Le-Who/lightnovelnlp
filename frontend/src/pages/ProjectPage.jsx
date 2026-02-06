@@ -20,6 +20,18 @@ export default function ProjectPage() {
   // Theme View Resolver
   const Views = useThemeView();
 
+  const loadProject = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get(`/projects/${projectId}`)
+      setProject(res.data)
+    } catch (e) {
+      console.error('Error loading project:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (projectId && !Views.ProjectPage) {
       loadProject()
