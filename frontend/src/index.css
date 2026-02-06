@@ -1,268 +1,102 @@
-/* Google Fonts Imports */
-@import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Quicksand:wght@300..700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap');
-
 @import "tailwindcss";
 
 @theme {
-    --color-bg: var(--bg);
-    --color-surface: var(--surface);
-    --color-text: var(--text);
-    --color-accent: var(--accent);
-    --color-border-custom: var(--border);
-
-    --font-heading: var(--font-heading);
-    --font-body: var(--font-body);
-
-    /* ShadCN Compatible Colors */
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
-    --color-destructive: var(--destructive);
-    --color-destructive-foreground: var(--destructive-foreground);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 }
 
-/* 
-  ========================================
-  Variant 1: Paper Zen (Default)
-  ========================================
-*/
 :root {
-    --bg: #F5F1E8;
-    --surface: #EBE5D9;
-    --text: #2D2A26;
-    --accent: #8C3A3A;
-    --border: #D6CFC4;
-    --font-heading: 'Merriweather', serif;
-    --font-body: 'Lora', serif;
-
-    /* ShadCN Mappings */
-    --background: var(--bg);
-    --foreground: var(--text);
-    --card: var(--surface);
-    --card-foreground: var(--text);
-    --popover: var(--surface);
-    --popover-foreground: var(--text);
-    --primary: var(--accent);
-    --primary-foreground: var(--bg);
-    --secondary: #D6CFC4;
-    --secondary-foreground: var(--text);
-    --muted: #D6CFC4;
-    --muted-foreground: #666055;
-    --destructive: #cc4444;
-    --destructive-foreground: #fff;
-    --input: var(--border);
-    --ring: var(--accent);
-    --radius: 0.5rem;
+  /* Light Theme (Default - Slate) */
+  --background: #ffffff;
+  --foreground: #020817; /* slate-950 */
+  --card: #ffffff;
+  --card-foreground: #020817;
+  --popover: #ffffff;
+  --popover-foreground: #020817;
+  --primary: #0f172a; /* slate-900 */
+  --primary-foreground: #f8fafc; /* slate-50 */
+  --secondary: #f1f5f9; /* slate-100 */
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b; /* slate-500 */
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444; /* red-500 */
+  --destructive-foreground: #f8fafc;
+  --border: #e2e8f0; /* slate-200 */
+  --input: #e2e8f0;
+  --ring: #020817;
+  --radius: 0.5rem;
 }
 
-[data-theme="paper-zen"] {
-    --bg: #F5F1E8;
-    --surface: #EBE5D9;
-    --text: #2D2A26;
-    --accent: #8C3A3A;
-    --border: #D6CFC4;
-    --font-heading: 'Merriweather', serif;
-    --font-body: 'Lora', serif;
-
-    /* Mapping repeats for explicit switching */
-    --background: var(--bg);
-    --foreground: var(--text);
-    --card: var(--surface);
-    --card-foreground: var(--text);
-    --popover: var(--surface);
-    --popover-foreground: var(--text);
-    --primary: var(--accent);
-    --primary-foreground: var(--bg);
-    --secondary: #D6CFC4;
-    --secondary-foreground: var(--text);
-    --muted: #D6CFC4;
-    --muted-foreground: #666055;
-    --destructive: #cc4444;
-    --destructive-foreground: #fff;
-    --input: var(--border);
-    --ring: var(--accent);
-    --radius: 0.5rem;
+.dark {
+  /* Dark Theme (Slate) */
+  --background: #020817; /* slate-950 */
+  --foreground: #f8fafc; /* slate-50 */
+  --card: #020817;
+  --card-foreground: #f8fafc;
+  --popover: #020817;
+  --popover-foreground: #f8fafc;
+  --primary: #f8fafc;
+  --primary-foreground: #0f172a;
+  --secondary: #1e293b; /* slate-800 */
+  --secondary-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8; /* slate-400 */
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+  --destructive: #991b1b; /* red-800 */
+  --destructive-foreground: #f8fafc;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #cbd5e1; /* slate-300 */
 }
 
-/* 
-  ========================================
-  Variant 2: Neon Operator
-  ========================================
-*/
-[data-theme="neon-operator"] {
-    --bg: #0A0B10;
-    --surface: #13151F;
-    --text: #E0E6ED;
-    --accent: #00FF94;
-    --border: #2A2F3D;
-    --font-heading: 'Space Mono', monospace;
-    --font-body: 'Inter', sans-serif;
-
-    --background: var(--bg);
-    --foreground: var(--text);
-    --card: var(--surface);
-    --card-foreground: var(--text);
-    --popover: var(--surface);
-    --popover-foreground: var(--text);
-    --primary: var(--accent);
-    --primary-foreground: #000;
-    --secondary: #1F2937;
-    --secondary-foreground: var(--text);
-    --muted: #1F2937;
-    --muted-foreground: #6B7280;
-    --destructive: #FF0055;
-    --destructive-foreground: #fff;
-    --input: var(--border);
-    --ring: var(--accent);
-    --radius: 0;
+.neutral {
+  /* Neutral Theme (Stone/Warm) */
+  --background: #fafaf9; /* stone-50 */
+  --foreground: #1c1917; /* stone-900 */
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #44403c; /* stone-700 */
+  --primary-foreground: #fafaf9; /* stone-50 */
+  --secondary: #e7e5e4; /* stone-200 */
+  --secondary-foreground: #1c1917;
+  --muted: #f5f5f4; /* stone-100 */
+  --muted-foreground: #78716c; /* stone-500 */
+  --accent: #e7e5e4;
+  --accent-foreground: #1c1917;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafaf9;
+  --border: #d6d3d1; /* stone-300 */
+  --input: #d6d3d1;
+  --ring: #44403c;
 }
 
-/* 
-  ========================================
-  Variant 3: Ink & Blade
-  ========================================
-*/
-[data-theme="ink-blade"] {
-    --bg: #FAFAFA;
-    --surface: #F0F0F0;
-    --text: #111111;
-    --accent: #C41E3A;
-    --border: #111111;
-    --font-heading: 'Zhi Mang Xing', cursive;
-    --font-body: 'Noto Serif', serif;
-
-    --background: var(--bg);
-    --foreground: var(--text);
-    --card: var(--surface);
-    --card-foreground: var(--text);
-    --popover: var(--surface);
-    --popover-foreground: var(--text);
-    --primary: var(--accent);
-    --primary-foreground: #fff;
-    --secondary: #E5E5E5;
-    --secondary-foreground: var(--text);
-    --muted: #E5E5E5;
-    --muted-foreground: #404040;
-    --destructive: #C41E3A;
-    --destructive-foreground: #fff;
-    --input: var(--border);
-    --ring: var(--accent);
-    --radius: 0.75rem;
-}
-
-/* 
-  ========================================
-  Variant 4: Aether Lens
-  ========================================
-*/
-[data-theme="aether-lens"] {
-    --bg: #E0C3FC;
-    --surface: rgba(255, 255, 255, 0.45);
-    --text: #4A4A6A;
-    --accent: #7000FF;
-    --border: rgba(255, 255, 255, 0.6);
-    --font-heading: 'Cinzel', serif;
-    --font-body: 'Quicksand', sans-serif;
-
-    --background: var(--bg);
-    --foreground: var(--text);
-    --card: var(--surface);
-    --card-foreground: var(--text);
-    --popover: var(--surface);
-    --popover-foreground: var(--text);
-    --primary: var(--accent);
-    --primary-foreground: #fff;
-    --secondary: rgba(255, 255, 255, 0.3);
-    --secondary-foreground: var(--text);
-    --muted: rgba(255, 255, 255, 0.3);
-    --muted-foreground: #6D6D8B;
-    --destructive: #FF4A4A;
-    --destructive-foreground: #fff;
-    --input: var(--border);
-    --ring: var(--accent);
-    --radius: 1rem;
-}
-
-/* Special background for Aether Lens */
-[data-theme="aether-lens"] body {
-    background: linear-gradient(135deg, #E0C3FC 0%, #8EC5FC 100%);
-    min-height: 100vh;
-}
-
-/* 
-  ========================================
-  Variant 5: Brutalist Grid
-  ========================================
-*/
-[data-theme="brutalist-grid"] {
-    --bg: #FFFFFF;
-    --surface: #FFCC00;
-    --text: #000000;
-    --accent: #0000FF;
-    --border: #000000;
-    --font-heading: 'Archivo Black', sans-serif;
-    --font-body: 'Public Sans', sans-serif;
-
-    --background: var(--bg);
-    --foreground: var(--text);
-    --card: #FFFFFF;
-    --card-foreground: var(--text);
-    --popover: #FFFFFF;
-    --popover-foreground: var(--text);
-    --primary: var(--accent);
-    --primary-foreground: #fff;
-    --secondary: #FFCC00;
-    --secondary-foreground: #000;
-    --muted: #EEE;
-    --muted-foreground: #000;
-    --destructive: #000;
-    --destructive-foreground: #fff;
-    --input: var(--border);
-    --ring: var(--accent);
-    --radius: 0;
-}
-
-/* Custom Base Styles */
-body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-body);
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: var(--font-heading);
-}
-
-/* Brutalist specific overrides */
-[data-theme="brutalist-grid"] * {
-    border-width: 1px;
-}
-
-[data-theme="brutalist-grid"] .card,
-[data-theme="brutalist-grid"] .btn,
-[data-theme="brutalist-grid"] input {
-    border: 2px solid #000;
-    box-shadow: 4px 4px 0 #000;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

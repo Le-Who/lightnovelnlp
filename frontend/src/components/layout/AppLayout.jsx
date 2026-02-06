@@ -1,37 +1,15 @@
-import React, { useMemo } from 'react';
-import { useTheme } from '../theme-provider';
-import { Sidebar } from './Sidebar'; // Fallback
-
-// Theme Layouts
-import { PaperZenLayout } from './themes/PaperZenLayout';
-import { NeonOperatorLayout } from './themes/NeonOperatorLayout';
-import { InkBladeLayout } from './themes/InkBladeLayout';
-import { AetherLensLayout } from './themes/AetherLensLayout';
-import { BrutalistGridLayout } from './themes/BrutalistGridLayout';
+import React from 'react'
+import { Sidebar } from './Sidebar'
 
 export function AppLayout({ children }) {
-  const { theme } = useTheme();
-
-  const LayoutComponent = useMemo(() => {
-    switch (theme) {
-      case 'paper-zen':
-        return PaperZenLayout;
-      case 'neon-operator':
-        return NeonOperatorLayout;
-      case 'ink-blade':
-        return InkBladeLayout;
-      case 'aether-lens':
-        return AetherLensLayout;
-      case 'brutalist-grid':
-        return BrutalistGridLayout;
-      default:
-        return PaperZenLayout;
-    }
-  }, [theme]);
-
   return (
-    <LayoutComponent>
-      {children}
-    </LayoutComponent>
-  );
+    <div className="flex min-h-screen bg-background font-sans text-foreground antialiased">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto h-screen">
+        <div className="container mx-auto py-8 px-8 max-w-7xl">
+          {children}
+        </div>
+      </main>
+    </div>
+  )
 }
