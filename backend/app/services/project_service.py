@@ -13,7 +13,19 @@ from app.schemas.project import ProjectCreate, ProjectGenre
 class ProjectService:
     @staticmethod
     def get_projects(db: Session) -> List[Project]:
-        return db.query(Project).order_by(Project.created_at.desc()).all()
+        # Query projects with chapter counts
+        results = db.query(
+            Project, 
+            func.count(Chapter.id).label('chapters_count')
+        ).outerjoin(Chapter).group_by(Project.id).order_by(Project.created_at.desc()).all()
+        
+        # Manually attach count directly to model attributes or map to schema
+        # SQLAlchemy models don't auto-map aggregated fields to attributes easily without explicit mapping
+        projects = []
+        for project, count in results:
+            project.chapters_count = count
+            projects.append(project)
+        return projects
 
     @staticmethod
     def create_project(db: Session, payload: ProjectCreate) -> Project:

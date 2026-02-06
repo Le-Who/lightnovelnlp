@@ -110,57 +110,64 @@
        Neon Operator - Refined 
        Philosophy: High contrast, Cyberpunk, Data-Dense, Glowing
     */
-    --bg: #050508; /* Deepest Void */
-    --surface: #0f111a; /* Dark Tech Plate */
-    --surface-highlight: #1a1d2e; /* Slightly lighter surface for hover/cards */
-    
-    --text: #e2e8f0; /* Crisp White/Grey */
-    --text-muted: #94a3b8; /* Muted tech text */
-    
+    --bg: #050508;
+    /* Deepest Void */
+    --surface: #0f111a;
+    /* Dark Tech Plate */
+    --surface-highlight: #1a1d2e;
+    /* Slightly lighter surface for hover/cards */
+
+    --text: #e2e8f0;
+    /* Crisp White/Grey */
+    --text-muted: #94a3b8;
+    /* Muted tech text */
+
     /* Primary Neon: Cyber Cyan */
-    --accent: #00f3ff; 
+    --accent: #00f3ff;
     --accent-glow: rgba(0, 243, 255, 0.5);
-    
+
     /* Secondary Neon: Matrix Green */
     --secondary-accent: #0aff68;
-    
+
     /* Warning/Error Neon: System Error Red */
     --destructive: #ff2a6d;
-    
+
     /* Borders */
-    --border: rgba(0, 243, 255, 0.2); /* Subtle glow border */
+    --border: rgba(0, 243, 255, 0.2);
+    /* Subtle glow border */
     --border-hover: rgba(0, 243, 255, 0.6);
-    
+
     --font-heading: 'Space Mono', monospace;
     --font-body: 'Inter', sans-serif;
 
     /* Tailwind / ShadCN Mappings */
     --background: var(--bg);
     --foreground: var(--text);
-    
+
     --card: var(--surface);
     --card-foreground: var(--text);
-    
+
     --popover: var(--surface);
     --popover-foreground: var(--text);
-    
+
     --primary: var(--accent);
     --primary-foreground: #000000;
-    
+
     --secondary: var(--surface-highlight);
     --secondary-foreground: var(--accent);
-    
+
     --muted: #1e293b;
     --muted-foreground: var(--text-muted);
-    
+
     --destructive: var(--destructive);
     --destructive-foreground: #ffffff;
-    
+
     --border: var(--border);
     --input: #1e293b;
     --ring: var(--accent);
-    
-    --radius: 2px; /* Sharp technical corners */
+
+    --radius: 2px;
+    /* Sharp technical corners */
 }
 
 /* 
@@ -268,12 +275,26 @@
     --radius: 0;
 }
 
+}
+
 /* Custom Base Styles */
 body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-body);
     transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Neon Text Selection */
+[data-theme="neon-operator"] ::selection {
+    background: var(--accent);
+    color: var(--bg);
+    text-shadow: none;
+}
+
+[data-theme="neon-operator"] ::-moz-selection {
+    background: var(--accent);
+    color: var(--bg);
 }
 
 h1,

@@ -144,7 +144,7 @@ const NeonProjectCard = ({ project }) => {
     return (
         <div
             onClick={() => navigate(`/projects/${project.id}`)}
-            className="group relative border border-border bg-surface p-6 transition-all duration-300 hover:border-accent hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] cursor-pointer overflow-hidden"
+            className="group relative border border-border bg-surface p-6 transition-all duration-300 hover:border-accent hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] cursor-pointer overflow-hidden hover:bg-surface-highlight"
         >
             {/* Decorative Overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -168,8 +168,8 @@ const NeonProjectCard = ({ project }) => {
             {/* Data Grid */}
             <div className="grid grid-cols-2 gap-4 text-xs font-mono relative z-10 border-t border-border/30 pt-4">
                 <div>
-                    <span className="block text-text-muted text-[10px] mb-1">CREATED</span>
-                    <span className="text-text">{new Date(project.created_at || Date.now()).toLocaleDateString()}</span>
+                    <span className="block text-text-muted text-[10px] mb-1">CHAPTERS</span>
+                    <span className="text-text font-bold">{project.chapters_count || 0}</span>
                 </div>
                 <div>
                     <span className="block text-text-muted text-[10px] mb-1">STATUS</span>

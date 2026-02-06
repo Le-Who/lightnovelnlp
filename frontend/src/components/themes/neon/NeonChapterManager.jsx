@@ -8,15 +8,18 @@ import { Terminal, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, Upload,
 export function NeonChapterManager({ projectId }) {
     const [chapters, setChapters] = useState([])
     const [loading, setLoading] = useState(false)
-    const [analyzing, setAnalyzing] = useState({})
-    const [translating, setTranslating] = useState({})
     const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
     const [previewData, setPreviewData] = useState(null)
-    const [reviewData, setReviewData] = useState(null)
     const [uploadingChapters, setUploadingChapters] = useState(false)
-    const [selectedFile, setSelectedFile] = useState(null)
+    // Removed unused active state dictionaries in favor of chapter status
     const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+
+    // Derived state for active processing to trigger polling
+    const hasActiveTasks = chapters.some(ch =>
+        ['pending', 'extracting', 'relationships', 'summarizing', 'translating'].includes(ch.analysis_status) ||
+        ['pending', 'translating'].includes(ch.translation_status)
+    );
 
     const getStatusLabel = (status) => {
         switch (status) {
@@ -32,14 +35,26 @@ export function NeonChapterManager({ projectId }) {
     }
 
     const loadChapters = async () => {
-        setLoading(true)
+        // Only show full loading spinner on first load
+        if (chapters.length === 0) setLoading(true)
         try {
             const res = await api.get(`/projects/${projectId}/chapters`, { params: { sort_by: 'order', order: 'asc' } })
             setChapters(res.data)
         } catch (e) { console.error(e) } finally { setLoading(false) }
     }
 
-    useEffect(() => { if (projectId) loadChapters() }, [projectId])
+    useEffect(() => {
+        if (projectId) loadChapters()
+    }, [projectId])
+
+    // Polling for active tasks
+    useEffect(() => {
+        let interval;
+        if (hasActiveTasks) {
+            interval = setInterval(loadChapters, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [hasActiveTasks, projectId]);
 
     const createChapter = async () => {
         if (!newChapter.title.trim() || !newChapter.original_text.trim()) return
@@ -59,16 +74,15 @@ export function NeonChapterManager({ projectId }) {
         } catch (e) { alert('ERROR: DELETE_FAILED') }
     }
 
-    const uploadChaptersFromFile = async () => {
-        if (!selectedFile) return;
+    const uploadChaptersFromFile = async (fileToUpload) => {
+        if (!fileToUpload) return;
         setUploadingChapters(true);
         try {
             const formData = new FormData()
-            formData.append('file', selectedFile)
+            formData.append('file', fileToUpload)
             formData.append('chapter_pattern', chapterPattern)
             const res = await api.post(`/projects/${projectId}/upload_chapters`, formData)
             alert(`UPLOAD COMPLETE: ${res.data.chapters_created} FILES CREATED`)
-            setSelectedFile(null)
             loadChapters()
         } catch (e) {
             console.error(e)
@@ -76,52 +90,27 @@ export function NeonChapterManager({ projectId }) {
         } finally { setUploadingChapters(false) }
     }
 
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            uploadChaptersFromFile(file);
+        }
+    }
+
     const analyzeChapter = async (chapterId) => {
-        setAnalyzing(prev => ({ ...prev, [chapterId]: 'pending' }))
         try {
             await api.post(`/processing/chapters/${chapterId}/analyze-async`)
-            const pollStatus = async () => {
-                try {
-                    const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
-                    const status = statusRes.data.analysis_status
-                    setAnalyzing(prev => ({ ...prev, [chapterId]: status }))
-                    if (status === 'completed') {
-                        loadChapters()
-                        setTimeout(() => setAnalyzing(prev => ({ ...prev, [chapterId]: null })), 1000)
-                    } else if (status === 'failed') {
-                        setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-                        alert(`ANALYSIS ERROR: ${statusRes.data.analysis_error}`)
-                    } else {
-                        setTimeout(pollStatus, 2000)
-                    }
-                } catch (e) { setAnalyzing(prev => ({ ...prev, [chapterId]: null })) }
-            }
-            setTimeout(pollStatus, 500)
-        } catch (e) { setAnalyzing(prev => ({ ...prev, [chapterId]: null })); alert('INIT FAIL') }
+            // Optimistic update to trigger polling
+            setChapters(prev => prev.map(ch => ch.id === chapterId ? { ...ch, analysis_status: 'pending' } : ch))
+        } catch (e) { alert('INIT FAIL') }
     }
 
     const translateChapter = async (chapterId) => {
-        setTranslating(prev => ({ ...prev, [chapterId]: 'pending' }))
         try {
             await api.post(`/translation/chapters/${chapterId}/translate-async`)
-            const pollStatus = async () => {
-                try {
-                    const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
-                    const status = statusRes.data.translation_status
-                    setTranslating(prev => ({ ...prev, [chapterId]: status }))
-                    if (status === 'completed') {
-                        loadChapters()
-                        setTimeout(() => setTranslating(prev => ({ ...prev, [chapterId]: null })), 1000)
-                    } else if (status === 'failed') {
-                        setTranslating(prev => ({ ...prev, [chapterId]: null }))
-                        alert(`TRANSLATION ERROR: ${statusRes.data.translation_error}`)
-                    } else {
-                        setTimeout(pollStatus, 2000)
-                    }
-                } catch (e) { setTranslating(prev => ({ ...prev, [chapterId]: null })) }
-            }
-            setTimeout(pollStatus, 500)
-        } catch (e) { setTranslating(prev => ({ ...prev, [chapterId]: null })); alert('INIT FAIL') }
+            // Optimistic update
+            setChapters(prev => prev.map(ch => ch.id === chapterId ? { ...ch, translation_status: 'pending' } : ch))
+        } catch (e) { alert('INIT FAIL') }
     }
 
     const previewTranslation = async (chapterId) => {
@@ -150,10 +139,10 @@ export function NeonChapterManager({ projectId }) {
                             onChange={(e) => setChapterPattern(e.target.value)}
                             placeholder="REGEX_PATTERN..."
                         />
-                        <label className="flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider">
-                            <Upload className="w-3 h-3 mr-2" />
-                            UPLOAD_BATCH
-                            <input type="file" className="hidden" onChange={(e) => { setSelectedFile(e.target.files[0]); if (e.target.files[0]) uploadChaptersFromFile(); }} />
+                        <label className={`flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider ${uploadingChapters ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {uploadingChapters ? <Spinner className="w-3 h-3 mr-2" /> : <Upload className="w-3 h-3 mr-2" />}
+                            {uploadingChapters ? 'UPLOADING...' : 'UPLOAD_BATCH'}
+                            <input type="file" className="hidden" onChange={handleFileSelect} disabled={uploadingChapters} />
                         </label>
                     </div>
                     <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-6 py-2 bg-accent text-bg hover:bg-secondary-accent transition-colors uppercase text-[10px] tracking-widest font-bold shadow-[0_0_10px_rgba(0,243,255,0.3)]">
@@ -183,34 +172,41 @@ export function NeonChapterManager({ projectId }) {
                     </div>
                 ) : (
                     <div className="divide-y divide-accent/5 relative z-10">
-                        {chapters.map((chapter, idx) => (
-                            <div key={chapter.id} className="grid grid-cols-12 gap-4 p-3 items-center hover:bg-accent/5 transition-all group border-l-2 border-transparent hover:border-accent">
-                                <div className="col-span-1 text-muted-foreground text-[10px] font-mono opacity-50 group-hover:text-accent transition-colors">{String(idx + 1).padStart(3, '0')}</div>
-                                <div className="col-span-4 font-bold text-text truncate flex items-center">
-                                    <FileCode className="w-3 h-3 mr-3 text-secondary-accent opacity-50 group-hover:opacity-100" />
-                                    <span className="group-hover:text-accent group-hover:translate-x-1 transition-all duration-300">{chapter.title}</span>
+                        {chapters.map((chapter, idx) => {
+                            const isProcessing = ['pending', 'extracting', 'relationships', 'summarizing', 'translating'].includes(chapter.analysis_status) || ['pending', 'translating'].includes(chapter.translation_status);
+                            const processingStatus = (['pending', 'extracting', 'relationships', 'summarizing'].includes(chapter.analysis_status) ? chapter.analysis_status : chapter.translation_status);
+
+                            return (
+                                <div key={chapter.id} className="grid grid-cols-12 gap-4 p-3 items-center transition-all duration-300 group border border-transparent hover:border-accent hover:bg-surface/60 hover:shadow-[0_0_15px_rgba(0,243,255,0.15)] relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                                    <div className="col-span-1 text-muted-foreground text-[10px] font-mono opacity-50 group-hover:text-accent transition-colors relative z-10">{String(idx + 1).padStart(3, '0')}</div>
+                                    <div className="col-span-4 font-bold text-text truncate flex items-center relative z-10">
+                                        <FileCode className="w-3 h-3 mr-3 text-secondary-accent opacity-50 group-hover:opacity-100" />
+                                        <span className="group-hover:text-accent group-hover:translate-x-1 transition-all duration-300">{chapter.title}</span>
+                                    </div>
+                                    <div className="col-span-2 text-[10px] text-muted-foreground font-mono relative z-10">{(chapter.original_text || '').length.toLocaleString()}</div>
+                                    <div className="col-span-2 relative z-10">
+                                        {isProcessing ? (
+                                            <span className="text-secondary-accent text-[10px] flex items-center animate-pulse tracking-widest">
+                                                <Spinner className="w-3 h-3 mr-2" />
+                                                {getStatusLabel(processingStatus)}
+                                            </span>
+                                        ) : chapter.translated_text ? (
+                                            <span className="text-accent text-[10px] flex items-center tracking-widest shadow-accent"><CheckCircle2 className="w-3 h-3 mr-2" /> READY</span>
+                                        ) : (
+                                            <span className="text-muted-foreground text-[10px] opacity-30 tracking-widest">PENDING</span>
+                                        )}
+                                    </div>
+                                    <div className="col-span-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-200 relative z-10">
+                                        <ActionButton onClick={() => analyzeChapter(chapter.id)} icon={Activity} label="ANALYZE" />
+                                        <ActionButton onClick={() => translateChapter(chapter.id)} icon={Languages} label="TRANSLATE" />
+                                        <ActionButton onClick={() => previewTranslation(chapter.id)} icon={Eye} label="VIEW" />
+                                        <ActionButton onClick={() => deleteChapter(chapter.id)} icon={Trash2} label="PURGE" variant="destructive" />
+                                    </div>
                                 </div>
-                                <div className="col-span-2 text-[10px] text-muted-foreground font-mono">{(chapter.original_text || '').length.toLocaleString()}</div>
-                                <div className="col-span-2">
-                                    {(analyzing[chapter.id] || translating[chapter.id]) ? (
-                                        <span className="text-secondary-accent text-[10px] flex items-center animate-pulse tracking-widest">
-                                            <Spinner className="w-3 h-3 mr-2" />
-                                            {getStatusLabel(analyzing[chapter.id] || translating[chapter.id])}
-                                        </span>
-                                    ) : chapter.translated_text ? (
-                                        <span className="text-accent text-[10px] flex items-center tracking-widest shadow-accent"><CheckCircle2 className="w-3 h-3 mr-2" /> READY</span>
-                                    ) : (
-                                        <span className="text-muted-foreground text-[10px] opacity-30 tracking-widest">PENDING</span>
-                                    )}
-                                </div>
-                                <div className="col-span-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-200">
-                                    <ActionButton onClick={() => analyzeChapter(chapter.id)} icon={Activity} label="ANALYZE" />
-                                    <ActionButton onClick={() => translateChapter(chapter.id)} icon={Languages} label="TRANSLATE" />
-                                    <ActionButton onClick={() => previewTranslation(chapter.id)} icon={Eye} label="VIEW" />
-                                    <ActionButton onClick={() => deleteChapter(chapter.id)} icon={Trash2} label="PURGE" variant="destructive" />
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                         {chapters.length === 0 && (
                             <div className="p-16 text-center text-muted-foreground border-t border-accent/10 border-dashed flex flex-col items-center">
                                 <AlertTriangle className="w-8 h-8 mb-4 opacity-50" />
