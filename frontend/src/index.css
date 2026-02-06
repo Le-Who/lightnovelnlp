@@ -25,22 +25,29 @@
 :root {
   /* Light Theme (Default - Slate) */
   --background: #ffffff;
-  --foreground: #020817; /* slate-950 */
+  --foreground: #020817;
+  /* slate-950 */
   --card: #ffffff;
   --card-foreground: #020817;
   --popover: #ffffff;
   --popover-foreground: #020817;
-  --primary: #0f172a; /* slate-900 */
-  --primary-foreground: #f8fafc; /* slate-50 */
-  --secondary: #f1f5f9; /* slate-100 */
+  --primary: #0f172a;
+  /* slate-900 */
+  --primary-foreground: #f8fafc;
+  /* slate-50 */
+  --secondary: #f1f5f9;
+  /* slate-100 */
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
-  --muted-foreground: #64748b; /* slate-500 */
+  --muted-foreground: #64748b;
+  /* slate-500 */
   --accent: #f1f5f9;
   --accent-foreground: #0f172a;
-  --destructive: #ef4444; /* red-500 */
+  --destructive: #ef4444;
+  /* red-500 */
   --destructive-foreground: #f8fafc;
-  --border: #e2e8f0; /* slate-200 */
+  --border: #e2e8f0;
+  /* slate-200 */
   --input: #e2e8f0;
   --ring: #020817;
   --radius: 0.5rem;
@@ -48,46 +55,60 @@
 
 .dark {
   /* Dark Theme (Slate) */
-  --background: #020817; /* slate-950 */
-  --foreground: #f8fafc; /* slate-50 */
+  --background: #020817;
+  /* slate-950 */
+  --foreground: #f8fafc;
+  /* slate-50 */
   --card: #020817;
   --card-foreground: #f8fafc;
   --popover: #020817;
   --popover-foreground: #f8fafc;
   --primary: #f8fafc;
   --primary-foreground: #0f172a;
-  --secondary: #1e293b; /* slate-800 */
+  --secondary: #1e293b;
+  /* slate-800 */
   --secondary-foreground: #f8fafc;
   --muted: #1e293b;
-  --muted-foreground: #94a3b8; /* slate-400 */
+  --muted-foreground: #94a3b8;
+  /* slate-400 */
   --accent: #1e293b;
   --accent-foreground: #f8fafc;
-  --destructive: #991b1b; /* red-800 */
+  --destructive: #991b1b;
+  /* red-800 */
   --destructive-foreground: #f8fafc;
   --border: #1e293b;
   --input: #1e293b;
-  --ring: #cbd5e1; /* slate-300 */
+  --ring: #cbd5e1;
+  /* slate-300 */
 }
 
 .neutral {
   /* Neutral Theme (Stone/Warm) */
-  --background: #fafaf9; /* stone-50 */
-  --foreground: #1c1917; /* stone-900 */
+  --background: #fafaf9;
+  /* stone-50 */
+  --foreground: #1c1917;
+  /* stone-900 */
   --card: #ffffff;
   --card-foreground: #1c1917;
   --popover: #ffffff;
   --popover-foreground: #1c1917;
-  --primary: #44403c; /* stone-700 */
-  --primary-foreground: #fafaf9; /* stone-50 */
-  --secondary: #e7e5e4; /* stone-200 */
+  --primary: #44403c;
+  /* stone-700 */
+  --primary-foreground: #fafaf9;
+  /* stone-50 */
+  --secondary: #e7e5e4;
+  /* stone-200 */
   --secondary-foreground: #1c1917;
-  --muted: #f5f5f4; /* stone-100 */
-  --muted-foreground: #78716c; /* stone-500 */
+  --muted: #f5f5f4;
+  /* stone-100 */
+  --muted-foreground: #78716c;
+  /* stone-500 */
   --accent: #e7e5e4;
   --accent-foreground: #1c1917;
   --destructive: #ef4444;
   --destructive-foreground: #fafaf9;
-  --border: #d6d3d1; /* stone-300 */
+  --border: #d6d3d1;
+  /* stone-300 */
   --input: #d6d3d1;
   --ring: #44403c;
 }
@@ -96,6 +117,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
