@@ -49,6 +49,7 @@ def process_batch_analyze_task(batch_job_id: int):
     """Синхронная задача пакетного анализа. Вызывается через BackgroundTasks."""
     logger.info(f"Starting batch analysis job {batch_job_id}")
     db = SessionLocal()
+    batch_job = None
     try:
         batch_job = db.get(BatchJob, batch_job_id)
         if not batch_job:
@@ -65,6 +66,9 @@ def process_batch_analyze_task(batch_job_id: int):
         
         for job_item in job_items:
             try:
+                # Re-fetch item to ensure fresh state/session attachment if needed
+                # (though here we use same session, it's safer for long running tasks)
+                
                 job_item.status = "processing"
                 job_item.started_at = datetime.now(timezone.utc)
                 db.commit()
@@ -95,11 +99,19 @@ def process_batch_analyze_task(batch_job_id: int):
         logger.info(f"Batch analysis job {batch_job_id} completed: {processed_items} processed, {failed_items} failed")
         
     except Exception as e:
-        logger.error(f"Error in batch analyze {batch_job_id}: {e}")
-        if 'batch_job' in locals() and batch_job:
-            batch_job.status = "failed"
-            batch_job.error_message = str(e)
-            db.commit()
+        logger.error(f"CRITICAL ERROR in batch analyze {batch_job_id}: {e}", exc_info=True)
+        try:
+            # Try to recover batch_job object if session became invalid
+            if not batch_job:
+                 batch_job = db.get(BatchJob, batch_job_id)
+            
+            if batch_job:
+                batch_job.status = "failed"
+                batch_job.error_message = f"Critical job failure: {str(e)}"
+                batch_job.completed_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception as db_e:
+            logger.error(f"Failed to update batch job status to failed: {db_e}")
     finally:
         db.close()
 
@@ -108,6 +120,7 @@ def process_batch_translate_task(batch_job_id: int):
     """Синхронная задача пакетного перевода. Вызывается через BackgroundTasks."""
     logger.info(f"Starting batch translation job {batch_job_id}")
     db = SessionLocal()
+    batch_job = None
     try:
         batch_job = db.get(BatchJob, batch_job_id)
         if not batch_job:
@@ -151,11 +164,18 @@ def process_batch_translate_task(batch_job_id: int):
         
         logger.info(f"Batch translation job {batch_job_id} completed: {processed} processed, {failed} failed")
     except Exception as e:
-        logger.error(f"Error in batch translate {batch_job_id}: {e}")
-        if 'batch_job' in locals() and batch_job:
-            batch_job.status = "failed"
-            batch_job.error_message = str(e)
-            db.commit()
+        logger.error(f"CRITICAL ERROR in batch translate {batch_job_id}: {e}", exc_info=True)
+        try:
+            if not batch_job:
+                 batch_job = db.get(BatchJob, batch_job_id)
+            
+            if batch_job:
+                batch_job.status = "failed"
+                batch_job.error_message = f"Critical job failure: {str(e)}"
+                batch_job.completed_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception as db_e:
+            logger.error(f"Failed to update batch job status to failed: {db_e}")
     finally:
         db.close()
 

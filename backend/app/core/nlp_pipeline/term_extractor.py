@@ -83,7 +83,7 @@ class TermExtractor:
 
     def count_term_frequency(self, text: str, terms: List[str], source_language: str = "en") -> Dict[str, int]:
         """
-        Подсчитывает частоту встречаемости терминов с использованием spaCy.
+        Подсчитывает частоту встречаемости терминов с использованием Regex.
         
         Args:
             text: Текст для анализа
@@ -96,54 +96,28 @@ class TermExtractor:
         if not terms or not text:
             return {}
         
-        # Для CJK языков используем простой подсчет вхождений, так как spaCy модели могут быть недоступны или токенизация сложнее
+        import re
+        
+        # Для CJK языков используем простой подсчет вхождений
         if source_language in ["zh", "ja", "ko"]:
              return {term: text.count(term) for term in terms}
 
-        # Определяем модель spaCy (ru или en/other)
-        lang_code = "ru" if source_language == "ru" else "en"
-        
-        try:
-            nlp = self._get_nlp(lang_code)
-        except Exception as e:
-            logger.error(f"Failed to load NLP model for frequency counting: {e}")
-            # Fallback to simple string counting
-            text_lower = text.lower()
-            return {term: text_lower.count(term.lower()) for term in terms}
-
-        # Обрабатываем текст с помощью spaCy
-        # Для ускорения отключаем ненужные пайплайны (ner, parser), оставляем только tagger/lemmatizer
-        doc = nlp(text, disable=["ner", "parser"])
-        
-        # Получаем леммы из текста (в нижнем регистре)
-        text_lemmas = [token.lemma_.lower() for token in doc if not token.is_punct and not token.is_space]
-        lemma_counts = Counter(text_lemmas)
-        
+        text_lower = text.lower()
         frequency = {}
+
         for term in terms:
-            # Лемматизируем и сам термин
-            term_doc = nlp(term, disable=["ner", "parser"])
-            term_lemmas = [t.lemma_.lower() for t in term_doc if not t.is_punct and not t.is_space]
-            
-            if not term_lemmas:
-                 frequency[term] = 0
-                 continue
-                 
-            # Если термин состоит из одного слова
-            if len(term_lemmas) == 1:
-                frequency[term] = lemma_counts.get(term_lemmas[0], 0)
-            else:
-                # Для составных терминов (фразы) 
-                # Простой подход: ищем последовательность лемм в тексте лемм
-                # (Это не самый быстрый способ для больших текстов, но точный)
+            term_lower = term.lower()
+            if not term_lower:
+                continue
                 
-                # Ищем подстроку term_lemmas внутри text_lemmas
-                count = 0
-                n = len(term_lemmas)
-                for i in range(len(text_lemmas) - n + 1):
-                    if text_lemmas[i:i+n] == term_lemmas:
-                        count += 1
-                frequency[term] = count
+            try:
+                # Используем границы слов для латиницы и кириллицы
+                # \b работает для латиницы/кириллицы в Python re
+                pattern = r'\b' + re.escape(term_lower) + r'\b'
+                frequency[term] = len(re.findall(pattern, text_lower))
+            except Exception:
+                 # Fallback to simple count on regex error
+                 frequency[term] = text_lower.count(term_lower)
                 
         return frequency
 
@@ -196,7 +170,12 @@ class TermExtractor:
         # Язык-специфичные инструкции
         language_instructions = self._get_language_instructions(source_language)
         
-        genre_label = getattr(project_genre, "value", project_genre)
+        # Получаем строковое представление жанра
+        genre_label = "OTHER"
+        if isinstance(project_genre, ProjectGenre):
+            genre_label = project_genre.value
+        elif isinstance(project_genre, str):
+            genre_label = project_genre
         
         # Оптимизированный промпт с few-shot примером
         return f"""Извлеки термины из текста ранобэ ({str(genre_label).upper()}).
@@ -287,11 +266,14 @@ class TermExtractor:
 Фокус: имена, локации, уникальные термины, артефакты, организации"""
         }
         
-        # genre может быть Enum или строкой
+        # Нормализация жанра (case-insensitive)
         try:
-            key = genre if isinstance(genre, ProjectGenre) else ProjectGenre(str(genre))
-        except Exception:
+            val = str(genre).lower() if genre else "other"
+            # Пробуем найти соответствующий Enum
+            key = ProjectGenre(val)
+        except ValueError:
             key = ProjectGenre.OTHER
+            
         return instructions.get(key, instructions[ProjectGenre.OTHER])
 
     def _parse_response(self, response: Any) -> List[Dict[str, Any]]:
@@ -311,9 +293,19 @@ class TermExtractor:
             # Если это строка (fallback)
             elif isinstance(response, str):
                 logger.info(f"Response is string, length: {len(response)}")
-                logger.debug(f"Raw string response: {response[:500]}...")
+                
+                # CLEANUP: Remove Markdown code blocks if present
+                clean_response = response.strip()
+                if clean_response.startswith("```json"):
+                    clean_response = clean_response[7:]
+                if clean_response.startswith("```"):
+                     clean_response = clean_response[3:]
+                if clean_response.endswith("```"):
+                    clean_response = clean_response[:-3]
+                clean_response = clean_response.strip()
+                
                 try:
-                    data = json.loads(response)
+                    data = json.loads(clean_response)
                     logger.info(f"JSON parsed successfully, type: {type(data).__name__}")
                     if isinstance(data, list):
                         payload = {"terms": data}
@@ -324,10 +316,9 @@ class TermExtractor:
                     logger.info(f"Extracted {len(extracted)} terms from string response")
                 except json.JSONDecodeError as je:
                     logger.error(f"JSON decode error: {je}")
-                    logger.error(f"Failed to parse: {response[:200]}...")
+                    logger.error(f"Failed to parse cleaned response: {clean_response[:200]}...")
                 except Exception as e:
                     logger.error(f"Error validating string response: {e}")
-                    logger.error(f"Payload was: {str(payload)[:500] if 'payload' in dir() else 'N/A'}")
             
             # Если это словарь
             elif isinstance(response, dict):

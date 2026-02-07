@@ -56,6 +56,26 @@ class TranslationEngine:
             logger.error(f"Error translating text: {e}")
             raise
 
+    def normalize_text(self, text: str) -> str:
+        """Нормализует текст: унифицирует переносы строк и убирает лишние пробелы."""
+        # Унификация переносов строк
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+        
+        # Удаление лишних пустых строк (максимум одна пустая строка подряд)
+        lines = [ln.rstrip() for ln in normalized.split("\n")]
+        compact_lines = []
+        prev_empty = False
+        for ln in lines:
+            if not ln:
+                if not prev_empty:
+                    compact_lines.append("")
+                prev_empty = True
+            else:
+                compact_lines.append(ln)
+                prev_empty = False
+                
+        return "\n".join(compact_lines).strip()
+
     def _build_translation_prompt(
         self, 
         text: str, 
@@ -69,21 +89,8 @@ class TranslationEngine:
         previous_context: str | None = None
     ) -> str:
         """Строит промпт для перевода с учетом глоссария и контекста."""
-        # Нормализуем входной текст: приводим переводы строк к \n и убираем лишние пустые
-        normalized = text.replace("\r\n", "\n")
-        lines = [ln.rstrip() for ln in normalized.split("\n")]
-        # Оставляем максимум одну пустую строку подряд
-        compact_lines = []
-        prev_empty = False
-        for ln in lines:
-            if ln == "":
-                if not prev_empty:
-                    compact_lines.append("")
-                prev_empty = True
-            else:
-                compact_lines.append(ln)
-                prev_empty = False
-        normalized_text = "\n".join(compact_lines)
+        # Нормализуем текст
+        normalized_text = self.normalize_text(text)
 
         # Формируем глоссарий для промпта
         glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(нет утвержденных терминов)"
