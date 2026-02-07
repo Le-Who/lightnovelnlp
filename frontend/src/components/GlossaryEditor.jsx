@@ -133,12 +133,31 @@ export default function GlossaryEditor({ projectId }) {
     return labels[category] || category
   }
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 50
+
   const sortedTerms = getSortedTerms()
+
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedTerms.length / itemsPerPage)
+  const paginatedTerms = sortedTerms.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+      // Scroll to top of table
+      document.querySelector('.glossary-table-container')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   if (loading && terms.length === 0) return <div className="flex justify-center p-8"><Spinner /></div>
 
   return (
-    <Card className="overflow-hidden border-accent/20">
+    <Card className="overflow-hidden border-accent/20 glossary-table-container">
       <CardHeader>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <CardTitle>Глоссарий ({terms.length})</CardTitle>
@@ -174,119 +193,150 @@ export default function GlossaryEditor({ projectId }) {
             Термины отсутствуют. Запустите анализ главы для извлечения терминов.
           </div>
         ) : (
-          <div className="rounded-md border border-accent/10">
-            <div className="w-full">
-              <Table className="table-fixed w-full">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-accent/10">
-                    <TableHead className="w-[20%] text-center">Оригинал</TableHead>
-                    <TableHead className="w-[20%] text-center">Перевод</TableHead>
-                    <TableHead className="w-[12%] hidden md:table-cell text-center">Категория</TableHead>
-                    <TableHead className="w-[8%] text-center">Частота</TableHead>
-                    <TableHead className="w-[10%] hidden lg:table-cell text-center">Плотность</TableHead>
-                    <TableHead className="w-[10%] hidden md:table-cell text-center">Центр.</TableHead>
-                    <TableHead className="w-[6%] hidden md:table-cell text-center text-[10px] uppercase">Первое уп.</TableHead>
-                    <TableHead className="w-[6%] hidden md:table-cell text-center text-[10px] uppercase">Посл. уп.</TableHead>
-                    <TableHead className="w-[8%] text-center">Статус</TableHead>
-                    <TableHead className="w-[8%] text-right">Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTerms.map((term) => (
-                    <TableRow key={term.id} className="hover:bg-accent/5 transition-colors border-accent/5">
-                      {/* Source Term - Wraps text */}
-                      <TableCell className="font-medium text-card-foreground align-top p-3 break-words whitespace-normal leading-tight">
-                        {term.source_term}
-                        {term.context && (
-                          <div className="text-xs text-muted-foreground mt-1 italic whitespace-normal leading-tight opacity-70">
-                            {term.context}
-                          </div>
-                        )}
-                      </TableCell>
+          <div className="space-y-4">
+            <div className="rounded-md border border-accent/10">
+              <div className="w-full">
+                <Table className="table-fixed w-full">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-accent/10">
+                      <TableHead className="w-[20%] text-center">Оригинал</TableHead>
+                      <TableHead className="w-[20%] text-center">Перевод</TableHead>
+                      <TableHead className="w-[12%] hidden md:table-cell text-center">Категория</TableHead>
+                      <TableHead className="w-[8%] text-center">Частота</TableHead>
+                      <TableHead className="w-[10%] hidden lg:table-cell text-center">Плотность</TableHead>
+                      <TableHead className="w-[10%] hidden md:table-cell text-center">Центр.</TableHead>
+                      <TableHead className="w-[6%] hidden md:table-cell text-center text-[10px] uppercase">Первое уп.</TableHead>
+                      <TableHead className="w-[6%] hidden md:table-cell text-center text-[10px] uppercase">Посл. уп.</TableHead>
+                      <TableHead className="w-[8%] text-center">Статус</TableHead>
+                      <TableHead className="w-[8%] text-right">Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTerms.map((term) => (
+                      <TableRow key={term.id} className="hover:bg-accent/5 transition-colors border-accent/5">
+                        {/* Source Term - Wraps text */}
+                        <TableCell className="font-medium text-card-foreground align-top p-3 break-words whitespace-normal leading-tight">
+                          {term.source_term}
+                          {term.context && (
+                            <div className="text-xs text-muted-foreground mt-1 italic whitespace-normal leading-tight opacity-70">
+                              {term.context}
+                            </div>
+                          )}
+                        </TableCell>
 
-                      {/* Translated Term - Wraps text */}
-                      <TableCell className="text-card-foreground align-top p-3 break-words whitespace-normal leading-tight">
-                        {term.translated_term || <span className="text-muted-foreground/40 italic">Не переведено</span>}
-                      </TableCell>
+                        {/* Translated Term - Wraps text */}
+                        <TableCell className="text-card-foreground align-top p-3 break-words whitespace-normal leading-tight">
+                          {term.translated_term || <span className="text-muted-foreground/40 italic">Не переведено</span>}
+                        </TableCell>
 
-                      <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3">
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-secondary/20 text-secondary-foreground border border-secondary/30">
-                          {getCategoryLabel(term.category)}
-                        </span>
-                      </TableCell>
+                        <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3">
+                          <span className="inline-flex px-2 py-0.5 rounded text-xs bg-secondary/20 text-secondary-foreground border border-secondary/30">
+                            {getCategoryLabel(term.category)}
+                          </span>
+                        </TableCell>
 
-                      <TableCell className="text-card-foreground align-top text-center p-3 font-mono">{term.frequency || 1}</TableCell>
+                        <TableCell className="text-card-foreground align-top text-center p-3 font-mono">{term.frequency || 1}</TableCell>
 
-                      <TableCell className="h-full p-1 hidden lg:table-cell align-top">
-                        {term.occurrences_data && term.occurrences_data.length > 0 ? (
-                          <div className="h-10 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={term.occurrences_data}>
-                                <Line type="monotone" dataKey="freq" stroke="#8884d8" strokeWidth={2} dot={false} />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
+                        <TableCell className="h-full p-1 hidden lg:table-cell align-top">
+                          {term.occurrences_data && term.occurrences_data.length > 0 ? (
+                            <div className="h-10 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={term.occurrences_data}>
+                                  <Line type="monotone" dataKey="freq" stroke="#8884d8" strokeWidth={2} dot={false} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
 
-                      <TableCell className="hidden md:table-cell align-top text-center p-3">
-                        <Badge variant={term.centrality_score > 0 ? "default" : "secondary"} className="text-[10px]">
-                          {term.centrality_score ? term.centrality_score.toFixed(2) : '0.00'}
-                        </Badge>
-                      </TableCell>
+                        <TableCell className="hidden md:table-cell align-top text-center p-3">
+                          <Badge variant={term.centrality_score > 0 ? "default" : "secondary"} className="text-[10px]">
+                            {term.centrality_score ? term.centrality_score.toFixed(2) : '0.00'}
+                          </Badge>
+                        </TableCell>
 
-                      <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
-                        {term.first_chapter_order || '-'}
-                      </TableCell>
+                        <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
+                          {term.first_chapter_order || '-'}
+                        </TableCell>
 
-                      <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
-                        {term.last_chapter_order || '-'}
-                      </TableCell>
+                        <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
+                          {term.last_chapter_order || '-'}
+                        </TableCell>
 
-                      <TableCell className="align-top text-center p-3">{getStatusBadge(term.status)}</TableCell>
+                        <TableCell className="align-top text-center p-3">{getStatusBadge(term.status)}</TableCell>
 
-                      <TableCell className="text-right align-top p-3">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 hover:text-accent hover:bg-accent/10"
-                            onClick={() => openEditModal(term)}
-                            title="Редактировать"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-
-                          {term.status !== 'approved' && (
+                        <TableCell className="text-right align-top p-3">
+                          <div className="flex justify-end gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 w-8 p-0 hover:text-green-500 hover:bg-green-500/10"
-                              onClick={() => approveTerm(term.id)}
-                              title="Утвердить"
+                              className="h-8 w-8 p-0 hover:text-accent hover:bg-accent/10"
+                              onClick={() => openEditModal(term)}
+                              title="Редактировать"
                             >
-                              <Check className="h-4 w-4" />
+                              <Edit2 className="h-4 w-4" />
                             </Button>
-                          )}
 
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => deleteTerm(term.id)}
-                            title="Удалить"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                            {term.status !== 'approved' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:text-green-500 hover:bg-green-500/10"
+                                onClick={() => approveTerm(term.id)}
+                                title="Утвердить"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => deleteTerm(term.id)}
+                              title="Удалить"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-accent/10 pt-4">
+                <div className="text-xs text-muted-foreground">
+                  Показано {paginatedTerms.length} из {sortedTerms.length} терминов (Страница {currentPage} из {totalPages})
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-8 text-xs hover:border-accent hover:text-accent"
+                  >
+                    Назад
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-8 text-xs hover:border-accent hover:text-accent"
+                  >
+                    Вперед
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

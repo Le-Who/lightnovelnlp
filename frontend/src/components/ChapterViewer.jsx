@@ -77,6 +77,33 @@ export default function ChapterViewer({ projectId }) {
             <span className="mx-2">|</span>
             <span className="text-accent">OUT_SIZE:</span> {selectedChapter.translated_text.length}B
           </div>
+
+          {/* Chapter Navigation */}
+          <div className="flex items-center border border-accent/20 rounded-md overflow-hidden">
+            <button
+              onClick={() => {
+                const idx = chapters.findIndex(c => c.id === selectedChapter.id);
+                if (idx > 0) setSelectedChapter(chapters[idx - 1]);
+              }}
+              disabled={chapters.findIndex(c => c.id === selectedChapter.id) === 0}
+              className="p-2 hover:bg-accent/10 border-r border-accent/20 disabled:opacity-30 disabled:hover:bg-transparent"
+              title="Previous Chapter"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                const idx = chapters.findIndex(c => c.id === selectedChapter.id);
+                if (idx < chapters.length - 1) setSelectedChapter(chapters[idx + 1]);
+              }}
+              disabled={chapters.findIndex(c => c.id === selectedChapter.id) === chapters.length - 1}
+              className="p-2 hover:bg-accent/10 disabled:opacity-30 disabled:hover:bg-transparent"
+              title="Next Chapter"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
           <button
             onClick={downloadChapter}
             className="text-muted-foreground hover:text-accent p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10"

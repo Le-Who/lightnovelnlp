@@ -15,6 +15,8 @@ export default function ChapterManager({ projectId }) {
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
+  const [error, setError] = useState(null) // New error state
+
   // Derived state for active processing to trigger polling
   const hasActiveTasks = chapters.some(ch =>
     ['pending', 'extracting', 'relationships', 'summarizing', 'translating'].includes(ch.analysis_status) ||
@@ -38,10 +40,14 @@ export default function ChapterManager({ projectId }) {
   const loadChapters = async () => {
     // Only show full loading spinner on first load
     if (chapters.length === 0) setLoading(true)
+    setError(null)
     try {
       const res = await api.get(`/projects/${projectId}/chapters`, { params: { sort_by: 'order', order: 'asc' } })
       setChapters(res.data)
-    } catch (e) { console.error(e) } finally { setLoading(false) }
+    } catch (e) {
+      console.error(e)
+      setError("CONNECTION_ERROR: FAILED_TO_FETCH_DATA")
+    } finally { setLoading(false) }
   }
 
   useEffect(() => {
@@ -59,27 +65,30 @@ export default function ChapterManager({ projectId }) {
 
   const createChapter = async () => {
     if (!newChapter.title.trim() || !newChapter.original_text.trim()) return
+    setError(null)
     try {
       await api.post(`/projects/${projectId}/chapters`, newChapter)
       setNewChapter({ title: '', original_text: '' })
       setIsCreateModalOpen(false)
       loadChapters()
-    } catch (e) { alert('ERROR: WRITE_FAILED') }
+    } catch (e) { setError('WRITE_ERROR: FAILED_TO_CREATE_CHAPTER') }
   }
 
   const deleteChapter = async (chapterId) => {
     if (!confirm('CONFIRM_DELETION_SEQUENCE?')) return
+    setError(null)
     try {
       await api.delete(`/projects/chapters/${chapterId}`)
       loadChapters()
-    } catch (e) { alert('ERROR: DELETE_FAILED') }
+    } catch (e) { setError('DELETE_ERROR: FAILED_TO_REMOVE_FILE') }
   }
 
   const uploadChaptersFromFile = async (fileToUpload) => {
     if (!fileToUpload) return;
     setUploadingChapters(true);
+    setError(null)
     if (!chapterPattern) {
-      alert("PATTERN_ERROR: MISSING_INPUT")
+      setError("PATTERN_ERROR: MISSING_INPUT")
       setUploadingChapters(false)
       return;
     }
@@ -89,11 +98,11 @@ export default function ChapterManager({ projectId }) {
       formData.append('file', fileToUpload)
       formData.append('chapter_pattern', chapterPattern)
       const res = await api.post(`/projects/${projectId}/upload_chapters`, formData)
-      alert(`UPLOAD COMPLETE: ${res.data.chapters_created} FILES CREATED`)
+      alert(`UPLOAD COMPLETE: ${res.data.chapters_created} FILES CREATED`) // Keep success alert or change to toast? Keeping for now as per plan focus on errors.
       loadChapters()
     } catch (e) {
       console.error(e)
-      alert('UPLOAD FAILURE')
+      setError('UPLOAD_FAILURE: CHECK_FILE_FORMAT_OR_PATTERN')
     } finally { setUploadingChapters(false) }
   }
 
@@ -102,33 +111,53 @@ export default function ChapterManager({ projectId }) {
     if (file) {
       uploadChaptersFromFile(file);
     }
+    e.target.value = null; // FIX: Reset input so same file can be selected again
   }
 
   const analyzeChapter = async (chapterId) => {
+    setError(null)
     try {
       await api.post(`/processing/chapters/${chapterId}/analyze-async`)
       // Optimistic update to trigger polling
       setChapters(prev => prev.map(ch => ch.id === chapterId ? { ...ch, analysis_status: 'pending' } : ch))
-    } catch (e) { alert('INIT FAIL') }
+    } catch (e) { setError('INIT_FAIL: ANALYSIS_SEQUENCE_ABORTED') }
   }
 
   const translateChapter = async (chapterId) => {
+    setError(null)
     try {
       await api.post(`/translation/chapters/${chapterId}/translate-async`)
       // Optimistic update
       setChapters(prev => prev.map(ch => ch.id === chapterId ? { ...ch, translation_status: 'pending' } : ch))
-    } catch (e) { alert('INIT FAIL') }
+    } catch (e) { setError('INIT_FAIL: TRANSLATION_SEQUENCE_ABORTED') }
   }
 
   const previewTranslation = async (chapterId) => {
+    setError(null)
     try {
       const res = await api.get(`/translation/chapters/${chapterId}/translation-preview`)
       setPreviewData(res.data)
-    } catch (e) { alert('Preview Error') }
+    } catch (e) { setError('PREVIEW_ERROR: DATA_CORRUPTION_OR_MISSING') }
   }
 
   return (
     <div className="space-y-6 font-mono text-sm max-w-[1200px] mx-auto">
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2 relative overflow-hidden">
+          <div className="flex items-center gap-2 relative z-10">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="font-bold tracking-widest text-xs uppercase">{error}</span>
+          </div>
+          <button onClick={() => setError(null)} className="hover:bg-destructive/20 p-1 rounded transition-colors relative z-10">
+            <span className="sr-only">Dismiss</span>
+            <div className="w-4 h-4 flex items-center justify-center font-bold">✕</div>
+          </button>
+          {/* Scanline for error */}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(220,38,38,0.1)_50%,transparent_100%)] animate-scan pointer-events-none" />
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex flex-col md:flex-row justify-between items-end border-b border-accent/20 pb-4 gap-4">
         <div>
