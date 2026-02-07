@@ -12,14 +12,21 @@ def test_frequency_english():
     assert freq["world"] == 1
 
 def test_frequency_russian():
-    # Current implementation uses regex boundaries, not lemmatization
-    # So "Кошки" (plural) does NOT match "Кошка" (singular)
+    # Uses spaCy lemmatization
+    # So "Кошки" (plural) match "Кошка" (singular) via lemma
     text = "Кошки гуляли по крыше. Кошка увидела мышь."
     terms = ["Кошка", "Кошки"]
     
     freq = term_extractor.count_term_frequency(text, terms, source_language="ru")
-    assert freq["Кошка"] == 1
-    assert freq["Кошки"] == 1
+    # Both terms reduce to lemma "кошка", and text has 2 instances of lemma "кошка"
+    assert freq["Кошка"] == 2
+    assert freq["Кошки"] == 2
+
+def test_frequency_english_lemmatization():
+    text = "The cats are running. The cat sits."
+    terms = ["cat"]
+    freq = term_extractor.count_term_frequency(text, terms, source_language="en")
+    assert freq["cat"] == 2
 
 def test_frequency_chinese():
     # Chinese typically needs specific tokenization, but our fallback is substring search
