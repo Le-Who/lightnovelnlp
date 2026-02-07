@@ -65,6 +65,13 @@ def process_batch_analyze_task(batch_job_id: int):
         failed_items = 0
         
         for job_item in job_items:
+            if job_item.status == "completed":
+                processed_items += 1
+                continue
+            if job_item.status == "failed":
+                failed_items += 1
+                continue
+
             try:
                 # Re-fetch item to ensure fresh state/session attachment if needed
                 # (though here we use same session, it's safer for long running tasks)
@@ -83,17 +90,36 @@ def process_batch_analyze_task(batch_job_id: int):
                 job_item.status = "completed"
                 job_item.completed_at = datetime.now(timezone.utc)
                 processed_items += 1
+
+                # Update progress
+                batch_job.processed_items = processed_items
+                if batch_job.total_items > 0:
+                    batch_job.progress_percentage = round((processed_items + failed_items) / batch_job.total_items * 100)
+
                 db.commit()
             except Exception as e:
                 logger.error(f"Error processing job item {job_item.id}: {e}")
                 job_item.status = "failed"
                 job_item.error_message = str(e)
                 failed_items += 1
+
+                # Update progress
+                batch_job.failed_items = failed_items
+                if batch_job.total_items > 0:
+                    batch_job.progress_percentage = round((processed_items + failed_items) / batch_job.total_items * 100)
+
                 db.commit()
                 
         batch_job.status = "completed"
         batch_job.completed_at = datetime.now(timezone.utc)
         batch_job.job_data = {"processed": processed_items, "failed": failed_items}
+
+        # Ensure final counts are accurate
+        batch_job.processed_items = processed_items
+        batch_job.failed_items = failed_items
+        if batch_job.total_items > 0:
+            batch_job.progress_percentage = round((processed_items + failed_items) / batch_job.total_items * 100)
+
         db.commit()
         
         logger.info(f"Batch analysis job {batch_job_id} completed: {processed_items} processed, {failed_items} failed")
@@ -136,6 +162,13 @@ def process_batch_translate_task(batch_job_id: int):
         failed = 0
 
         for item in job_items:
+            if item.status == "completed":
+                processed += 1
+                continue
+            if item.status == "failed":
+                failed += 1
+                continue
+
             try:
                 item.status = "processing"
                 item.started_at = datetime.now(timezone.utc)
@@ -149,17 +182,36 @@ def process_batch_translate_task(batch_job_id: int):
                 item.status = "completed"
                 item.completed_at = datetime.now(timezone.utc)
                 processed += 1
+
+                # Update progress
+                batch_job.processed_items = processed
+                if batch_job.total_items > 0:
+                    batch_job.progress_percentage = round((processed + failed) / batch_job.total_items * 100)
+
                 db.commit()
             except Exception as e:
                 logger.error(f"Error translating item {item.id}: {e}")
                 item.status = "failed"
                 item.error_message = str(e)
                 failed += 1
+
+                # Update progress
+                batch_job.failed_items = failed
+                if batch_job.total_items > 0:
+                    batch_job.progress_percentage = round((processed + failed) / batch_job.total_items * 100)
+
                 db.commit()
 
         batch_job.status = "completed"
         batch_job.completed_at = datetime.now(timezone.utc)
         batch_job.job_data = {"processed": processed, "failed": failed}
+
+        # Ensure final counts are accurate
+        batch_job.processed_items = processed
+        batch_job.failed_items = failed
+        if batch_job.total_items > 0:
+            batch_job.progress_percentage = round((processed + failed) / batch_job.total_items * 100)
+
         db.commit()
         
         logger.info(f"Batch translation job {batch_job_id} completed: {processed} processed, {failed} failed")
