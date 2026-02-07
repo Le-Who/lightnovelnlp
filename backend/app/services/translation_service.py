@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
@@ -261,16 +261,18 @@ class TranslationService:
         project_chapters = db.query(Chapter).filter(
             Chapter.project_id == project_id,
             Chapter.summary.isnot(None)
-        ).order_by(Chapter.id).all()
+        ).order_by(Chapter.id).options(
+            load_only(Chapter.title, Chapter.summary)
+        ).limit(5).all()
         
         if len(project_chapters) > 1:
             chapters_data = [
                 {
                     "title": ch.title,
                     "summary": ch.summary,
-                    "original_text": ch.original_text
+                    "original_text": ""  # Optimization: avoid fetching full text
                 }
-                for ch in project_chapters[:5]
+                for ch in project_chapters
             ]
             return context_summarizer.create_project_summary(chapters_data)
         return None

@@ -4,3 +4,6 @@
 ## 2025-05-22 - [Schema Drift & Missing Indexes]
 **Learning:** `000_initial.py` migration created indexes (e.g., `BatchJobItem.batch_job_id`) that were missing from SQLAlchemy models. This caused drift where the code didn't reflect the DB state. Also, `TermRelationship` FKs were completely unindexed, which is a major bottleneck for glossaries.
 **Action:** When optimizing models, always cross-reference `alembic/versions/000_initial.py` (or relevant migrations) with the model definitions. Don't assume `autogenerate` will catch everything if you can't run it against a live prod-like DB. Manually verifying FK indexes is a high-yield manual check.
+## 2025-05-24 - [Over-fetching Large Text Columns]
+**Learning:** `TranslationService._get_project_summary` was fetching ALL chapters (including heavy `original_text` and `translated_text` columns) and then slicing in Python to get the first 5. This caused a 128x performance penalty (0.45s vs 0.0035s) due to IO and object construction overhead.
+**Action:** Always use `.limit()` in SQL queries when only a subset is needed. Use `load_only()` or `defer()` to exclude large TEXT/BLOB columns when only metadata is required.
