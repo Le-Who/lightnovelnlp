@@ -3,15 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # Существующие схемы
 class GlossaryTermBase(BaseModel):
-    source_term: str
-    translated_term: str
-    category: str
-    context: Optional[str] = None
+    source_term: str = Field(..., min_length=1, max_length=255)
+    translated_term: str = Field(..., min_length=1, max_length=255)
+    category: str = Field(..., max_length=50)
+    context: Optional[str] = Field(None, max_length=5000)
 
 
 class GlossaryTermCreate(GlossaryTermBase):
@@ -19,11 +19,11 @@ class GlossaryTermCreate(GlossaryTermBase):
 
 
 class GlossaryTermUpdate(BaseModel):
-    source_term: Optional[str] = None
-    translated_term: Optional[str] = None
-    category: Optional[str] = None
-    status: Optional[str] = None
-    context: Optional[str] = None
+    source_term: Optional[str] = Field(None, min_length=1, max_length=255)
+    translated_term: Optional[str] = Field(None, min_length=1, max_length=255)
+    category: Optional[str] = Field(None, max_length=50)
+    status: Optional[str] = Field(None, max_length=20)
+    context: Optional[str] = Field(None, max_length=5000)
 
 
 class GlossaryTermRead(GlossaryTermBase):
