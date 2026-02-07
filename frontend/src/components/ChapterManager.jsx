@@ -168,7 +168,7 @@ export default function ChapterManager({ projectId }) {
           </div>
         </div>
         <div className="flex gap-4 items-center">
-          <div className="group flex items-center gap-2 border-b border-accent/30 p-1 bg-surface/50 hover:border-accent transition-colors">
+          <div className="group flex items-center gap-2 border-b border-accent/30 p-1 bg-surface/50 hover:border-accent focus-within:border-accent transition-colors">
             <input
               className="bg-transparent border-none text-xs w-32 px-2 focus:outline-none placeholder:text-muted-foreground text-text font-bold"
               value={chapterPattern}
@@ -248,7 +248,7 @@ export default function ChapterManager({ projectId }) {
                       <span className="text-muted-foreground text-[10px] opacity-30 tracking-widest">PENDING</span>
                     )}
                   </div>
-                  <div className="col-span-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-200 relative z-10">
+                  <div className="col-span-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 focus-within:translate-x-0 duration-200 relative z-10">
                     <ActionButton onClick={() => analyzeChapter(chapter.id)} icon={Activity} label="ANALYZE" />
                     <ActionButton onClick={() => translateChapter(chapter.id)} icon={Languages} label="TRANSLATE" />
                     <ActionButton onClick={() => previewTranslation(chapter.id)} icon={Eye} label="VIEW" />
