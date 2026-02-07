@@ -18,7 +18,8 @@ class RelationshipAnalyzer:
     def analyze_relationships(
         self, 
         text: str, 
-        terms: List[GlossaryTerm]
+        terms: List[GlossaryTerm],
+        project_genre: str = "other"  # Added project_genre
     ) -> List[Dict[str, Any]]:
         """
         Анализирует связи между терминами в тексте.
@@ -26,42 +27,40 @@ class RelationshipAnalyzer:
         Args:
             text: Текст для анализа
             terms: Список терминов глоссария
+            project_genre: Жанр проекта
             
         Returns:
-            List[Dict]: Список связей с полями:
-                - source_term: исходный термин
-                - target_term: целевой термин  
-                - relation_type: тип связи
-                - confidence: уверенность (0-100)
-                - context: контекст связи
+            List[Dict]: Список связей
         """
-        logger.info(f"[REL] Starting relationship analysis for {len(terms)} terms")
+        logger.info(f"[REL] Starting relationship analysis for {len(terms)} terms (Genre: {project_genre})")
         
         if len(terms) < 2:
             logger.info("[REL] Less than 2 terms, skipping")
-            return []  # Нужно минимум 2 термина для анализа связей
+            return []
             
-        prompt = self._build_relationship_prompt(text, terms)
+        prompt = self._build_relationship_prompt(text, terms, project_genre)
         logger.info(f"[REL] Built prompt, length: {len(prompt)} chars")
         
         try:
             logger.info("[REL] Calling Gemini API...")
-            # Используем новую поддержку response_schema в GeminiClient
             response = self.client.complete(
                 prompt,
-                # max_tokens removed to use default (8192 for Flash)
                 response_schema=RelationshipResponse
             )
-            logger.info(f"[REL] Gemini returned response of type: {type(response).__name__}")
+            # logger.info(f"[REL] Gemini returned response of type: {type(response).__name__}")
             result = self._parse_relationship_response(response)
-            logger.info(f"[REL] Parsed {len(result)} relationships")
-            return result
+            
+            # Filter low confidence results
+            filtered_result = [r for r in result if r.get('confidence', 0) >= 70]
+            
+            logger.info(f"[REL] Parsed {len(result)} relationships, kept {len(filtered_result)} after filtering")
+            return filtered_result
         except Exception as e:
             logger.error(f"[REL] Error analyzing relationships: {e}", exc_info=True)
             return []
 
-    def _build_relationship_prompt(self, text: str, terms: List[GlossaryTerm]) -> str:
-        """Строит промпт для анализа связей."""
+    def _build_relationship_prompt(self, text: str, terms: List[GlossaryTerm], project_genre: str = "other") -> str:
+        """Строит промпт для анализа связей с учетом жанра."""
         
         # Формируем список терминов для анализа
         def cat_label(term):
@@ -72,45 +71,55 @@ class RelationshipAnalyzer:
             for term in terms
         ])
         
+        genre_instructions = ""
+        if project_genre == "xianxia" or project_genre == "wuxia":
+             genre_instructions = "В этом жанре важны связи: учитель-ученик (shifu-disciple), соученики, члены одной секты, вражда между кланами."
+        elif project_genre == "romance":
+             genre_instructions = "Фокусируйся на эмоциональных связях, романтических интересах, семейных узах."
+        
         return f"""
-Ты - эксперт по анализу текстов ранобэ. Проанализируй связи между терминами в следующем тексте.
+Ты - эксперт по анализу текстов ранобэ (Жанр: {project_genre.upper()}). 
+Твоя задача: найти ВАЖНЫЕ сюжетные связи между указанными терминами в тексте.
+
+{genre_instructions}
 
 Текст для анализа:
 {text}
 
-Термины для анализа связей:
+Термины:
 {terms_text}
 
-Проанализируй все возможные связи между этими терминами. Типы связей могут быть:
-- friend/enemy (друзья/враги)
-- family (семейные отношения)
-- location (место действия/проживания)
-- skill_related (связанные умения)
-- artifact_owner (владелец артефакта)
-- teacher_student (учитель-ученик)
-- rival (соперники)
-- ally (союзники)
-- other (другие связи)
+Инструкции:
+1. Ищи только ЯВНЫЕ взаимодействия в тексте. Простое упоминание в одном предложении НЕ является связью.
+2. Игнорируй тривиальные связи (например, "видели друг друга").
+3. Указывай уровень уверенности (confidence) от 0 до 100.
+   - 90-100: Прямое взаимодействие, диалог, явное описание отношений.
+   - 70-89: Косвенное взаимодействие, сильный контекстный намек.
+   - <70: Слабая связь (такие будут отфильтрованы).
+4. Типы связей:
+   - friend/ally (друзья, союзники)
+   - enemy/rival (враги, соперники)
+   - family (семья, родственники)
+   - master_student (учитель-ученик, наставник)
+   - superior_subordinate (начальник-подчиненный)
+   - lovers (возлюбленные)
+   - member_of (член организации/секты)
+   - other (другое)
 
-Ответ должен быть в формате JSON:
+Пример вывода (JSON):
 {{
     "relationships": [
         {{
-            "source_term": "первый термин",
-            "target_term": "второй термин", 
-            "relation_type": "тип связи",
-            "confidence": 85,
-            "context": "краткое описание связи на основе текста"
+            "source_term": "Линь Фэн",
+            "target_term": "Ван Линь", 
+            "relation_type": "rival",
+            "confidence": 95,
+            "context": "Линь Фэн открыто бросил вызов Ван Линю на арене."
         }}
     ]
 }}
 
-Важно:
-- Анализируй только связи, которые явно упоминаются в тексте
-- Указывай уверенность от 0 до 100
-- В контексте опиши, на чем основана связь
-- Не создавай связи, если их нет в тексте
-"""
+Выведи JSON с найденными связями:"""
 
     def _parse_relationship_response(self, response: Any) -> List[Dict[str, Any]]:
         """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""

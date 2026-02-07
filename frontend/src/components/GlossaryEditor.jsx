@@ -141,133 +141,140 @@ export default function GlossaryEditor({ projectId }) {
             Термины отсутствуют. Запустите анализ главы для извлечения терминов.
           </div>
         ) : (
-          <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[200px]">Оригинал</TableHead>
-                  <TableHead className="min-w-[200px]">Перевод</TableHead>
-                  <TableHead className="hidden md:table-cell">Категория</TableHead>
-                  <TableHead>Частота</TableHead>
-                  <TableHead className="w-[100px] hidden lg:table-cell">Плотность</TableHead>
-                  <TableHead className="hidden lg:table-cell">Центральность</TableHead>
-                  <TableHead>Первое появление</TableHead>
-                  <TableHead className="hidden md:table-cell">Последнее появление</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {terms.map((term) => (
-                  <TableRow key={term.id} className="hover:bg-accent/5"> {/* Neon friendly hover */}
-                    <TableCell className="font-medium text-card-foreground min-w-[200px]">
-                      {term.source_term}
-                      {term.context && (
-                        <div className="text-xs text-muted-foreground mt-1 italic whitespace-normal">
-                          {term.context}
-                        </div>
-                      )}
-                    </TableCell>
-                    {/* ... Translation Cell ... */}
-                    <TableCell className="text-card-foreground min-w-[200px]">
-                      {editingTerm?.id === term.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={editingTerm.translated_term}
-                            onChange={(e) => setEditingTerm({
-                              ...editingTerm,
-                              translated_term: e.target.value
-                            })}
-                            className="h-8 w-40"
-                          />
-                        </div>
-                      ) : (
-                        term.translated_term
-                      )}
-                    </TableCell>
-                    <TableCell className="text-card-foreground hidden md:table-cell">{getCategoryLabel(term.category)}</TableCell>
-                    <TableCell className="text-card-foreground">{term.frequency || 1}</TableCell>
-                    <TableCell className="h-12 w-[100px] p-0 hidden lg:table-cell">
-                      {term.occurrences_data && term.occurrences_data.length > 0 ? (
-                        <div className="h-full w-full py-1">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={term.occurrences_data}>
-                              <Line type="monotone" dataKey="freq" stroke="#8884d8" strokeWidth={2} dot={false} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <Badge variant={term.centrality_score > 0 ? "default" : "secondary"}>
-                        {term.centrality_score || 0}
-                      </Badge>
-                    </TableCell>
-                    {/* Updated Badges for visibility */}
-                    <TableCell className="text-card-foreground">
-                      {term.first_chapter_order ? <span className="inline-flex items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-inset ring-ring/10 font-mono">Ch. {term.first_chapter_order}</span> : '-'}
-                    </TableCell>
-                    <TableCell className="text-card-foreground hidden md:table-cell">
-                      {term.last_chapter_order ? <span className="inline-flex items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-inset ring-ring/10 font-mono">Ch. {term.last_chapter_order}</span> : '-'}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(term.status)}</TableCell>
-                    <TableCell className="text-right">
-                      {/* Actions ... */}
-                      <div className="flex justify-end gap-2">
+          <div className="rounded-md border">
+            <div className="w-full">
+              <Table className="table-fixed w-full"> {/* Force fixed table layout */}
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[20%]">Оригинал</TableHead>
+                    <TableHead className="w-[20%]">Перевод</TableHead>
+                    <TableHead className="w-[10%] hidden md:table-cell">Категория</TableHead>
+                    <TableHead className="w-[10%]">Частота</TableHead>
+                    <TableHead className="w-[10%] hidden lg:table-cell">Плотность</TableHead>
+                    <TableHead className="w-[10%] hidden lg:table-cell">Центр.</TableHead>
+                    <TableHead className="w-[10%] hidden md:table-cell">Ч.1</TableHead>
+                    <TableHead className="w-[10%] hidden md:table-cell">Ч.N</TableHead>
+                    <TableHead className="w-[10%]">Статус</TableHead>
+                    <TableHead className="w-[10%] text-right">Дей</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {terms.map((term) => (
+                    <TableRow key={term.id} className="hover:bg-accent/5"> {/* Neon friendly hover */}
+                      <TableCell className="font-medium text-card-foreground align-top">
+                        <div className="truncate" title={term.source_term}>{term.source_term}</div>
+                        {term.context && (
+                          <div className="text-xs text-muted-foreground mt-1 italic whitespace-nowrap truncate max-w-full" title={term.context}>
+                            {term.context}
+                          </div>
+                        )}
+                      </TableCell>
+                      {/* ... Translation Cell ... */}
+                      <TableCell className="text-card-foreground align-top">
                         {editingTerm?.id === term.id ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => updateTerm(term.id, {
-                                translated_term: editingTerm.translated_term
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editingTerm.translated_term}
+                              onChange={(e) => setEditingTerm({
+                                ...editingTerm,
+                                translated_term: e.target.value
                               })}
-                            >
-                              <Save className="h-4 w-4 text-green-600" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingTerm(null)}
-                            >
-                              <X className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </>
+                              className="h-8 w-full"
+                            />
+                          </div>
                         ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingTerm(term)}
-                            >
-                              <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                            </Button>
-                            {term.status === 'pending' && (
+                          <div className="truncate" title={term.translated_term}>{term.translated_term}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-card-foreground hidden md:table-cell align-top truncate">{getCategoryLabel(term.category)}</TableCell>
+                      <TableCell className="text-card-foreground align-top">{term.frequency || 1}</TableCell>
+                      <TableCell className="h-12 p-0 hidden lg:table-cell align-top">
+                        {term.occurrences_data && term.occurrences_data.length > 0 ? (
+                          <div className="h-8 w-full py-1">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={term.occurrences_data}>
+                                <Line type="monotone" dataKey="freq" stroke="#8884d8" strokeWidth={2} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell align-top">
+                        <Badge variant={term.centrality_score > 0 ? "default" : "secondary"}>
+                          {term.centrality_score || 0}
+                        </Badge>
+                      </TableCell>
+                      {/* Updated Badges for visibility */}
+                      <TableCell className="text-card-foreground hidden md:table-cell align-top rounded-b-none">
+                        {term.first_chapter_order ? <span className="inline-flex items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-inset ring-ring/10 font-mono">Ch.{term.first_chapter_order}</span> : '-'}
+                      </TableCell>
+                      <TableCell className="text-card-foreground hidden md:table-cell align-top">
+                        {term.last_chapter_order ? <span className="inline-flex items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-inset ring-ring/10 font-mono">Ch.{term.last_chapter_order}</span> : '-'}
+                      </TableCell>
+                      <TableCell className="align-top">{getStatusBadge(term.status)}</TableCell>
+                      <TableCell className="text-right align-top">
+                        {/* Actions ... */}
+                        <div className="flex justify-end gap-1">
+                          {editingTerm?.id === term.id ? (
+                            <>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => approveTerm(term.id)}
+                                className="h-8 w-8 p-0"
+                                onClick={() => updateTerm(term.id, {
+                                  translated_term: editingTerm.translated_term
+                                })}
                               >
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Save className="h-4 w-4 text-green-600" />
                               </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => deleteTerm(term.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => setEditingTerm(null)}
+                              >
+                                <X className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => setEditingTerm(term)}
+                              >
+                                <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              </Button>
+                              {term.status === 'pending' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => approveTerm(term.id)}
+                                >
+                                  <Check className="h-4 w-4 text-green-600" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => deleteTerm(term.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </CardContent>

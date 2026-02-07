@@ -28,6 +28,7 @@ export default function ChapterManager({ projectId }) {
       case 'relationships': return 'NET_ANALYSIS'
       case 'summarizing': return 'SUMMARIZING'
       case 'translating': return 'TRANSLATING'
+      case 'analyzed': return 'ANALYZED'
       case 'completed': return 'COMPLETED'
       case 'failed': return 'FAILED'
       default: return status?.toUpperCase() || ''
@@ -180,7 +181,15 @@ export default function ChapterManager({ projectId }) {
           <div className="divide-y divide-accent/5 relative z-10">
             {chapters.map((chapter, idx) => {
               const isProcessing = ['pending', 'extracting', 'relationships', 'summarizing', 'translating'].includes(chapter.analysis_status) || ['pending', 'translating'].includes(chapter.translation_status);
-              const processingStatus = (['pending', 'extracting', 'relationships', 'summarizing'].includes(chapter.analysis_status) ? chapter.analysis_status : chapter.translation_status);
+
+              let processingStatus = chapter.translation_status;
+              if (['pending', 'extracting', 'relationships', 'summarizing'].includes(chapter.analysis_status)) {
+                processingStatus = chapter.analysis_status;
+              } else if (chapter.analysis_status === 'completed' && !chapter.translated_text && chapter.translation_status === 'idle') {
+                processingStatus = 'analyzed';
+              } else if (['pending', 'translating'].includes(chapter.translation_status)) {
+                processingStatus = chapter.translation_status;
+              }
 
               return (
                 <div key={chapter.id} className="grid grid-cols-12 gap-4 p-3 items-center transition-all duration-300 group border border-transparent hover:border-accent hover:bg-surface/60 hover:shadow-[0_0_15px_rgba(0,243,255,0.15)] relative overflow-hidden">
@@ -197,6 +206,10 @@ export default function ChapterManager({ projectId }) {
                       <span className="text-secondary-accent text-[10px] flex items-center animate-pulse tracking-widest">
                         <Spinner className="w-3 h-3 mr-2" />
                         {getStatusLabel(processingStatus)}
+                      </span>
+                    ) : processingStatus === 'analyzed' ? (
+                      <span className="text-blue-400 text-[10px] flex items-center tracking-widest shadow-[0_0_10px_rgba(96,165,250,0.3)]">
+                        <CheckCircle2 className="w-3 h-3 mr-2" /> ANALYZED
                       </span>
                     ) : chapter.translated_text ? (
                       <span className="text-accent text-[10px] flex items-center tracking-widest shadow-accent"><CheckCircle2 className="w-3 h-3 mr-2" /> READY</span>

@@ -151,7 +151,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             try:
                 relationships = relationship_analyzer.analyze_relationships(
                     chapter.original_text, 
-                    saved_terms  # Pass GlossaryTerm objects, not strings
+                    saved_terms,  # Pass GlossaryTerm objects, not strings
+                    project_genre=getattr(project_genre, "value", project_genre)
                 )
                 logger.info(f"[STEP 4 DONE] Found {len(relationships)} relationships")
             except Exception as rel_error:
