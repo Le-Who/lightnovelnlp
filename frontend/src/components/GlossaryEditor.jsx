@@ -7,7 +7,7 @@ import { Badge } from './ui/Badge'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
 import { Spinner } from './ui/Spinner'
 import { Save, X, Edit2, Check, Trash2 } from 'lucide-react'
-import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
+import { LineChart, Line, ResponsiveContainer } from 'recharts'
 
 export default function GlossaryEditor({ projectId }) {
   const [terms, setTerms] = useState([])
@@ -115,6 +115,7 @@ export default function GlossaryEditor({ projectId }) {
           <div className="flex gap-2 items-center text-sm">
             <span className="text-muted-foreground">Сортировка:</span>
             <select
+              aria-label="Сортировать по"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
@@ -125,6 +126,7 @@ export default function GlossaryEditor({ projectId }) {
             </select>
             {/* ... order select ... */}
             <select
+              aria-label="Порядок сортировки"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
@@ -173,6 +175,7 @@ export default function GlossaryEditor({ projectId }) {
                       {editingTerm?.id === term.id ? (
                         <div className="flex items-center gap-2">
                           <Input
+                            aria-label="Перевод"
                             value={editingTerm.translated_term}
                             onChange={(e) => setEditingTerm({
                               ...editingTerm,
@@ -224,6 +227,8 @@ export default function GlossaryEditor({ projectId }) {
                               onClick={() => updateTerm(term.id, {
                                 translated_term: editingTerm.translated_term
                               })}
+                              aria-label={`Сохранить перевод для ${term.source_term}`}
+                              title="Сохранить"
                             >
                               <Save className="h-4 w-4 text-green-600" />
                             </Button>
@@ -231,6 +236,8 @@ export default function GlossaryEditor({ projectId }) {
                               size="sm"
                               variant="ghost"
                               onClick={() => setEditingTerm(null)}
+                              aria-label="Отменить редактирование"
+                              title="Отменить"
                             >
                               <X className="h-4 w-4 text-muted-foreground" />
                             </Button>
@@ -241,6 +248,8 @@ export default function GlossaryEditor({ projectId }) {
                               size="sm"
                               variant="ghost"
                               onClick={() => setEditingTerm(term)}
+                              aria-label={`Редактировать термин: ${term.source_term}`}
+                              title="Редактировать"
                             >
                               <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                             </Button>
@@ -249,6 +258,8 @@ export default function GlossaryEditor({ projectId }) {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => approveTerm(term.id)}
+                                aria-label={`Утвердить термин: ${term.source_term}`}
+                                title="Утвердить"
                               >
                                 <Check className="h-4 w-4 text-green-600" />
                               </Button>
@@ -257,6 +268,8 @@ export default function GlossaryEditor({ projectId }) {
                               size="sm"
                               variant="ghost"
                               onClick={() => deleteTerm(term.id)}
+                              aria-label={`Удалить термин: ${term.source_term}`}
+                              title="Удалить"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
