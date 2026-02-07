@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func
 from typing import List, Optional
 from fastapi import HTTPException
 
@@ -33,7 +33,6 @@ class ProjectService:
         if exists:
             raise HTTPException(status_code=400, detail="Project with this name already exists")
         
-        genre_value = getattr(payload.genre, "value", payload.genre)
         genre_value = getattr(payload.genre, "value", payload.genre)
         project = Project(
             name=payload.name, 
