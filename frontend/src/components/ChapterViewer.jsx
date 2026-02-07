@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import api from '@/services/apiClient'
 import { Terminal, FileText, ArrowRight, Eye, MessageSquare, X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Hash, Download } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
@@ -18,6 +19,15 @@ export default function ChapterViewer({ projectId }) {
   }
 
   useEffect(() => { if (projectId) loadChapters() }, [projectId])
+
+  // Effect to handle ESC key for full screen
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && isFullScreen) setIsFullScreen(false)
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [isFullScreen])
 
   const downloadChapter = () => {
     if (!selectedChapter.translated_text) return;
@@ -39,101 +49,103 @@ export default function ChapterViewer({ projectId }) {
     </div>
   )
 
-  // Reader View
-  if (selectedChapter) {
-    return (
-      <div className={`flex flex-col ${isFullScreen ? 'fixed inset-0 z-[9999] bg-bg p-4' : 'h-[800px]'} transition-all duration-300`}>
-        {/* Reader Toolbar */}
-        <div className="flex justify-between items-center border-b-2 border-accent/20 pb-4 mb-4 bg-surface/80 p-4 shadow-[0_5px_15px_rgba(0,0,0,0.5)] backdrop-blur-md">
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => setSelectedChapter(null)}
-              className="group flex items-center text-muted-foreground hover:text-accent font-bold uppercase text-[10px] tracking-widest transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
-              Abort_Read
-            </button>
-            <div className="h-6 w-[2px] bg-accent/20" />
-            <div className="flex flex-col">
-              <div className="text-[10px] text-accent/50 uppercase tracking-[0.2em] mb-1">Active_File</div>
-              <div className="text-text font-bold text-sm tracking-wider flex items-center shadow-accent">
-                <FileText className="w-4 h-4 mr-2" />
-                {selectedChapter.title}
-              </div>
+  // Reader View Content
+  const readerContent = selectedChapter ? (
+    <div className={`flex flex-col ${isFullScreen ? 'fixed inset-0 z-[99999] bg-bg p-0' : 'h-[800px]'} transition-all duration-300`}>
+      {/* Reader Toolbar */}
+      <div className={`flex justify-between items-center border-b-2 border-accent/20 bg-surface/80 shadow-[0_5px_15px_rgba(0,0,0,0.5)] backdrop-blur-md ${isFullScreen ? 'p-4' : 'p-4 mb-4'}`}>
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => setSelectedChapter(null)}
+            className="group flex items-center text-muted-foreground hover:text-accent font-bold uppercase text-[10px] tracking-widest transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+            Abort_Read
+          </button>
+          <div className="h-6 w-[2px] bg-accent/20" />
+          <div className="flex flex-col">
+            <div className="text-[10px] text-accent/50 uppercase tracking-[0.2em] mb-1">Active_File</div>
+            <div className="text-text font-bold text-sm tracking-wider flex items-center shadow-accent">
+              <FileText className="w-4 h-4 mr-2" />
+              {selectedChapter.title}
             </div>
           </div>
-          <div className="flex gap-4 items-center">
-            <div className="text-[10px] text-muted-foreground hidden md:block">
-              <span className="text-secondary-accent">SRC_SIZE:</span> {selectedChapter.original_text.length}B
-              <span className="mx-2">|</span>
-              <span className="text-accent">OUT_SIZE:</span> {selectedChapter.translated_text.length}B
+        </div>
+        <div className="flex gap-4 items-center">
+          <div className="text-[10px] text-muted-foreground hidden md:block">
+            <span className="text-secondary-accent">SRC_SIZE:</span> {selectedChapter.original_text.length}B
+            <span className="mx-2">|</span>
+            <span className="text-accent">OUT_SIZE:</span> {selectedChapter.translated_text.length}B
+          </div>
+          <button
+            onClick={downloadChapter}
+            className="text-muted-foreground hover:text-accent p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10"
+            title="DOWNLOAD_DATA"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsFullScreen(!isFullScreen)}
+            className="text-accent hover:text-white p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]"
+          >
+            {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Split View */}
+      <div className={`flex-1 flex flex-col md:flex-row gap-6 min-h-0 overflow-hidden ${isFullScreen ? 'p-4' : ''}`}>
+        {/* Original Panel */}
+        <div className="flex-1 min-h-0 flex flex-col border border-accent/10 bg-[#0a0a0c] relative group">
+          {/* Tech Header */}
+          <div className="absolute top-0 left-0 right-0 h-8 bg-surface/50 border-b border-accent/10 flex items-center px-4 justify-between">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Raw_Input_Stream</span>
+            <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-full bg-red-500/20" />
+              <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
+              <div className="w-2 h-2 rounded-full bg-green-500/20" />
             </div>
-            <button
-              onClick={downloadChapter}
-              className="text-muted-foreground hover:text-accent p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10"
-              title="DOWNLOAD_DATA"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setIsFullScreen(!isFullScreen)}
-              className="text-accent hover:text-white p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]"
-            >
-              {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
+          </div>
+
+          <div className="flex-1 overflow-auto p-6 pt-12 font-mono text-xs md:text-sm text-text-muted/60 whitespace-pre-wrap leading-relaxed custom-scrollbar selection:bg-secondary-accent/20 selection:text-secondary-accent">
+            {selectedChapter.original_text}
           </div>
         </div>
 
-        {/* Split View */}
-        <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0 overflow-hidden">
-          {/* Original Panel */}
-          <div className="flex-1 min-h-0 flex flex-col border border-accent/10 bg-[#0a0a0c] relative group">
-            {/* Tech Header */}
-            <div className="absolute top-0 left-0 right-0 h-8 bg-surface/50 border-b border-accent/10 flex items-center px-4 justify-between">
-              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Raw_Input_Stream</span>
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500/20" />
-                <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
-                <div className="w-2 h-2 rounded-full bg-green-500/20" />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-6 pt-12 font-mono text-xs md:text-sm text-text-muted/60 whitespace-pre-wrap leading-relaxed custom-scrollbar selection:bg-secondary-accent/20 selection:text-secondary-accent">
-              {selectedChapter.original_text}
+        {/* Translation Panel */}
+        <div className="flex-1 min-h-0 flex flex-col border border-accent/40 bg-black relative shadow-[0_0_30px_rgba(0,243,255,0.05)]">
+          {/* Tech Header */}
+          <div className="absolute top-0 left-0 right-0 h-8 bg-accent/5 border-b border-accent/20 flex items-center px-4 justify-between">
+            <span className="text-[10px] text-accent font-bold uppercase tracking-widest flex items-center">
+              <Terminal className="w-3 h-3 mr-2" />
+              Compiled_Output
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-accent animate-pulse rounded-full shadow-[0_0_5px_#00f3ff]" />
+              <span className="text-[8px] text-accent">LIVE</span>
             </div>
           </div>
 
-          {/* Translation Panel */}
-          <div className="flex-1 min-h-0 flex flex-col border border-accent/40 bg-black relative shadow-[0_0_30px_rgba(0,243,255,0.05)]">
-            {/* Tech Header */}
-            <div className="absolute top-0 left-0 right-0 h-8 bg-accent/5 border-b border-accent/20 flex items-center px-4 justify-between">
-              <span className="text-[10px] text-accent font-bold uppercase tracking-widest flex items-center">
-                <Terminal className="w-3 h-3 mr-2" />
-                Compiled_Output
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-accent animate-pulse rounded-full shadow-[0_0_5px_#00f3ff]" />
-                <span className="text-[8px] text-accent">LIVE</span>
-              </div>
-            </div>
+          {/* Scanner Line Animation Container */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 z-0">
+            <div className="w-full h-full bg-[linear-gradient(transparent_0%,rgba(0,243,255,0.1)_50%,transparent_100%)] bg-[length:100%_4px] animate-scan" />
+          </div>
 
-            {/* Scanner Line Animation Container */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 z-0">
-              <div className="w-full h-full bg-[linear-gradient(transparent_0%,rgba(0,243,255,0.1)_50%,transparent_100%)] bg-[length:100%_4px] animate-scan" />
-            </div>
+          <div className="flex-1 overflow-auto p-8 pt-12 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-loose custom-scrollbar relative z-10 selection:bg-accent/30 selection:text-white">
+            {selectedChapter.translated_text}
+          </div>
 
-            <div className="flex-1 overflow-auto p-8 pt-12 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-loose custom-scrollbar relative z-10 selection:bg-accent/30 selection:text-white">
-              {selectedChapter.translated_text}
-            </div>
-
-            {/* Footer Info */}
-            <div className="absolute bottom-0 left-0 right-0 h-6 bg-accent/5 border-t border-accent/10 flex items-center px-4 justify-end text-[10px] text-accent/50 font-mono">
-              <span>EOF_MARKER_DETECTED</span>
-            </div>
+          {/* Footer Info */}
+          <div className="absolute bottom-0 left-0 right-0 h-6 bg-accent/5 border-t border-accent/10 flex items-center px-4 justify-end text-[10px] text-accent/50 font-mono">
+            <span>EOF_MARKER_DETECTED</span>
           </div>
         </div>
       </div>
-    )
+    </div>
+  ) : null;
+
+  if (selectedChapter) {
+    return isFullScreen ? createPortal(readerContent, document.body) : readerContent;
   }
 
   // List View

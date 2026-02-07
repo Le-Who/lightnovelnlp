@@ -145,8 +145,8 @@ export default function GlossaryEditor({ projectId }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Оригинал</TableHead>
-                  <TableHead>Перевод</TableHead>
+                  <TableHead className="min-w-[200px]">Оригинал</TableHead>
+                  <TableHead className="min-w-[200px]">Перевод</TableHead>
                   <TableHead className="hidden md:table-cell">Категория</TableHead>
                   <TableHead>Частота</TableHead>
                   <TableHead className="w-[100px] hidden lg:table-cell">Плотность</TableHead>
@@ -160,7 +160,7 @@ export default function GlossaryEditor({ projectId }) {
               <TableBody>
                 {terms.map((term) => (
                   <TableRow key={term.id} className="hover:bg-accent/5"> {/* Neon friendly hover */}
-                    <TableCell className="font-medium text-card-foreground">
+                    <TableCell className="font-medium text-card-foreground min-w-[200px]">
                       {term.source_term}
                       {term.context && (
                         <div className="text-xs text-muted-foreground mt-1 italic whitespace-normal">
@@ -169,7 +169,7 @@ export default function GlossaryEditor({ projectId }) {
                       )}
                     </TableCell>
                     {/* ... Translation Cell ... */}
-                    <TableCell className="text-card-foreground">
+                    <TableCell className="text-card-foreground min-w-[200px]">
                       {editingTerm?.id === term.id ? (
                         <div className="flex items-center gap-2">
                           <Input

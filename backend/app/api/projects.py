@@ -1,6 +1,4 @@
-from typing import List
-
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -178,7 +176,7 @@ def create_chapter_from_file(
 def upload_chapters_from_file(
     project_id: int,
     file: UploadFile = File(...),
-    chapter_pattern: str = "Глава \\d+",
+    chapter_pattern: str = Form("Глава \\d+"),
     db: Session = Depends(get_db)
 ):
     """Загрузить главы из текстового файла."""
