@@ -12,32 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 
-import spacy
 from collections import Counter
 
 class TermExtractor:
     def __init__(self):
         self.client = gemini_client
-        self.nlp_models = {}
-
-    def _get_nlp(self, lang: str):
-        """Lazy load spaCy models to avoid startup overhead."""
-        if lang not in self.nlp_models:
-            try:
-                if lang == "ru":
-                    logger.info("Loading spaCy model: ru_core_news_sm")
-                    self.nlp_models[lang] = spacy.load("ru_core_news_sm")
-                else:
-                    # Default to English for everything else for now, or add specific models
-                    logger.info("Loading spaCy model: en_core_web_sm")
-                    self.nlp_models[lang] = spacy.load("en_core_web_sm")
-            except OSError:
-                logger.error(f"spaCy model for {lang} not found. Please run download_models.py")
-                # Fallback to English or blank
-                if lang != "en":
-                     return self._get_nlp("en")
-                raise
-        return self.nlp_models[lang]
 
     def extract_terms(
         self, 
