@@ -208,11 +208,13 @@ export default function ChapterManager({ projectId }) {
                         {getStatusLabel(processingStatus)}
                       </span>
                     ) : processingStatus === 'analyzed' ? (
-                      <span className="text-blue-400 text-[10px] flex items-center tracking-widest shadow-[0_0_10px_rgba(96,165,250,0.3)]">
+                      <span className="inline-flex items-center text-blue-400 text-[10px] tracking-widest px-2 py-0.5 rounded-sm border border-blue-400/30 shadow-[0_0_10px_rgba(96,165,250,0.3)] bg-blue-400/5">
                         <CheckCircle2 className="w-3 h-3 mr-2" /> ANALYZED
                       </span>
                     ) : chapter.translated_text ? (
-                      <span className="text-accent text-[10px] flex items-center tracking-widest shadow-accent"><CheckCircle2 className="w-3 h-3 mr-2" /> READY</span>
+                      <span className="inline-flex items-center text-accent text-[10px] tracking-widest px-2 py-0.5 rounded-sm border border-accent/30 bg-accent/5 shadow-[0_0_10px_rgba(0,243,255,0.3)]">
+                        <CheckCircle2 className="w-3 h-3 mr-2" /> READY
+                      </span>
                     ) : (
                       <span className="text-muted-foreground text-[10px] opacity-30 tracking-widest">PENDING</span>
                     )}

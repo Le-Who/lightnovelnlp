@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api from '@/services/apiClient'
-import { Terminal, Database, Activity, Plus, Play, ChevronRight, Hash, Clock, Server } from 'lucide-react';
+import { Terminal, Database, Activity, Plus, Play, ChevronRight, Hash, Clock, Server, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function DashboardPage() {
@@ -21,6 +21,16 @@ export default function DashboardPage() {
       console.error(e)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const deleteProject = async (id) => {
+    try {
+      await api.delete(`/projects/${id}`);
+      load();
+    } catch (e) {
+      console.error(e);
+      alert("ERROR: PURGE_FAILED");
     }
   }
 
@@ -161,7 +171,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((p) => (
-              <NeonProjectCard key={p.id} project={p} />
+              <NeonProjectCard key={p.id} project={p} onDelete={deleteProject} />
             ))}
           </div>
         )}
@@ -170,8 +180,21 @@ export default function DashboardPage() {
   )
 }
 
-const NeonProjectCard = ({ project }) => {
+// Helper to prevent event bubbling
+const stopPropagation = (e) => {
+  e.stopPropagation();
+  e.preventDefault();
+}
+
+const NeonProjectCard = ({ project, onDelete }) => {
   const navigate = useNavigate();
+
+  const handleDelete = (e) => {
+    stopPropagation(e);
+    if (confirm(`INITIATE_DELETION_SEQUENCE [${project.name}]? THIS_ACTION_IS_IRREVERSIBLE.`)) {
+      onDelete(project.id);
+    }
+  }
 
   return (
     <div
@@ -192,8 +215,17 @@ const NeonProjectCard = ({ project }) => {
             {project.name}
           </h4>
         </div>
-        <div className={`px-2 py-1 text-[10px] border ${project.genre === 'xianxia' || project.genre === 'wuxia' ? 'border-purple-500/50 text-purple-400' : 'border-border text-text-muted'} uppercase tracking-wider backdrop-blur-md`}>
-          {project.genre}
+        <div className="flex flex-col items-end gap-2">
+          <div className={`px-2 py-1 text-[10px] border ${project.genre === 'xianxia' || project.genre === 'wuxia' ? 'border-purple-500/50 text-purple-400' : 'border-border text-text-muted'} uppercase tracking-wider backdrop-blur-md`}>
+            {project.genre}
+          </div>
+          <button
+            onClick={handleDelete}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive hover:bg-destructive/10 rounded"
+            title="DELETE_PROJECT"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

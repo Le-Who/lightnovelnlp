@@ -129,6 +129,8 @@ export default function RelationshipsViewer({ projectId }) {
               >
                 <option value="confidence">По уверенности</option>
                 <option value="source_term">По источнику</option>
+                <option value="target_term">По цели</option>
+                <option value="category">По категории источника</option>
                 <option value="relation_type">По типу связи</option>
               </select>
             </div>
@@ -137,49 +139,79 @@ export default function RelationshipsViewer({ projectId }) {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedRelationships.map((relationship) => {
-          const sourceTerm = getTermById(relationship.source_term_id)
-          const targetTerm = getTermById(relationship.target_term_id)
+        {relationships
+          .filter(rel => {
+            if (!selectedTerm) return true
+            return rel.source_term_id === parseInt(selectedTerm) ||
+              rel.target_term_id === parseInt(selectedTerm)
+          })
+          .sort((a, b) => {
+            if (sortBy === 'confidence') return (b.confidence || 0) - (a.confidence || 0)
 
-          if (!sourceTerm || !targetTerm) return null
+            if (sortBy === 'source_term') {
+              const termA = getTermById(a.source_term_id)?.source_term || ''
+              const termB = getTermById(b.source_term_id)?.source_term || ''
+              return termA.localeCompare(termB)
+            }
 
-          return (
-            <Card key={relationship.id} className="relative overflow-hidden">
-              <div className={`absolute top-0 left-0 w-1 h-full ${getRelationTypeColorClass(relationship.relation_type).split(' ')[0].replace('bg-', 'bg-')}`}></div> {/* Simple colored strip fallback logic needs improvement or just explicit colors */}
-              {/* Better approach: use border-l-4 */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 ${getRelationTypeColorClass(relationship.relation_type).replace('text-', 'bg-').split(' ')[1] || 'bg-slate-400'}`}></div>
+            if (sortBy === 'target_term') {
+              const termA = getTermById(a.target_term_id)?.source_term || ''
+              const termB = getTermById(b.target_term_id)?.source_term || ''
+              return termA.localeCompare(termB)
+            }
 
-              <CardContent className="p-4 pl-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${getRelationTypeColorClass(relationship.relation_type)}`}>
-                    {getRelationTypeLabel(relationship.relation_type)}
-                  </span>
-                  {relationship.confidence && (
-                    <span className="text-xs text-muted-foreground">{relationship.confidence}%</span>
-                  )}
-                </div>
+            if (sortBy === 'category') {
+              const catA = getTermById(a.source_term_id)?.category || ''
+              const catB = getTermById(b.source_term_id)?.category || ''
+              return catA.localeCompare(catB)
+            }
 
-                <div className="flex items-center gap-2 mb-2 font-medium text-card-foreground">
-                  <span>{sourceTerm.source_term}</span>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                  <span>{targetTerm.source_term}</span>
-                </div>
+            if (sortBy === 'relation_type') return a.relation_type.localeCompare(b.relation_type)
+            return 0
+          })
+          .map((relationship) => {
+            const sourceTerm = getTermById(relationship.source_term_id)
+            const targetTerm = getTermById(relationship.target_term_id)
 
-                <div className="text-xs text-muted-foreground mb-3 flex items-center gap-2">
-                  <span>{sourceTerm.translated_term}</span>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
-                  <span>{targetTerm.translated_term}</span>
-                </div>
+            if (!sourceTerm || !targetTerm) return null
 
-                {relationship.context && (
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded italic border border-border">
-                    &quot;{relationship.context}&quot;
+            return (
+              <Card key={relationship.id} className="relative overflow-hidden">
+                <div className={`absolute top-0 left-0 w-1 h-full ${getRelationTypeColorClass(relationship.relation_type).split(' ')[0].replace('bg-', 'bg-')}`}></div> {/* Simple colored strip fallback logic needs improvement or just explicit colors */}
+                {/* Better approach: use border-l-4 */}
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${getRelationTypeColorClass(relationship.relation_type).replace('text-', 'bg-').split(' ')[1] || 'bg-slate-400'}`}></div>
+
+                <CardContent className="p-4 pl-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getRelationTypeColorClass(relationship.relation_type)}`}>
+                      {getRelationTypeLabel(relationship.relation_type)}
+                    </span>
+                    {relationship.confidence && (
+                      <span className="text-xs text-muted-foreground">{relationship.confidence}%</span>
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
+
+                  <div className="flex items-center gap-2 mb-2 font-medium text-card-foreground">
+                    <span>{sourceTerm.source_term}</span>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <span>{targetTerm.source_term}</span>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground mb-3 flex items-center gap-2">
+                    <span>{sourceTerm.translated_term}</span>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
+                    <span>{targetTerm.translated_term}</span>
+                  </div>
+
+                  {relationship.context && (
+                    <div className="text-xs text-muted-foreground bg-muted p-2 rounded italic border border-border">
+                      &quot;{relationship.context}&quot;
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
       </div>
     </div>
   )
