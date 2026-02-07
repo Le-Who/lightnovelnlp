@@ -59,12 +59,27 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         saved_terms = []
         auto_approved_count = 0
         
+        # Optimization: Batch fetch existing terms to avoid N+1 queries
+        source_terms = [t["source_term"] for t in extracted_terms]
+        existing_terms_query = local_db.query(GlossaryTerm).filter(
+            GlossaryTerm.project_id == chapter.project_id,
+            GlossaryTerm.source_term.in_(source_terms)
+        ).all()
+        existing_terms_map = {term.source_term: term for term in existing_terms_query}
+
+        # Optimization: Batch fetch occurrences for existing terms
+        existing_term_ids = [term.id for term in existing_terms_query]
+        existing_occurrences_map = {}
+        if existing_term_ids:
+            occurrences = local_db.query(TermOccurrence).filter(
+                TermOccurrence.chapter_id == chapter.id,
+                TermOccurrence.term_id.in_(existing_term_ids)
+            ).all()
+            existing_occurrences_map = {occ.term_id: occ for occ in occurrences}
+
         for term_data in extracted_terms:
             # Проверяем, не существует ли уже такой термин
-            existing_term = local_db.query(GlossaryTerm).filter(
-                GlossaryTerm.project_id == chapter.project_id,
-                GlossaryTerm.source_term == term_data["source_term"]
-            ).first()
+            existing_term = existing_terms_map.get(term_data["source_term"])
             
             if existing_term:
                 # Обновляем частоту существующего термина
@@ -72,10 +87,7 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 existing_term.frequency += new_frequency
                 
                 # Update TermOccurrence for this chapter
-                occurrence = local_db.query(TermOccurrence).filter(
-                    TermOccurrence.term_id == existing_term.id,
-                    TermOccurrence.chapter_id == chapter.id
-                ).first()
+                occurrence = existing_occurrences_map.get(existing_term.id)
                 
                 if occurrence:
                     occurrence.frequency += new_frequency
@@ -87,6 +99,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                         frequency=new_frequency
                     )
                     local_db.add(occurrence)
+                    # Add to map so we don't try to create it again if duplicate terms in extracted_terms
+                    existing_occurrences_map[existing_term.id] = occurrence
                 
                 # Обновляем first/last chapter (logic remains same)
                 if existing_term.first_chapter_id:
