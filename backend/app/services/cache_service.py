@@ -172,15 +172,18 @@ class CacheService:
             serialized_value = json.dumps(value, default=str)
 
         # REST приоритетно
+        rest_success = False
         if self.rest_client:
             try:
                 # upstash-redis: ex = ttl (секунды)
                 res = self.rest_client.set(key, serialized_value, ex=ttl)
+                rest_success = True
                 return bool(res)
             except Exception as e:
                 self.logger.warning(f"REST cache set error, fallback to TCP: {e}")
-        else:
-            # TCP fallback - только если REST не доступен
+
+        # TCP fallback - если REST не сработал или недоступен
+        if not rest_success:
             try:
                 self._reconnect_if_needed()
                 return bool(self.redis_client.setex(key, ttl, serialized_value))
@@ -234,14 +237,17 @@ class CacheService:
     def delete(self, key: str) -> bool:
         """Удалить значение из кэша."""
         # REST сначала
+        rest_success = False
         if self.rest_client:
             try:
                 res = self.rest_client.delete(key)
+                rest_success = True
                 return bool(res)
             except Exception as e:
                 self.logger.warning(f"REST cache delete error, fallback to TCP: {e}")
-        else:
-            # TCP fallback - только если REST не доступен
+
+        # TCP fallback - если REST не сработал или недоступен
+        if not rest_success:
             try:
                 return bool(self.redis_client.delete(key))
             except Exception as e:
