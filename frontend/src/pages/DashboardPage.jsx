@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api from '@/services/apiClient'
-import { Terminal, Database, Activity, Plus, Play, ChevronRight, Hash, Clock, Server, Trash2 } from 'lucide-react';
+import { Terminal, Database, Activity, Play, ChevronRight, Hash, Clock, Server, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function DashboardPage() {

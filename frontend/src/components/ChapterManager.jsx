@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import api from '@/services/apiClient'
 import { Modal } from '@/components/ui/Modal'
 import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
-import { Terminal, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode } from 'lucide-react'
+import { Terminal, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
@@ -175,10 +175,10 @@ export default function ChapterManager({ projectId }) {
               onChange={(e) => setChapterPattern(e.target.value)}
               placeholder="REGEX_PATTERN..."
             />
-            <label className={`flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider ${uploadingChapters ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <label className={`flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider focus-within:ring-2 focus-within:ring-accent focus-within:outline-none rounded-sm ${uploadingChapters ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {uploadingChapters ? <Spinner className="w-3 h-3 mr-2" /> : <Upload className="w-3 h-3 mr-2" />}
               {uploadingChapters ? 'UPLOADING...' : 'UPLOAD_BATCH'}
-              <input type="file" className="hidden" onChange={handleFileSelect} disabled={uploadingChapters} />
+              <input type="file" className="sr-only" onChange={handleFileSelect} disabled={uploadingChapters} />
             </label>
           </div>
           <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-6 py-2 bg-accent text-bg hover:bg-secondary-accent transition-colors uppercase text-[10px] tracking-widest font-bold shadow-[0_0_10px_rgba(0,243,255,0.3)]">
@@ -333,14 +333,15 @@ const ActionButton = ({ onClick, icon: Icon, label, variant = 'default' }) => (
   <button
     onClick={onClick}
     title={label}
+    aria-label={label}
     className={`
-            p-2 transition-all duration-200 border border-transparent
+            p-2 transition-all duration-200 border border-transparent outline-none rounded-sm
             ${variant === 'destructive'
-        ? 'hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10'
-        : 'hover:text-accent hover:border-accent/30 hover:bg-accent/10'
+        ? 'hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-destructive'
+        : 'hover:text-accent hover:border-accent/30 hover:bg-accent/10 focus-visible:ring-2 focus-visible:ring-accent'
       }
         `}
   >
-    <Icon className="w-4 h-4" />
+    <Icon className="w-4 h-4" aria-hidden="true" />
   </button>
 );

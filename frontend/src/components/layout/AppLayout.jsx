@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Terminal, Database, Cpu } from 'lucide-react';
+import { Activity, Terminal, Cpu } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export const AppLayout = ({ children }) => {
