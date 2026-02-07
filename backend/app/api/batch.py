@@ -142,25 +142,14 @@ def list_project_batch_jobs(project_id: int, db: Session = Depends(get_db)) -> l
     
     result = []
     for job in jobs:
-        # Подсчитываем прогресс
-        completed_items = db.query(BatchJobItem).filter(
-            BatchJobItem.batch_job_id == job.id,
-            BatchJobItem.status == "completed"
-        ).count()
-        
-        failed_items = db.query(BatchJobItem).filter(
-            BatchJobItem.batch_job_id == job.id,
-            BatchJobItem.status == "failed"
-        ).count()
-        
         result.append({
             "id": job.id,
             "job_type": job.job_type,
             "status": job.status,
             "total_items": job.total_items,
-            "processed_items": completed_items,
-            "failed_items": failed_items,
-            "progress_percentage": round(completed_items / job.total_items * 100) if job.total_items > 0 else 0,
+            "processed_items": job.processed_items,
+            "failed_items": job.failed_items,
+            "progress_percentage": job.progress_percentage,
             "created_at": job.created_at,
             "started_at": job.started_at,
             "completed_at": job.completed_at,

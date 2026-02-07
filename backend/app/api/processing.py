@@ -173,18 +173,30 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 logger.error(f"[STEP 4 ERROR] Relationship analysis failed: {rel_error}", exc_info=True)
                 # Continue without relationships
             
+            # Optimize: Pre-fetch all relevant terms in one query
+            unique_terms = set()
+            for rel in relationships:
+                if "source_term" in rel:
+                    unique_terms.add(rel["source_term"])
+                if "target_term" in rel:
+                    unique_terms.add(rel["target_term"])
+
+            # Fetch terms
+            terms = []
+            if unique_terms:
+                terms = local_db.query(GlossaryTerm).filter(
+                    GlossaryTerm.project_id == chapter.project_id,
+                    GlossaryTerm.source_term.in_(unique_terms)
+                ).all()
+
+            # Create map for quick lookup
+            term_map = {term.source_term: term for term in terms}
+
             for rel_data in relationships:
                 try:
-                    # Find the source and target terms by their source_term strings
-                    source_term_obj = local_db.query(GlossaryTerm).filter(
-                        GlossaryTerm.project_id == chapter.project_id,
-                        GlossaryTerm.source_term == rel_data["source_term"]
-                    ).first()
-                    
-                    target_term_obj = local_db.query(GlossaryTerm).filter(
-                        GlossaryTerm.project_id == chapter.project_id,
-                        GlossaryTerm.source_term == rel_data["target_term"]
-                    ).first()
+                    # Find the source and target terms from map
+                    source_term_obj = term_map.get(rel_data.get("source_term"))
+                    target_term_obj = term_map.get(rel_data.get("target_term"))
                     
                     if source_term_obj and target_term_obj:
                         # Безопасно получаем relation_type, используя relation_type или relationType

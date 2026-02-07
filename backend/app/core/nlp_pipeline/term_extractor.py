@@ -162,7 +162,31 @@ class TermExtractor:
                  # Fallback to simple count on regex error
                  frequency[term] = text_lower.count(term_lower)
                 
-        return frequency
+                if not term_lemmas:
+                     frequency[term] = 0
+                     continue
+
+                if len(term_lemmas) == 1:
+                    frequency[term] = lemma_counts.get(term_lemmas[0], 0)
+                else:
+                    count = 0
+                    n = len(term_lemmas)
+                    # Поиск последовательности лемм для составных терминов (non-overlapping)
+                    i = 0
+                    while i < len(text_lemmas) - n + 1:
+                        if text_lemmas[i:i+n] == term_lemmas:
+                            count += 1
+                            i += n  # Skip the matched part
+                        else:
+                            i += 1
+                    frequency[term] = count
+
+            return frequency
+
+        except Exception as e:
+            logger.error(f"Error in count_term_frequency with Spacy: {e}. Fallback to simple count.")
+            text_lower = text.lower()
+            return {term: text_lower.count(term.lower()) for term in terms}
 
     def extract_terms_with_frequency(
         self, 

@@ -1,24 +1,24 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.project import ProjectGenre
 
 
 class ProjectBase(BaseModel):
-    name: str
-    genre: str = "other"
+    name: str = Field(..., max_length=255)
+    genre: str = Field("other", max_length=50)
 
 
 class ProjectCreate(ProjectBase):
-    custom_genre_instructions: Optional[str] = None
+    custom_genre_instructions: Optional[str] = Field(None, max_length=5000)
 
 
 class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    genre: Optional[str] = None
-    custom_genre_instructions: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=255)
+    genre: Optional[str] = Field(None, max_length=50)
+    custom_genre_instructions: Optional[str] = Field(None, max_length=5000)
 
 
 class ProjectRead(ProjectBase):
@@ -30,8 +30,8 @@ class ProjectRead(ProjectBase):
 
 
 class ChapterBase(BaseModel):
-    title: str
-    original_text: str
+    title: str = Field(..., max_length=255)
+    original_text: str = Field(..., max_length=200000)
 
 
 class ChapterCreate(ChapterBase):
@@ -39,9 +39,9 @@ class ChapterCreate(ChapterBase):
 
 
 class ChapterUpdate(BaseModel):
-    title: Optional[str] = None
-    original_text: Optional[str] = None
-    translated_text: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=255)
+    original_text: Optional[str] = Field(None, max_length=200000)
+    translated_text: Optional[str] = Field(None, max_length=200000)
 
 
 class ChapterRead(ChapterBase):
