@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import api from '@/services/apiClient'
-import { Terminal, FileText, ArrowRight, Eye, MessageSquare, X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Hash, Download } from 'lucide-react'
+import { Terminal, FileText, ArrowRight, Eye, Maximize2, Minimize2, ChevronLeft, ChevronRight, Hash, Download } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 
 export default function ChapterViewer({ projectId }) {
