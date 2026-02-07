@@ -16,3 +16,6 @@
 ## 2025-05-27 - [selectinload fetches full objects]
 **Learning:** `selectinload` on relationships eagerly loads the ENTIRE related object, including large TEXT columns (like `Chapter.original_text`). For `GlossaryTerm` which links to `Chapter`, this meant loading MBs of text just to display a chapter number.
 **Action:** When using `selectinload` for relationships to heavy objects, ALWAYS chain `.load_only()` to fetch only necessary columns (e.g., `id`, `order`).
+## 2025-05-28 - [SQLAlchemy Core vs ORM for Bulk Reads]
+**Learning:** Fetching large number of rows (10k+) using `db.query(Model.col)` (ORM) is significantly slower (2x) than `db.execute(text("SELECT col ..."))` (Core) due to overhead of result processing and object creation in SQLAlchemy ORM, even when fetching specific columns.
+**Action:** For read-heavy operations involving large datasets where only specific columns are needed, prefer SQLAlchemy Core execution `db.execute()` over ORM `db.query()` to bypass overhead.
