@@ -1,5 +1,6 @@
 from typing import List, Set, Dict, Any
 import re
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.glossary import GlossaryTerm, TermStatus
 
@@ -10,7 +11,7 @@ class GlossaryService:
         Efficiently retrieves only the terms relevant to the given text for a specific project.
 
         This method optimizes performance by:
-        1. Fetching only ID and source_term for all approved terms (lightweight query).
+        1. Fetching only ID and source_term for all approved terms using Core SQL (fast).
         2. Filtering terms in Python using simple substring matching (fast for <10k terms).
         3. Fetching full term objects only for the matches.
 
@@ -21,20 +22,23 @@ class GlossaryService:
 
         # 1. Fetch lightweight data (ID, source_term)
         # We only care about APPROVED terms
-        term_data = db.query(GlossaryTerm.id, GlossaryTerm.source_term).filter(
+        # OPTIMIZATION: Use SQLAlchemy Core execution to bypass ORM overhead.
+        # This is faster than db.query(GlossaryTerm.id, GlossaryTerm.source_term)
+        # as it avoids ORM object creation and processing.
+        stmt = select(GlossaryTerm.id, GlossaryTerm.source_term).where(
             GlossaryTerm.project_id == project_id,
             GlossaryTerm.status == TermStatus.APPROVED
-        ).all()
-
-        if not term_data:
-            return []
+        )
+        result = db.execute(stmt)
 
         # 2. Filter in Python
         text_lower = text.lower()
         matched_ids = []
 
-        # Iterating over tuples is much faster than iterating over Model instances
-        for term_id, source_term in term_data:
+        # Result yields tuples (id, source_term) directly from DB driver
+        for row in result:
+            term_id = row[0]
+            source_term = row[1]
             if source_term and source_term.lower() in text_lower:
                 matched_ids.append(term_id)
 
