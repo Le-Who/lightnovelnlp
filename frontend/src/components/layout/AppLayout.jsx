@@ -1,33 +1,35 @@
-import React from 'react';
-import { Activity, Terminal, Cpu } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from "react";
+import { Activity, Terminal, Cpu } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 export const AppLayout = ({ children }) => {
-  const navigate = useNavigate();
   const location = useLocation();
 
-  const nav = (path) => {
-    navigate(path);
-  };
-
-  const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+  const isActive = (path) =>
+    location.pathname === path ||
+    (path !== "/" && location.pathname.startsWith(path));
 
   return (
     <div className="min-h-screen bg-bg text-text font-mono flex overflow-hidden">
       {/* Left Sidebar - System Status */}
       <aside className="w-16 md:w-64 border-r border-accent/20 bg-surface/50 flex flex-col shrink-0">
-        <div className="h-14 border-b border-accent/20 flex items-center justify-center md:justify-start md:px-4 cursor-pointer" onClick={() => nav('/')}>
+        <Link
+          to="/"
+          className="h-14 border-b border-accent/20 flex items-center justify-center md:justify-start md:px-4 cursor-pointer hover:bg-accent/5 focus-visible:outline-none focus-visible:bg-accent/5 transition-colors"
+        >
           <Cpu className="h-6 w-6 text-accent animate-pulse" />
-          <span className="ml-2 font-bold text-accent hidden md:inline tracking-widest">SYS.OP</span>
-        </div>
+          <span className="ml-2 font-bold text-accent hidden md:inline tracking-widest">
+            SYS.OP
+          </span>
+        </Link>
         <nav className="flex-1 py-4 flex flex-col gap-2">
-          <div
-            onClick={() => nav('/')}
-            className={`px-2 md:px-4 py-2 cursor-pointer flex items-center text-sm md:text-base border-l-2 transition-all ${isActive('/') ? 'bg-accent/10 border-accent text-accent' : 'border-transparent hover:border-accent/50 text-muted-foreground'}`}
+          <Link
+            to="/"
+            className={`px-2 md:px-4 py-2 flex items-center text-sm md:text-base border-l-2 transition-all focus-visible:outline-none focus-visible:bg-accent/5 ${isActive("/") ? "bg-accent/10 border-accent text-accent" : "border-transparent hover:border-accent/50 text-muted-foreground"}`}
           >
             <Terminal className="h-4 w-4 mr-3" />
             <span className="hidden md:inline">Dashboard</span>
-          </div>
+          </Link>
           {/* Projects link removed as Dashboard IS the projects view, but maybe keep it to point to dashboard? */}
           {/* 
                     <div className="px-2 md:px-4 py-2 flex items-center text-sm md:text-base border-l-2 border-transparent text-muted-foreground opacity-50 cursor-not-allowed">
@@ -37,8 +39,12 @@ export const AppLayout = ({ children }) => {
                     */}
         </nav>
         <div className="p-4 border-t border-accent/20 text-xs text-muted-foreground hidden md:block">
-          <div><span className="text-accent">MEM:</span> 24%</div>
-          <div><span className="text-accent">NET:</span> ONLINE</div>
+          <div>
+            <span className="text-accent">MEM:</span> 24%
+          </div>
+          <div>
+            <span className="text-accent">NET:</span> ONLINE
+          </div>
         </div>
       </aside>
 
@@ -64,9 +70,7 @@ export const AppLayout = ({ children }) => {
             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent"></div>
             <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-accent"></div>
 
-            <div className="relative z-10 p-4">
-              {children}
-            </div>
+            <div className="relative z-10 p-4">{children}</div>
           </div>
         </main>
       </div>
