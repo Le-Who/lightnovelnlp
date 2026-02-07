@@ -83,7 +83,7 @@ class TermExtractor:
 
     def count_term_frequency(self, text: str, terms: List[str], source_language: str = "en") -> Dict[str, int]:
         """
-        Подсчитывает частоту встречаемости терминов с использованием Regex.
+        Подсчитывает частоту встречаемости терминов с использованием Spacy (лемматизация).
         
         Args:
             text: Текст для анализа
@@ -96,30 +96,53 @@ class TermExtractor:
         if not terms or not text:
             return {}
         
-        import re
-        
         # Для CJK языков используем простой подсчет вхождений
         if source_language in ["zh", "ja", "ko"]:
              return {term: text.count(term) for term in terms}
 
-        text_lower = text.lower()
-        frequency = {}
+        try:
+            # Получаем NLP модель для языка
+            nlp = self._get_nlp(source_language)
 
-        for term in terms:
-            term_lower = term.lower()
-            if not term_lower:
-                continue
+            # Обрабатываем основной текст
+            doc = nlp(text, disable=["ner", "parser"])
+            text_lemmas = [token.lemma_.lower() for token in doc if not token.is_punct and not token.is_space]
+            lemma_counts = Counter(text_lemmas)
+
+            frequency = {}
+
+            # Оптимизация: обрабатываем термины пачкой через nlp.pipe
+            # Это значительно быстрее чем nlp(term) в цикле
+            term_docs = nlp.pipe(terms, disable=["ner", "parser"])
+
+            for term, term_doc in zip(terms, term_docs):
+                term_lemmas = [t.lemma_.lower() for t in term_doc if not t.is_punct and not t.is_space]
                 
-            try:
-                # Используем границы слов для латиницы и кириллицы
-                # \b работает для латиницы/кириллицы в Python re
-                pattern = r'\b' + re.escape(term_lower) + r'\b'
-                frequency[term] = len(re.findall(pattern, text_lower))
-            except Exception:
-                 # Fallback to simple count on regex error
-                 frequency[term] = text_lower.count(term_lower)
-                
-        return frequency
+                if not term_lemmas:
+                     frequency[term] = 0
+                     continue
+
+                if len(term_lemmas) == 1:
+                    frequency[term] = lemma_counts.get(term_lemmas[0], 0)
+                else:
+                    count = 0
+                    n = len(term_lemmas)
+                    # Поиск последовательности лемм для составных терминов (non-overlapping)
+                    i = 0
+                    while i < len(text_lemmas) - n + 1:
+                        if text_lemmas[i:i+n] == term_lemmas:
+                            count += 1
+                            i += n  # Skip the matched part
+                        else:
+                            i += 1
+                    frequency[term] = count
+
+            return frequency
+
+        except Exception as e:
+            logger.error(f"Error in count_term_frequency with Spacy: {e}. Fallback to simple count.")
+            text_lower = text.lower()
+            return {term: text_lower.count(term.lower()) for term in terms}
 
     def extract_terms_with_frequency(
         self, 
