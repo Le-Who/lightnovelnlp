@@ -268,7 +268,11 @@ class TermExtractor:
         
         # Нормализация жанра (case-insensitive)
         try:
-            val = str(genre).lower() if genre else "other"
+            if hasattr(genre, "value"):
+                val = str(genre.value).lower()
+            else:
+                val = str(genre).lower() if genre else "other"
+
             # Пробуем найти соответствующий Enum
             key = ProjectGenre(val)
         except ValueError:
