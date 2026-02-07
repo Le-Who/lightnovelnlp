@@ -11,6 +11,10 @@ export default function RelationshipsViewer({ projectId }) {
   const [selectedTerm, setSelectedTerm] = useState(null)
   const [sortBy, setSortBy] = useState('confidence')
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
+
   const loadData = async () => {
     setLoading(true)
     try {
@@ -32,6 +36,11 @@ export default function RelationshipsViewer({ projectId }) {
       loadData()
     }
   }, [projectId])
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedTerm, sortBy])
 
   const getTermById = (id) => terms.find(term => term.id === id)
 
@@ -77,20 +86,13 @@ export default function RelationshipsViewer({ projectId }) {
     )
   }
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 20
+  // Pagination logic continued below...
 
   const filteredRelationships = relationships.filter(rel => {
     if (!selectedTerm) return true
     return rel.source_term_id === parseInt(selectedTerm) ||
       rel.target_term_id === parseInt(selectedTerm)
   })
-
-  // Reset page when filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [selectedTerm, sortBy])
 
   const sortedRelationships = [...filteredRelationships].sort((a, b) => {
     if (sortBy === 'confidence') return (b.confidence || 0) - (a.confidence || 0)
