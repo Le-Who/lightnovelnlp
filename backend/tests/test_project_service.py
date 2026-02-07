@@ -2,10 +2,6 @@ import sys
 from unittest.mock import MagicMock
 import os
 
-# Mock spacy and other heavy dependencies BEFORE importing anything else
-sys.modules["spacy"] = MagicMock()
-sys.modules["app.core.nlp_pipeline.term_extractor"] = MagicMock()
-
 # Add backend to path
 sys.path.append(os.path.join(os.getcwd(), "backend"))
 

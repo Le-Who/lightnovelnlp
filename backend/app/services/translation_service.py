@@ -27,13 +27,9 @@ class TranslationService:
         relevant_relationships = []
         
         if use_glossary:
-            all_terms = db.query(GlossaryTerm).filter(
-                GlossaryTerm.project_id == chapter.project_id,
-                GlossaryTerm.status == TermStatus.APPROVED
-            ).all()
-            
             # Smart Filtering: Only send terms present in the text
-            glossary_terms = GlossaryService.filter_terms_by_text(chapter.original_text, all_terms)
+            # Optimization: Fetch only relevant terms to avoid heavy object instantiation
+            glossary_terms = GlossaryService.get_relevant_terms(db, chapter.project_id, chapter.original_text)
             
             # 1.1 Получаем связи между найденными терминами
             if glossary_terms:
@@ -111,13 +107,8 @@ class TranslationService:
         if not chapter:
             return {"error": "Chapter not found", "status_code": 404}
             
-        all_terms = db.query(GlossaryTerm).filter(
-            GlossaryTerm.project_id == chapter.project_id,
-            GlossaryTerm.status == TermStatus.APPROVED
-        ).all()
-        
-        # Smart Filtering
-        glossary_terms = GlossaryService.filter_terms_by_text(chapter.original_text, all_terms)
+        # Smart Filtering: Optimization using get_relevant_terms
+        glossary_terms = GlossaryService.get_relevant_terms(db, chapter.project_id, chapter.original_text)
         
         if not glossary_terms:
             return {
@@ -181,12 +172,8 @@ class TranslationService:
         if not chapter.translated_text:
             return {"error": "Chapter has no translation to review", "status_code": 400}
             
-        all_terms = db.query(GlossaryTerm).filter(
-            GlossaryTerm.project_id == chapter.project_id,
-            GlossaryTerm.status == TermStatus.APPROVED
-        ).all()
-        
-        glossary_terms = GlossaryService.filter_terms_by_text(chapter.original_text, all_terms)
+        # Smart Filtering
+        glossary_terms = GlossaryService.get_relevant_terms(db, chapter.project_id, chapter.original_text)
         
         source_lang = chapter.project.source_language
         target_lang = chapter.project.target_language
