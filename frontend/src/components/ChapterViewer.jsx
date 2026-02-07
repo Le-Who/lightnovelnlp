@@ -1,225 +1,205 @@
 import React, { useState, useEffect } from 'react'
-import api from '../services/apiClient'
-import { Card } from './ui/Card'
-import { Button } from './ui/Button'
-import { Modal } from './ui/Modal'
-import { Spinner } from './ui/Spinner'
-import { MessageSquare, ArrowRight, Eye, Download } from 'lucide-react'
+import api from '@/services/apiClient'
+import { Terminal, FileText, ArrowRight, Eye, MessageSquare, X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Hash, Download } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 
 export default function ChapterViewer({ projectId }) {
   const [chapters, setChapters] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedChapter, setSelectedChapter] = useState(null)
-  const [reviewing, setReviewing] = useState({})
-  const [reviewData, setReviewData] = useState({})
+  const [isFullScreen, setIsFullScreen] = useState(false)
 
   const loadChapters = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/chapters`, {
-        params: {
-          sort_by: 'order',
-          order: 'asc'
-        }
-      })
-      setChapters(res.data)
-    } catch (e) {
-      console.error('Error loading chapters:', e)
-    } finally {
-      setLoading(false)
-    }
+      const res = await api.get(`/projects/${projectId}/chapters`, { params: { sort_by: 'order', order: 'asc' } })
+      setChapters(res.data.filter(ch => ch.translated_text))
+    } catch (e) { console.error(e) } finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    if (projectId) {
-      loadChapters()
-    }
-  }, [projectId])
+  useEffect(() => { if (projectId) loadChapters() }, [projectId])
 
-  const requestReview = async (chapterId) => {
-    setReviewing(prev => ({ ...prev, [chapterId]: true }))
-    try {
-      const res = await api.post(`/translation/chapters/${chapterId}/review`)
-      if (res.data.review_available) {
-        setReviewData(prev => ({ ...prev, [chapterId]: res.data.review_text }))
-        alert('Рецензирование завершено!')
-      } else {
-        alert('Ошибка рецензирования: ' + res.data.message)
-      }
-    } catch (e) {
-      console.error('Error requesting review:', e)
-      alert('Ошибка запроса рецензирования')
-    } finally {
-      setReviewing(prev => ({ ...prev, [chapterId]: false }))
-    }
+  const downloadChapter = () => {
+    if (!selectedChapter.translated_text) return;
+    const blob = new Blob([selectedChapter.translated_text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedChapter.title || 'chapter'}_translated.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
-  const handleDownload = async (chapter) => {
-    if (!chapter || !chapter.translated_text) return;
-    try {
-      const response = await api.get(`/projects/${projectId}/chapters/${chapter.id}/download`, {
-        responseType: 'blob', // Important for file download
-      });
+  if (loading) return (
+    <div className="flex items-center justify-center p-24 text-accent animate-pulse font-mono tracking-widest text-xs">
+      <Spinner className="w-6 h-6 mr-3" />
+      LOADING_READER_MODULE...
+    </div>
+  )
 
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
+  // Reader View
+  if (selectedChapter) {
+    return (
+      <div className={`flex flex-col ${isFullScreen ? 'fixed inset-0 z-[9999] bg-bg p-4' : 'h-[800px]'} transition-all duration-300`}>
+        {/* Reader Toolbar */}
+        <div className="flex justify-between items-center border-b-2 border-accent/20 pb-4 mb-4 bg-surface/80 p-4 shadow-[0_5px_15px_rgba(0,0,0,0.5)] backdrop-blur-md">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => setSelectedChapter(null)}
+              className="group flex items-center text-muted-foreground hover:text-accent font-bold uppercase text-[10px] tracking-widest transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+              Abort_Read
+            </button>
+            <div className="h-6 w-[2px] bg-accent/20" />
+            <div className="flex flex-col">
+              <div className="text-[10px] text-accent/50 uppercase tracking-[0.2em] mb-1">Active_File</div>
+              <div className="text-text font-bold text-sm tracking-wider flex items-center shadow-accent">
+                <FileText className="w-4 h-4 mr-2" />
+                {selectedChapter.title}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-4 items-center">
+            <div className="text-[10px] text-muted-foreground hidden md:block">
+              <span className="text-secondary-accent">SRC_SIZE:</span> {selectedChapter.original_text.length}B
+              <span className="mx-2">|</span>
+              <span className="text-accent">OUT_SIZE:</span> {selectedChapter.translated_text.length}B
+            </div>
+            <button
+              onClick={downloadChapter}
+              className="text-muted-foreground hover:text-accent p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10"
+              title="DOWNLOAD_DATA"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="text-accent hover:text-white p-2 border border-transparent hover:border-accent/50 transition-all hover:bg-accent/10 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]"
+            >
+              {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
 
-      // Try to extract filename from headers, fallback to constructed name
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = `chapter_${chapter.id}.txt`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch && filenameMatch.length === 2)
-          filename = filenameMatch[1];
-      } else {
-        // Fallback filename
-        filename = `${chapter.id}_${chapter.title}.txt`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      }
+        {/* Split View */}
+        <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0 overflow-hidden">
+          {/* Original Panel */}
+          <div className="flex-1 min-h-0 flex flex-col border border-accent/10 bg-[#0a0a0c] relative group">
+            {/* Tech Header */}
+            <div className="absolute top-0 left-0 right-0 h-8 bg-surface/50 border-b border-accent/10 flex items-center px-4 justify-between">
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Raw_Input_Stream</span>
+              <div className="flex gap-1">
+                <div className="w-2 h-2 rounded-full bg-red-500/20" />
+                <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
+                <div className="w-2 h-2 rounded-full bg-green-500/20" />
+              </div>
+            </div>
 
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
+            <div className="flex-1 overflow-auto p-6 pt-12 font-mono text-xs md:text-sm text-text-muted/60 whitespace-pre-wrap leading-relaxed custom-scrollbar selection:bg-secondary-accent/20 selection:text-secondary-accent">
+              {selectedChapter.original_text}
+            </div>
+          </div>
 
-      // Cleanup
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Download failed:", error);
-      alert("Failed to download chapter.");
-    }
-  };
+          {/* Translation Panel */}
+          <div className="flex-1 min-h-0 flex flex-col border border-accent/40 bg-black relative shadow-[0_0_30px_rgba(0,243,255,0.05)]">
+            {/* Tech Header */}
+            <div className="absolute top-0 left-0 right-0 h-8 bg-accent/5 border-b border-accent/20 flex items-center px-4 justify-between">
+              <span className="text-[10px] text-accent font-bold uppercase tracking-widest flex items-center">
+                <Terminal className="w-3 h-3 mr-2" />
+                Compiled_Output
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-accent animate-pulse rounded-full shadow-[0_0_5px_#00f3ff]" />
+                <span className="text-[8px] text-accent">LIVE</span>
+              </div>
+            </div>
 
-  if (loading) return <div className="flex justify-center p-8"><Spinner /></div>
+            {/* Scanner Line Animation Container */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 z-0">
+              <div className="w-full h-full bg-[linear-gradient(transparent_0%,rgba(0,243,255,0.1)_50%,transparent_100%)] bg-[length:100%_4px] animate-scan" />
+            </div>
 
-  const translatedChapters = chapters.filter(ch => ch.translated_text)
+            <div className="flex-1 overflow-auto p-8 pt-12 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-loose custom-scrollbar relative z-10 selection:bg-accent/30 selection:text-white">
+              {selectedChapter.translated_text}
+            </div>
 
+            {/* Footer Info */}
+            <div className="absolute bottom-0 left-0 right-0 h-6 bg-accent/5 border-t border-accent/10 flex items-center px-4 justify-end text-[10px] text-accent/50 font-mono">
+              <span>EOF_MARKER_DETECTED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // List View
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold tracking-tight">Переведенные главы</h3>
+    <div className="space-y-6 max-w-[1200px] mx-auto">
+      <div className="flex items-center justify-between mb-8 border-b border-accent/20 pb-4">
+        <div className="flex flex-col">
+          <div className="text-[10px] text-secondary-accent uppercase tracking-widest mb-1">Module_Status</div>
+          <h3 className="text-2xl text-text font-bold uppercase tracking-tighter flex items-center">
+            <Eye className="w-6 h-6 mr-3 text-accent" />
+            Read_Interface
+          </h3>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Available_Files</div>
+          <div className="text-3xl font-bold text-accent font-mono leading-none mt-1">{String(chapters.length).padStart(2, '0')}</div>
+        </div>
       </div>
 
-      {translatedChapters.length === 0 ? (
-        <div className="text-center py-12 border border-dashed rounded-lg text-slate-500">
-          Переведенные главы отсутствуют. Сначала переведите главы в разделе &quot;Главы&quot;.
+      {chapters.length === 0 ? (
+        <div className="border-2 border-dashed border-accent/20 p-16 text-center">
+          <Hash className="w-12 h-12 text-accent/20 mx-auto mb-4" />
+          <div className="text-accent/50 tracking-widest uppercase text-sm font-bold">No_Compiled_Data_Found</div>
+          <div className="text-xs text-muted-foreground mt-2">Initiate translation sequence in Chapter Manager to generate readable output.</div>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {translatedChapters.map((chapter) => (
-            <Card
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {chapters.map((chapter, idx) => (
+            <div
               key={chapter.id}
-              className="cursor-pointer hover:border-slate-300 transition-colors"
               onClick={() => setSelectedChapter(chapter)}
+              className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
             >
-              <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h4 className="font-semibold text-lg">{chapter.title}</h4>
-                  <div className="text-sm text-slate-500 flex gap-2 items-center">
-                    <span>Символов: {(chapter.original_text || '').length}</span>
-                    <ArrowRight className="h-3 w-3" />
-                    <span>{(chapter.translated_text || '').length}</span>
-                  </div>
-                  <p className="text-sm text-slate-500 italic mt-1 line-clamp-1">
-                    {(chapter.translated_text || '').substring(0, 100)}...
-                  </p>
-                </div>
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="whitespace-nowrap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(chapter);
-                    }}
-                    title="Скачать"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="whitespace-nowrap"
-                  >
-                    <Eye className="mr-2 h-4 w-4" /> Читать
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      requestReview(chapter.id)
-                    }}
-                    disabled={reviewing[chapter.id]}
-                    variant={reviewing[chapter.id] ? "secondary" : "default"}
-                    className="whitespace-nowrap"
-                  >
-                    {reviewing[chapter.id] ? <Spinner className="mr-2" /> : <MessageSquare className="mr-2 h-4 w-4" />}
-                    {reviewing[chapter.id] ? 'Рецензирование...' : 'Рецензировать'}
-                  </Button>
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="text-xs font-mono text-secondary-accent px-2 py-1 bg-secondary-accent/10 border border-secondary-accent/20">
+                  ID_{String(idx + 1).padStart(3, '0')}
+                </div>
+                <ArrowRight className="w-4 h-4 text-accent opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+              </div>
+
+              <h4 className="font-bold text-text group-hover:text-accent truncate mb-6 text-lg tracking-tight relative z-10 transition-colors">
+                {chapter.title}
+              </h4>
+
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground font-mono relative z-10 border-t border-accent/10 pt-4">
+                <div className="flex flex-col">
+                  <span className="uppercase opacity-50 mb-1">Source</span>
+                  <span>{chapter.original_text.length.toLocaleString()}B</span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="uppercase opacity-50 mb-1">Output</span>
+                  <span className="text-text">{chapter.translated_text.length.toLocaleString()}B</span>
                 </div>
               </div>
-            </Card>
+
+              {/* Decorative styles */}
+              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent/0 group-hover:bg-accent/50 transition-colors duration-500 scale-x-0 group-hover:scale-x-100 origin-left" />
+              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
           ))}
         </div>
       )}
-
-      {/* Viewer Modal */}
-      <Modal
-        isOpen={!!selectedChapter}
-        onClose={() => setSelectedChapter(null)}
-        title={selectedChapter?.title}
-        className="max-w-7xl h-[90vh] flex flex-col"
-      >
-        {selectedChapter && (
-          <div className="flex flex-col h-full min-h-0">
-            <div className="flex justify-end mb-2">
-              <Button variant="outline" size="sm" onClick={() => handleDownload(selectedChapter)}>
-                <Download className="mr-2 h-4 w-4" /> Скачать TXT
-              </Button>
-            </div>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-              <div className="flex flex-col min-h-0">
-                <h4 className="font-semibold text-sm text-slate-500 uppercase mb-2">Оригинал</h4>
-                <div className="flex-1 overflow-y-auto p-4 bg-slate-50 rounded-md border text-sm whitespace-pre-wrap leading-relaxed">
-                  {selectedChapter.original_text}
-                </div>
-              </div>
-
-              <div className="flex flex-col min-h-0">
-                <h4 className="font-semibold text-sm text-slate-500 uppercase mb-2">Перевод</h4>
-                <div className="flex-1 overflow-y-auto p-4 bg-white rounded-md border text-sm whitespace-pre-wrap leading-relaxed shadow-sm">
-                  {selectedChapter.translated_text}
-                </div>
-              </div>
-            </div>
-
-            {/* Review Section */}
-            {(reviewData[selectedChapter.id] || !reviewData[selectedChapter.id]) && (
-              <div className="mt-4 border-t pt-4 shrink-0">
-                {!reviewData[selectedChapter.id] ? (
-                  <div className="flex justify-end">
-                    <Button onClick={() => requestReview(selectedChapter.id)}>
-                      <MessageSquare className="mr-2 h-4 w-4" /> Запросить рецензию AI
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="max-h-40 overflow-y-auto p-4 bg-yellow-50 border border-yellow-100 rounded-md">
-                    <h4 className="font-semibold text-yellow-900 mb-2 flex items-center">
-                      <MessageSquare className="mr-2 h-4 w-4" /> Рецензия AI
-                    </h4>
-                    <p className="text-sm text-yellow-800 whitespace-pre-wrap">
-                      {reviewData[selectedChapter.id]}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

@@ -1,538 +1,296 @@
 import React, { useState, useEffect, useRef } from 'react'
-import api from '../services/apiClient'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card'
-import { Button } from './ui/Button'
-import { Input } from './ui/Input'
-import { Textarea } from './ui/Textarea'
-import { Badge } from './ui/Badge'
-import { Label } from './ui/Label'
-import { Modal } from './ui/Modal'
-import { Spinner } from './ui/Spinner'
-import { Alert } from './ui/Alert'
-import { Upload, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, FileSearch } from 'lucide-react'
+import api from '@/services/apiClient'
+import { Modal } from '@/components/ui/Modal'
+import { Textarea } from '@/components/ui/Textarea'
+import { Spinner } from '@/components/ui/Spinner'
+import { Terminal, FileText, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
   const [loading, setLoading] = useState(false)
-  const [analyzing, setAnalyzing] = useState({})  // chapterId -> status string
-  const [translating, setTranslating] = useState({})  // chapterId -> status string
-  const [reviewing, setReviewing] = useState({}) // chapterId -> boolean
   const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
   const [previewData, setPreviewData] = useState(null)
-  const [reviewData, setReviewData] = useState(null)
   const [uploadingChapters, setUploadingChapters] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
+  // Removed unused active state dictionaries in favor of chapter status
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const modalRef = useRef(null)
 
-  // Status mapping
+  // Derived state for active processing to trigger polling
+  const hasActiveTasks = chapters.some(ch =>
+    ['pending', 'extracting', 'relationships', 'summarizing', 'translating'].includes(ch.analysis_status) ||
+    ['pending', 'translating'].includes(ch.translation_status)
+  );
+
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'pending': return 'Ожидание...'
-      case 'extracting': return 'Извлечение терминов...'
-      case 'relationships': return 'Анализ связей...'
-      case 'summarizing': return 'Создание саммари...'
-      case 'translating': return 'Перевод...'
-      case 'completed': return 'Завершено!'
-      case 'failed': return 'Ошибка'
-      default: return status
+      case 'pending': return 'PENDING'
+      case 'extracting': return 'EXTRACTING'
+      case 'relationships': return 'NET_ANALYSIS'
+      case 'summarizing': return 'SUMMARIZING'
+      case 'translating': return 'TRANSLATING'
+      case 'completed': return 'COMPLETED'
+      case 'failed': return 'FAILED'
+      default: return status?.toUpperCase() || ''
     }
   }
 
   const loadChapters = async () => {
-    setLoading(true)
+    // Only show full loading spinner on first load
+    if (chapters.length === 0) setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/chapters`, {
-        params: {
-          sort_by: 'order',
-          order: 'asc'
-        }
-      })
+      const res = await api.get(`/projects/${projectId}/chapters`, { params: { sort_by: 'order', order: 'asc' } })
       setChapters(res.data)
-    } catch (e) {
-      console.error('Error loading chapters:', e)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { console.error(e) } finally { setLoading(false) }
   }
 
   useEffect(() => {
-    if (projectId) {
-      loadChapters()
-    }
+    if (projectId) loadChapters()
   }, [projectId])
+
+  // Polling for active tasks
+  useEffect(() => {
+    let interval;
+    if (hasActiveTasks) {
+      interval = setInterval(loadChapters, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [hasActiveTasks, projectId]);
 
   const createChapter = async () => {
     if (!newChapter.title.trim() || !newChapter.original_text.trim()) return
-
     try {
       await api.post(`/projects/${projectId}/chapters`, newChapter)
       setNewChapter({ title: '', original_text: '' })
       setIsCreateModalOpen(false)
       loadChapters()
-    } catch (e) {
-      console.error('Error creating chapter:', e)
-      alert('Ошибка создания главы')
-    }
+    } catch (e) { alert('ERROR: WRITE_FAILED') }
   }
 
   const deleteChapter = async (chapterId) => {
-    if (!confirm('Вы уверены, что хотите удалить эту главу?')) return
-
+    if (!confirm('CONFIRM_DELETION_SEQUENCE?')) return
     try {
       await api.delete(`/projects/chapters/${chapterId}`)
       loadChapters()
-    } catch (e) {
-      console.error('Error deleting chapter:', e)
-      alert('Ошибка удаления главы')
-    }
+    } catch (e) { alert('ERROR: DELETE_FAILED') }
   }
 
-  const uploadChaptersFromFile = async () => {
-    if (!selectedFile) {
-      alert('Пожалуйста, выберите файл')
-      return
-    }
-
-    setUploadingChapters(true)
+  const uploadChaptersFromFile = async (fileToUpload) => {
+    if (!fileToUpload) return;
+    setUploadingChapters(true);
     try {
       const formData = new FormData()
-      formData.append('file', selectedFile)
+      formData.append('file', fileToUpload)
       formData.append('chapter_pattern', chapterPattern)
-
-      const res = await api.post(`/projects/${projectId}/upload_chapters`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-
-      alert(`Успешно загружено ${res.data.chapters_created} глав!`)
-      setSelectedFile(null)
-      loadChapters() // Reload list
+      const res = await api.post(`/projects/${projectId}/upload_chapters`, formData)
+      alert(`UPLOAD COMPLETE: ${res.data.chapters_created} FILES CREATED`)
+      loadChapters()
     } catch (e) {
-      console.error('Error uploading chapters:', e)
-      if (e.response?.data?.detail) {
-        alert(`Ошибка загрузки: ${e.response.data.detail}`)
-      } else {
-        alert('Ошибка загрузки глав')
-      }
-    } finally {
-      setUploadingChapters(false)
-    }
+      console.error(e)
+      alert('UPLOAD FAILURE')
+    } finally { setUploadingChapters(false) }
   }
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (file && (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt'))) {
-      setSelectedFile(file)
-    } else {
-      alert('Пожалуйста, выберите текстовый файл (.txt)')
-      e.target.value = ''
+    const file = e.target.files[0];
+    if (file) {
+      uploadChaptersFromFile(file);
     }
   }
 
   const analyzeChapter = async (chapterId) => {
-    setAnalyzing(prev => ({ ...prev, [chapterId]: 'pending' }))
-
     try {
       await api.post(`/processing/chapters/${chapterId}/analyze-async`)
-
-      const pollStatus = async () => {
-        try {
-          const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
-          const status = statusRes.data.analysis_status
-
-          setAnalyzing(prev => ({ ...prev, [chapterId]: status }))
-
-          if (status === 'completed') {
-            loadChapters()
-            setTimeout(() => {
-              setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-            }, 1000)
-          } else if (status === 'failed') {
-            setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-            alert(`Ошибка анализа: ${statusRes.data.analysis_error || 'Неизвестная ошибка'}`)
-          } else {
-            setTimeout(pollStatus, 2000)
-          }
-        } catch (e) {
-          console.error('Error polling status:', e)
-          setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-        }
-      }
-
-      setTimeout(pollStatus, 500)
-
-    } catch (e) {
-      console.error('Error starting analysis:', e)
-      setAnalyzing(prev => ({ ...prev, [chapterId]: null }))
-      alert('Ошибка запуска анализа')
-    }
+      // Optimistic update to trigger polling
+      setChapters(prev => prev.map(ch => ch.id === chapterId ? { ...ch, analysis_status: 'pending' } : ch))
+    } catch (e) { alert('INIT FAIL') }
   }
 
   const translateChapter = async (chapterId) => {
-    setTranslating(prev => ({ ...prev, [chapterId]: 'pending' }))
-
     try {
       await api.post(`/translation/chapters/${chapterId}/translate-async`)
-
-      const pollStatus = async () => {
-        try {
-          const statusRes = await api.get(`/processing/chapters/${chapterId}/status`)
-          const status = statusRes.data.translation_status
-
-          setTranslating(prev => ({ ...prev, [chapterId]: status }))
-
-          if (status === 'completed') {
-            loadChapters()
-            setTimeout(() => {
-              setTranslating(prev => ({ ...prev, [chapterId]: null }))
-            }, 1000)
-          } else if (status === 'failed') {
-            setTranslating(prev => ({ ...prev, [chapterId]: null }))
-            alert(`Ошибка перевода: ${statusRes.data.translation_error || 'Неизвестная ошибка'}`)
-          } else {
-            setTimeout(pollStatus, 2000)
-          }
-        } catch (e) {
-          console.error('Error polling status:', e)
-          setTranslating(prev => ({ ...prev, [chapterId]: null }))
-        }
-      }
-
-      setTimeout(pollStatus, 500)
-
-    } catch (e) {
-      console.error('Error starting translation:', e)
-      setTranslating(prev => ({ ...prev, [chapterId]: null }))
-      alert('Ошибка перевода')
-    }
-  }
-
-  const reviewTranslation = async (chapterId) => {
-    setReviewing(prev => ({ ...prev, [chapterId]: true }))
-    try {
-      const res = await api.post(`/translation/chapters/${chapterId}/review`)
-      setReviewData(res.data)
-    } catch (e) {
-      console.error('Error reviewing translation:', e)
-      alert('Ошибка получения рецензии: ' + (e.response?.data?.detail || e.message))
-    } finally {
-      setReviewing(prev => ({ ...prev, [chapterId]: false }))
-    }
+      // Optimistic update
+      setChapters(prev => prev.map(ch => ch.id === chapterId ? { ...ch, translation_status: 'pending' } : ch))
+    } catch (e) { alert('INIT FAIL') }
   }
 
   const previewTranslation = async (chapterId) => {
     try {
       const res = await api.get(`/translation/chapters/${chapterId}/translation-preview`)
       setPreviewData(res.data)
-    } catch (e) {
-      console.error('Error getting preview:', e)
-      alert('Ошибка получения предварительного просмотра')
-    }
+    } catch (e) { alert('Preview Error') }
   }
-
-  const closePreview = () => {
-    setPreviewData(null)
-  }
-
-  const closeReview = () => {
-    setReviewData(null)
-  }
-
-  useEffect(() => {
-    if (previewData && modalRef.current) {
-      modalRef.current.focus()
-    }
-  }, [previewData])
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        if (previewData) setPreviewData(null)
-        if (reviewData) setReviewData(null)
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [previewData, reviewData])
-
-  if (loading) return <div>Загрузка глав...</div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h3 className="text-xl font-semibold text-foreground">Главы проекта</h3>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить главу
-          </Button>
+    <div className="space-y-6 font-mono text-sm max-w-[1200px] mx-auto">
+      {/* Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-end border-b border-accent/20 pb-4 gap-4">
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-1 tracking-widest uppercase">Current_Directory</div>
+          <div className="text-xl text-accent font-bold flex items-center tracking-tighter shadow-accent">
+            <span className="mr-2 text-secondary-accent">/ROOT/CHAPTERS/</span>
+            <span className="animate-pulse">_</span>
+          </div>
+        </div>
+        <div className="flex gap-4 items-center">
+          <div className="group flex items-center gap-2 border-b border-accent/30 p-1 bg-surface/50 hover:border-accent transition-colors">
+            <input
+              className="bg-transparent border-none text-xs w-32 px-2 focus:outline-none placeholder:text-muted-foreground text-text font-bold"
+              value={chapterPattern}
+              onChange={(e) => setChapterPattern(e.target.value)}
+              placeholder="REGEX_PATTERN..."
+            />
+            <label className={`flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider ${uploadingChapters ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              {uploadingChapters ? <Spinner className="w-3 h-3 mr-2" /> : <Upload className="w-3 h-3 mr-2" />}
+              {uploadingChapters ? 'UPLOADING...' : 'UPLOAD_BATCH'}
+              <input type="file" className="hidden" onChange={handleFileSelect} disabled={uploadingChapters} />
+            </label>
+          </div>
+          <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-6 py-2 bg-accent text-bg hover:bg-secondary-accent transition-colors uppercase text-[10px] tracking-widest font-bold shadow-[0_0_10px_rgba(0,243,255,0.3)]">
+            <Plus className="w-3 h-3 mr-2" />
+            NEW_FILE
+          </button>
         </div>
       </div>
 
-      {/* Загрузка глав из файла */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Загрузить главы из файла</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <div className="space-y-2">
-              <Label htmlFor="chapter-pattern">Паттерн разделения глав</Label>
-              <Input
-                id="chapter-pattern"
-                value={chapterPattern}
-                onChange={(e) => setChapterPattern(e.target.value)}
-                placeholder="Глава \\d+"
-              />
-              <p className="text-xs text-muted-foreground">
-                Регулярное выражение для разделения (по умолчанию: &quot;Глава \\d+&quot;)
-              </p>
-            </div>
+      {/* File List */}
+      <div className="border border-accent/30 bg-surface/20 min-h-[400px] relative">
+        {/* Decorative Grid Lines */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-            <div className="space-y-2">
-              <Label>Файл с главами</Label>
-              <div className="flex gap-2 items-center">
-                <Input
-                  type="file"
-                  accept=".txt"
-                  onChange={handleFileSelect}
-                  className="cursor-pointer file:text-foreground"
-                />
-                <Button
-                  onClick={uploadChaptersFromFile}
-                  disabled={uploadingChapters || !selectedFile}
-                  className="whitespace-nowrap"
-                >
-                  {uploadingChapters ? <Spinner className="w-4 h-4 mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                  Загрузить
-                </Button>
+        <div className="grid grid-cols-12 gap-4 p-3 border-b border-accent/20 text-[10px] text-accent/70 bg-surface/80 font-bold tracking-widest relative z-10 uppercase">
+          <div className="col-span-1">ID_Tag</div>
+          <div className="col-span-4">Filename</div>
+          <div className="col-span-2">Size_B</div>
+          <div className="col-span-2">Process_Status</div>
+          <div className="col-span-3 text-right">Execute</div>
+        </div>
+
+        {loading ? (
+          <div className="p-24 flex flex-col items-center justify-center text-accent animate-pulse">
+            <Activity className="w-8 h-8 mb-4" />
+            <div className="tracking-widest text-xs">SCANNING_SECTOR_DATA...</div>
+          </div>
+        ) : (
+          <div className="divide-y divide-accent/5 relative z-10">
+            {chapters.map((chapter, idx) => {
+              const isProcessing = ['pending', 'extracting', 'relationships', 'summarizing', 'translating'].includes(chapter.analysis_status) || ['pending', 'translating'].includes(chapter.translation_status);
+              const processingStatus = (['pending', 'extracting', 'relationships', 'summarizing'].includes(chapter.analysis_status) ? chapter.analysis_status : chapter.translation_status);
+
+              return (
+                <div key={chapter.id} className="grid grid-cols-12 gap-4 p-3 items-center transition-all duration-300 group border border-transparent hover:border-accent hover:bg-surface/60 hover:shadow-[0_0_15px_rgba(0,243,255,0.15)] relative overflow-hidden">
+                  <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                  <div className="col-span-1 text-muted-foreground text-[10px] font-mono opacity-50 group-hover:text-accent transition-colors relative z-10">{String(idx + 1).padStart(3, '0')}</div>
+                  <div className="col-span-4 font-bold text-text truncate flex items-center relative z-10">
+                    <FileCode className="w-3 h-3 mr-3 text-secondary-accent opacity-50 group-hover:opacity-100" />
+                    <span className="group-hover:text-accent group-hover:translate-x-1 transition-all duration-300">{chapter.title}</span>
+                  </div>
+                  <div className="col-span-2 text-[10px] text-muted-foreground font-mono relative z-10">{(chapter.original_text || '').length.toLocaleString()}</div>
+                  <div className="col-span-2 relative z-10">
+                    {isProcessing ? (
+                      <span className="text-secondary-accent text-[10px] flex items-center animate-pulse tracking-widest">
+                        <Spinner className="w-3 h-3 mr-2" />
+                        {getStatusLabel(processingStatus)}
+                      </span>
+                    ) : chapter.translated_text ? (
+                      <span className="text-accent text-[10px] flex items-center tracking-widest shadow-accent"><CheckCircle2 className="w-3 h-3 mr-2" /> READY</span>
+                    ) : (
+                      <span className="text-muted-foreground text-[10px] opacity-30 tracking-widest">PENDING</span>
+                    )}
+                  </div>
+                  <div className="col-span-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-200 relative z-10">
+                    <ActionButton onClick={() => analyzeChapter(chapter.id)} icon={Activity} label="ANALYZE" />
+                    <ActionButton onClick={() => translateChapter(chapter.id)} icon={Languages} label="TRANSLATE" />
+                    <ActionButton onClick={() => previewTranslation(chapter.id)} icon={Eye} label="VIEW" />
+                    <ActionButton onClick={() => deleteChapter(chapter.id)} icon={Trash2} label="PURGE" variant="destructive" />
+                  </div>
+                </div>
+              )
+            })}
+            {chapters.length === 0 && (
+              <div className="p-16 text-center text-muted-foreground border-t border-accent/10 border-dashed flex flex-col items-center">
+                <AlertTriangle className="w-8 h-8 mb-4 opacity-50" />
+                <span className="tracking-widest text-xs">NO_FILES_FOUND. INITIATE UPLOAD OR CREATE NEW FILE.</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Create Modal - Custom Neon Style */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+          <div className="w-full max-w-lg border-2 border-accent bg-bg p-1 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]">
+            {/* Corners */}
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-accent" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-accent" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-accent" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-accent" />
+
+            <div className="p-6 bg-surface/90">
+              <h3 className="text-accent text-lg font-bold mb-6 flex items-center tracking-widest uppercase">
+                <Terminal className="w-5 h-5 mr-2" />
+                NEW_CHAPTER_ENTRY
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Filename / Title</label>
+                  <input
+                    className="w-full bg-bg border-b border-accent/50 p-2 text-text focus:border-accent focus:outline-none font-bold"
+                    value={newChapter.title}
+                    onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="CHAPTER_01..."
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Content Data</label>
+                  <Textarea
+                    className="w-full h-40 bg-bg border border-accent/20 p-2 text-text focus:border-accent focus:outline-none resize-none font-mono text-xs"
+                    value={newChapter.original_text}
+                    onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
+                    placeholder="PASTE_TEXT_DATA..."
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-4 mt-8">
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-muted-foreground hover:text-destructive px-4 py-2 uppercase text-[10px] font-bold tracking-widest transition-colors">ABORT</button>
+                <button onClick={createChapter} className="bg-accent text-bg px-6 py-2 uppercase text-[10px] font-bold hover:bg-white transition-colors tracking-widest shadow-[0_0_15px_rgba(0,243,255,0.4)]">EXECUTE_WRITE</button>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Список глав */}
-      {chapters.length === 0 ? (
-        <Alert>
-          Главы отсутствуют. Добавьте первую главу вручную или загрузите из файла.
-        </Alert>
-      ) : (
-        <div className="space-y-4">
-          {chapters.map((chapter) => (
-            <Card key={chapter.id}>
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row gap-4 justify-between">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-medium text-card-foreground">{chapter.title}</h4>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteChapter(chapter.id)}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive md:hidden"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <FileText className="h-4 w-4" />
-                        {(chapter.original_text || '').length} симв.
-                      </span>
-                      {chapter.translated_text && (
-                        <Badge variant="success" className="gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Переведено
-                        </Badge>
-                      )}
-                      {!chapter.translated_text && chapter.analysis_status === 'completed' && (
-                        <Badge variant="secondary" className="gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Проанализировано
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {chapter.original_text}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-row md:flex-col gap-2 items-stretch md:w-48">
-                    <Button
-                      onClick={() => analyzeChapter(chapter.id)}
-                      disabled={!!analyzing[chapter.id]}
-                      variant={analyzing[chapter.id] ? "secondary" : "default"}
-                      className="flex-1"
-                    >
-                      {analyzing[chapter.id] ? (
-                        <>
-                          <Spinner className="w-4 h-4 mr-2" />
-                          {getStatusLabel(analyzing[chapter.id])}
-                        </>
-                      ) : (
-                        "Анализировать"
-                      )}
-                    </Button>
-
-                    <Button
-                      onClick={() => previewTranslation(chapter.id)}
-                      variant="outline"
-                      className="flex-1"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Предпросмотр
-                    </Button>
-
-                    <Button
-                      onClick={() => translateChapter(chapter.id)}
-                      disabled={!!translating[chapter.id]}
-                      variant={translating[chapter.id] ? "secondary" : "default"}
-                      className={`flex-1 ${!translating[chapter.id] && 'bg-green-600 hover:bg-green-700'}`}
-                    >
-                      {translating[chapter.id] ? (
-                        <>
-                          <Spinner className="w-4 h-4 mr-2" />
-                          {getStatusLabel(translating[chapter.id])}
-                        </>
-                      ) : (
-                        <>
-                          <Languages className="w-4 h-4 mr-2" />
-                          Перевести
-                        </>
-                      )}
-                    </Button>
-
-                    {chapter.translated_text && (
-                      <Button
-                        onClick={() => reviewTranslation(chapter.id)}
-                        disabled={reviewing[chapter.id]}
-                        variant="warning"
-                        className="flex-1"
-                      >
-                        {reviewing[chapter.id] ? (
-                          <Spinner className="w-4 h-4" />
-                        ) : (
-                          <>
-                            <FileSearch className="w-4 h-4 mr-2" />
-                            Рецензия
-                          </>
-                        )}
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      onClick={() => deleteChapter(chapter.id)}
-                      className="hidden md:flex text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Удалить
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
         </div>
       )}
 
-      {/* Модальное окно создания главы */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Добавить новую главу"
-      >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="chapter-title">Название главы</Label>
-            <Input
-              id="chapter-title"
-              value={newChapter.title}
-              onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="Как называется глава"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="chapter-text">Текст главы</Label>
-            <Textarea
-              id="chapter-text"
-              value={newChapter.original_text}
-              onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
-              placeholder="Вставьте текст главы сюда..."
-              className="min-h-[200px]"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={createChapter}>
-              Создать главу
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Модальное окно предварительного просмотра */}
       <Modal
         isOpen={!!previewData}
-        onClose={closePreview}
-        title="Предварительный просмотр перевода"
-        className="max-w-4xl"
+        onClose={() => setPreviewData(null)}
+        title="DATA_PREVIEW"
+        className="max-w-4xl border-accent"
       >
-        {previewData?.preview_available ? (
-          <div className="space-y-4 h-[70vh] flex flex-col">
-            <div>
-              <strong>Использовано терминов глоссария:</strong> {previewData.glossary_terms_count}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
-              <div className="flex flex-col h-full">
-                <h4 className="font-medium mb-2">Оригинал</h4>
-                <div className="border rounded-md p-4 bg-muted overflow-auto flex-1 text-sm whitespace-pre-wrap text-foreground">
-                  {previewData.original_text}
-                </div>
-              </div>
-
-              <div className="flex flex-col h-full">
-                <h4 className="font-medium mb-2">Перевод</h4>
-                <div className="border rounded-md p-4 bg-card overflow-auto flex-1 text-sm whitespace-pre-wrap text-card-foreground">
-                  {previewData.translated_text}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-red-500 p-4">
-            {previewData?.message}
+        {previewData && (
+          <div className="grid grid-cols-2 gap-4 h-[60vh]">
+            <div className="border border-border bg-bg/50 p-4 overflow-auto font-mono text-xs text-muted-foreground whitespace-pre-wrap">{previewData.original_text}</div>
+            <div className="border border-accent/30 bg-accent/5 p-4 overflow-auto font-mono text-xs text-text whitespace-pre-wrap shadow-inner">{previewData.translated_text}</div>
           </div>
         )}
-      </Modal>
-
-      {/* Модальное окно рецензии */}
-      <Modal
-        isOpen={!!reviewData}
-        onClose={closeReview}
-        title="Рецензия на перевод (AI)"
-        className="max-w-3xl"
-      >
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-          {reviewData?.review_text ? (
-            <div className="prose dark:prose-invert max-w-none whitespace-pre-line text-foreground">
-              {reviewData.review_text}
-            </div>
-          ) : (
-            <div className="text-yellow-500">Нет данных рецензии</div>
-          )}
-          <div className="text-xs text-muted-foreground pt-4 border-t">
-            ID главы: {reviewData?.chapter_id}
-          </div>
-        </div>
       </Modal>
     </div>
   )
 }
+
+const ActionButton = ({ onClick, icon: Icon, label, variant = 'default' }) => (
+  <button
+    onClick={onClick}
+    title={label}
+    className={`
+            p-2 transition-all duration-200 border border-transparent
+            ${variant === 'destructive'
+        ? 'hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10'
+        : 'hover:text-accent hover:border-accent/30 hover:bg-accent/10'
+      }
+        `}
+  >
+    <Icon className="w-4 h-4" />
+  </button>
+);
