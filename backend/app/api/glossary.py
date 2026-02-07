@@ -4,10 +4,11 @@ from typing import List
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, load_only
 from operator import attrgetter
 
 from app.deps import get_db
+from app.models.project import Chapter
 from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, GlossaryVersion
 from app.schemas.glossary import (
     GlossaryTermCreate, 
@@ -42,8 +43,9 @@ def get_glossary_terms(
         selectinload(GlossaryTerm.occurrences),
         selectinload(GlossaryTerm.source_relationships),
         selectinload(GlossaryTerm.target_relationships),
-        selectinload(GlossaryTerm.first_chapter),
-        selectinload(GlossaryTerm.last_chapter)
+        # Optimize: Only load ID and order to avoid fetching heavy text fields
+        selectinload(GlossaryTerm.first_chapter).load_only(Chapter.id, Chapter.order),
+        selectinload(GlossaryTerm.last_chapter).load_only(Chapter.id, Chapter.order)
     )
 
     if search:
