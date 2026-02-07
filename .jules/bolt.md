@@ -7,3 +7,4 @@
 ## 2025-05-24 - [Over-fetching Large Text Columns]
 **Learning:** `TranslationService._get_project_summary` was fetching ALL chapters (including heavy `original_text` and `translated_text` columns) and then slicing in Python to get the first 5. This caused a 128x performance penalty (0.45s vs 0.0035s) due to IO and object construction overhead.
 **Action:** Always use `.limit()` in SQL queries when only a subset is needed. Use `load_only()` or `defer()` to exclude large TEXT/BLOB columns when only metadata is required.
+- **API Pagination Default**: Enforcing a default limit (e.g., 50) on list endpoints like `get_glossary_terms` significantly reduces response time (observed ~0.16s -> ~0.03s for 150 items) and prevents accidental bulk loading.

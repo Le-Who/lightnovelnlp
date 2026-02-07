@@ -28,7 +28,7 @@ router = APIRouter()
 def get_glossary_terms(
     project_id: int,
     db: Session = Depends(get_db),
-    limit: int | None = Query(default=None, gt=0, le=1000),
+    limit: int = Query(default=50, gt=0, le=1000),
     offset: int = Query(default=0, ge=0),
     search: str | None = None,
     sort_by: str = Query(default="id"),
