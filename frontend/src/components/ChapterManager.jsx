@@ -3,7 +3,7 @@ import api from '@/services/apiClient'
 import { Modal } from '@/components/ui/Modal'
 import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
-import { Terminal, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode } from 'lucide-react'
+import { Terminal, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode, X } from 'lucide-react'
 
 export default function ChapterManager({ projectId }) {
   const [chapters, setChapters] = useState([])
@@ -16,6 +16,16 @@ export default function ChapterManager({ projectId }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const [error, setError] = useState(null) // New error state
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setIsCreateModalOpen(false)
+    }
+    if (isCreateModalOpen) {
+      window.addEventListener('keydown', handleEsc)
+    }
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [isCreateModalOpen])
 
   // Derived state for active processing to trigger polling
   const hasActiveTasks = chapters.some(ch =>
@@ -269,7 +279,12 @@ export default function ChapterManager({ projectId }) {
 
       {/* Create Modal - Custom Neon Style */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-chapter-title"
+        >
           <div className="w-full max-w-lg border-2 border-accent bg-bg p-1 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]">
             {/* Corners */}
             <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-accent" />
@@ -277,15 +292,23 @@ export default function ChapterManager({ projectId }) {
             <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-accent" />
             <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-accent" />
 
-            <div className="p-6 bg-surface/90">
-              <h3 className="text-accent text-lg font-bold mb-6 flex items-center tracking-widest uppercase">
+            <div className="p-6 bg-surface/90 relative">
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="absolute top-4 right-4 text-accent/70 hover:text-accent transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 id="create-chapter-title" className="text-accent text-lg font-bold mb-6 flex items-center tracking-widest uppercase">
                 <Terminal className="w-5 h-5 mr-2" />
                 NEW_CHAPTER_ENTRY
               </h3>
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Filename / Title</label>
+                  <label htmlFor="chapter-title" className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Filename / Title</label>
                   <input
+                    id="chapter-title"
                     className="w-full bg-bg border-b border-accent/50 p-2 text-text focus:border-accent focus:outline-none font-bold"
                     value={newChapter.title}
                     onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
@@ -294,8 +317,9 @@ export default function ChapterManager({ projectId }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Content Data</label>
+                  <label htmlFor="chapter-content" className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Content Data</label>
                   <Textarea
+                    id="chapter-content"
                     className="w-full h-40 bg-bg border border-accent/20 p-2 text-text focus:border-accent focus:outline-none resize-none font-mono text-xs"
                     value={newChapter.original_text}
                     onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
