@@ -7,7 +7,7 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 240000, // 4 minutes for long operations (analysis with multiple Gemini API calls)
   headers: {
-    'Content-Type': 'application/json',
+    // 'Content-Type': 'application/json', // axios automatically sets this based on data
   },
 })
 

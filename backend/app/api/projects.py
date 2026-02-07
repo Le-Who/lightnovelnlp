@@ -177,10 +177,14 @@ def create_chapter_from_file(
 def upload_chapters_from_file(
     project_id: int,
     file: UploadFile = File(...),
-    chapter_pattern: str = Form("Глава \\d+"),
+    chapter_pattern: str = Form(default="Глава \\d+"),
     db: Session = Depends(get_db)
 ):
     """Загрузить главы из текстового файла."""
+    print(f"DEBUG: Receiving upload for project {project_id}")
+    print(f"DEBUG: Filename: {file.filename}, Content-Type: {file.content_type}")
+    print(f"DEBUG: Pattern: {chapter_pattern}")
+
     # Проверяем существование проекта
     project = db.get(Project, project_id)
     if not project:
@@ -196,16 +200,21 @@ def upload_chapters_from_file(
     try:
         # Читаем содержимое файла
         content = file.file.read().decode('utf-8')
+        print(f"DEBUG: File content length: {len(content)}")
         
         # Разделяем текст на главы по паттерну
         pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
         # Находим все совпадения с их позициями
         matches = list(pattern.finditer(content))
+        print(f"DEBUG: Found {len(matches)} matches")
         
         if not matches:
+             # Try fallback to just reading the whole file as one chapter if no pattern matches?
+             # Or just error. User wants explicit error.
+            print(f"DEBUG: No matches found for pattern '{chapter_pattern}'")
             raise HTTPException(
                 status_code=400,
-                detail="No chapters found with the specified pattern"
+                detail=f"No chapters found with the specified pattern: '{chapter_pattern}'"
             )
         
         created_chapters = []

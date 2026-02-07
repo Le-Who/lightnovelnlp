@@ -77,6 +77,12 @@ export default function ChapterManager({ projectId }) {
   const uploadChaptersFromFile = async (fileToUpload) => {
     if (!fileToUpload) return;
     setUploadingChapters(true);
+    if (!chapterPattern) {
+      alert("PATTERN_ERROR: MISSING_INPUT")
+      setUploadingChapters(false)
+      return;
+    }
+    console.log("DEBUG: Uploading with pattern:", chapterPattern)
     try {
       const formData = new FormData()
       formData.append('file', fileToUpload)
