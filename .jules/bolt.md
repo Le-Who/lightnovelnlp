@@ -10,3 +10,6 @@
 ## 2025-05-25 - [spaCy Matcher for Lemmatized Frequency]
 **Learning:** `TermExtractor` used regex `\bterm\b` which failed to count morphological variants (e.g. "cats" vs "cat"). Using `spaCy`'s `Matcher` with `LEMMA` attribute solves this efficiently.
 **Action:** When precise linguistic matching is needed, prefer `spacy.matcher.Matcher` over regex. Optimize `nlp.pipe` by disabling unnecessary components (`ner`, `parser`) to keep performance high (O(TextLength) instead of O(N*TextLength) for regex).
+## 2025-05-26 - [Avoid Heavy Object Instantiation for filtering]
+**Learning:** `TranslationService` was fetching ALL `GlossaryTerm` objects (including relationships) and then filtering them in Python using `term.source_term.lower() in text`. This caused massive overhead (instantiating 1000s of SQLAlchemy models when only ~50 were relevant).
+**Action:** Use a two-step query pattern: 1) Fetch lightweight tuples `(id, source_term)` from DB. 2) Filter in Python. 3) Fetch full objects by ID for matches. This reduces object instantiation overhead by >90% for sparse matches.
