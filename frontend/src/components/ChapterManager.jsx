@@ -11,6 +11,7 @@ export default function ChapterManager({ projectId }) {
   const [newChapter, setNewChapter] = useState({ title: '', original_text: '' })
   const [previewData, setPreviewData] = useState(null)
   const [uploadingChapters, setUploadingChapters] = useState(false)
+  const [creating, setCreating] = useState(false)
   // Removed unused active state dictionaries in favor of chapter status
   const [chapterPattern, setChapterPattern] = useState('Глава \\d+')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -73,15 +74,21 @@ export default function ChapterManager({ projectId }) {
     return () => clearInterval(interval);
   }, [hasActiveTasks, projectId]);
 
-  const createChapter = async () => {
+  const createChapter = async (e) => {
+    if (e) e.preventDefault()
     if (!newChapter.title.trim() || !newChapter.original_text.trim()) return
     setError(null)
+    setCreating(true)
     try {
       await api.post(`/projects/${projectId}/chapters`, newChapter)
       setNewChapter({ title: '', original_text: '' })
       setIsCreateModalOpen(false)
       loadChapters()
-    } catch (e) { setError('WRITE_ERROR: FAILED_TO_CREATE_CHAPTER') }
+    } catch (e) {
+      setError('WRITE_ERROR: FAILED_TO_CREATE_CHAPTER')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const deleteChapter = async (chapterId) => {
@@ -304,33 +311,52 @@ export default function ChapterManager({ projectId }) {
                 <Terminal className="w-5 h-5 mr-2" />
                 NEW_CHAPTER_ENTRY
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="chapter-title" className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Filename / Title</label>
-                  <input
-                    id="chapter-title"
-                    className="w-full bg-bg border-b border-accent/50 p-2 text-text focus:border-accent focus:outline-none font-bold"
-                    value={newChapter.title}
-                    onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="CHAPTER_01..."
-                    autoFocus
-                  />
+              <form onSubmit={createChapter} aria-busy={creating}>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="chapter-title" className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Filename / Title</label>
+                    <input
+                      id="chapter-title"
+                      className="w-full bg-bg border-b border-accent/50 p-2 text-text focus:border-accent focus:outline-none font-bold disabled:opacity-50"
+                      value={newChapter.title}
+                      onChange={(e) => setNewChapter(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="CHAPTER_01..."
+                      autoFocus
+                      disabled={creating}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="chapter-content" className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Content Data</label>
+                    <Textarea
+                      id="chapter-content"
+                      className="w-full h-40 bg-bg border border-accent/20 p-2 text-text focus:border-accent focus:outline-none resize-none font-mono text-xs disabled:opacity-50"
+                      value={newChapter.original_text}
+                      onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
+                      placeholder="PASTE_TEXT_DATA..."
+                      disabled={creating}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="chapter-content" className="text-[10px] text-accent/70 uppercase tracking-widest block mb-1">Content Data</label>
-                  <Textarea
-                    id="chapter-content"
-                    className="w-full h-40 bg-bg border border-accent/20 p-2 text-text focus:border-accent focus:outline-none resize-none font-mono text-xs"
-                    value={newChapter.original_text}
-                    onChange={(e) => setNewChapter(prev => ({ ...prev, original_text: e.target.value }))}
-                    placeholder="PASTE_TEXT_DATA..."
-                  />
+                <div className="flex justify-end gap-4 mt-8">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="text-muted-foreground hover:text-destructive px-4 py-2 uppercase text-[10px] font-bold tracking-widest transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                    disabled={creating}
+                  >
+                    ABORT
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-accent text-bg px-6 py-2 uppercase text-[10px] font-bold hover:bg-white transition-colors tracking-widest shadow-[0_0_15px_rgba(0,243,255,0.4)] flex items-center disabled:opacity-70 disabled:pointer-events-none"
+                    disabled={creating}
+                    aria-disabled={creating}
+                  >
+                    {creating && <Spinner className="w-3 h-3 mr-2" />}
+                    {creating ? 'EXECUTING...' : 'EXECUTE_WRITE'}
+                  </button>
                 </div>
-              </div>
-              <div className="flex justify-end gap-4 mt-8">
-                <button onClick={() => setIsCreateModalOpen(false)} className="text-muted-foreground hover:text-destructive px-4 py-2 uppercase text-[10px] font-bold tracking-widest transition-colors">ABORT</button>
-                <button onClick={createChapter} className="bg-accent text-bg px-6 py-2 uppercase text-[10px] font-bold hover:bg-white transition-colors tracking-widest shadow-[0_0_15px_rgba(0,243,255,0.4)]">EXECUTE_WRITE</button>
-              </div>
+              </form>
             </div>
           </div>
         </div>
