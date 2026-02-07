@@ -39,8 +39,8 @@ class GlossaryTerm(Base):
     approved_at = Column(DateTime, nullable=True)  # When the term was approved/rejected
     
     # New metrics
-    first_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True)
-    last_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True)
+    first_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True, index=True)
+    last_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True, index=True)
     
     # Связи
     project = relationship("Project", back_populates="glossary_terms")
@@ -81,7 +81,7 @@ class GlossaryVersion(Base):
     __tablename__ = "glossary_versions"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     version_name = Column(String(255), nullable=False)  # Название версии
     description = Column(Text, nullable=True)  # Описание изменений
     terms_data = Column(JSON, nullable=False)  # Снимок терминов в JSON
@@ -120,7 +120,7 @@ class BatchJobItem(Base):
     __tablename__ = "batch_job_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     batch_job_id = Column(Integer, ForeignKey("batch_jobs.id"), nullable=False, index=True)
     item_type = Column(String(50), nullable=False)  # 'chapter', 'term', etc.
     item_id = Column(Integer, nullable=False)  # ID элемента (главы, термина и т.д.)
