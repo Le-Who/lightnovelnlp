@@ -13,3 +13,6 @@
 ## 2025-05-26 - [Avoid Heavy Object Instantiation for filtering]
 **Learning:** `TranslationService` was fetching ALL `GlossaryTerm` objects (including relationships) and then filtering them in Python using `term.source_term.lower() in text`. This caused massive overhead (instantiating 1000s of SQLAlchemy models when only ~50 were relevant).
 **Action:** Use a two-step query pattern: 1) Fetch lightweight tuples `(id, source_term)` from DB. 2) Filter in Python. 3) Fetch full objects by ID for matches. This reduces object instantiation overhead by >90% for sparse matches.
+## 2025-05-27 - [selectinload fetches full objects]
+**Learning:** `selectinload` on relationships eagerly loads the ENTIRE related object, including large TEXT columns (like `Chapter.original_text`). For `GlossaryTerm` which links to `Chapter`, this meant loading MBs of text just to display a chapter number.
+**Action:** When using `selectinload` for relationships to heavy objects, ALWAYS chain `.load_only()` to fetch only necessary columns (e.g., `id`, `order`).
