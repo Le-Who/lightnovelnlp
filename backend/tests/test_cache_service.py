@@ -392,3 +392,39 @@ class TestCacheService(unittest.TestCase):
 
         self.assertIsNone(service.rest_client)
         self.assertEqual(service.redis_client, self.mock_tcp_client)
+
+    def test_set_tcp_retry(self):
+        """Test set retry logic when TCP fails initially."""
+        service = CacheService()  # Only TCP
+
+        # First call fails, second call succeeds
+        self.mock_tcp_client.setex.side_effect = [Exception("Connection error"), True]
+
+        # Ping must fail to trigger reconnection
+        self.mock_tcp_client.ping.side_effect = [Exception("Ping failed"), True]
+
+        result = service.set("key", 123)
+
+        self.assertTrue(result)
+        # setex called twice: once for initial attempt, once for retry
+        self.assertEqual(self.mock_tcp_client.setex.call_count, 2)
+        # Verify arguments (key, ttl, serialized value)
+        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123")
+        # Should have reconnected
+        self.assertTrue(self.mock_redis_module.from_url.call_count > 1)
+
+    def test_set_full_failure(self):
+        """Test set returns False when all attempts fail."""
+        service = CacheService() # Only TCP
+
+        # All calls fail
+        self.mock_tcp_client.setex.side_effect = Exception("Connection error")
+        self.mock_tcp_client.ping.side_effect = Exception("Ping failed")
+
+        result = service.set("key", 123)
+
+        self.assertFalse(result)
+        # setex called twice: initial + retry
+        self.assertEqual(self.mock_tcp_client.setex.call_count, 2)
+        # Verify arguments
+        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123")
