@@ -35,6 +35,55 @@ class TestCacheService(unittest.TestCase):
         self.assertIsNone(service.rest_client)
         self.assertEqual(service.redis_client, self.mock_tcp_client)
 
+    def test_get_rest_fail_tcp_retry_success(self):
+        """Test get fallback to TCP with retry when REST fails and TCP initially fails."""
+        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
+        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
+        mock_rest_client = MagicMock()
+        self.mock_upstash_cls.return_value = mock_rest_client
+
+        service = CacheService()
+
+        # REST fails
+        mock_rest_client.get.side_effect = Exception("REST error")
+
+        # TCP fails once then succeeds
+        self.mock_tcp_client.get.side_effect = [Exception("TCP error"), b'123']
+        # TCP ping succeeds (simplifying to avoid side_effect exhaustion issues)
+        self.mock_tcp_client.ping.return_value = True
+
+        result = service.get("key")
+
+        self.assertEqual(result, 123)
+        mock_rest_client.get.assert_called_with("key")
+        # Should be called twice: initial + retry
+        self.assertEqual(self.mock_tcp_client.get.call_count, 2)
+        # Should have attempted reconnection
+        self.assertTrue(self.mock_tcp_client.ping.call_count >= 1)
+
+    def test_get_all_fail(self):
+        """Test get returns None when all clients fail."""
+        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
+        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
+        mock_rest_client = MagicMock()
+        self.mock_upstash_cls.return_value = mock_rest_client
+
+        service = CacheService()
+
+        # REST fails
+        mock_rest_client.get.side_effect = Exception("REST error")
+
+        # TCP fails always
+        self.mock_tcp_client.get.side_effect = Exception("TCP error")
+        self.mock_tcp_client.ping.return_value = True
+
+        result = service.get("key")
+
+        self.assertIsNone(result)
+        mock_rest_client.get.assert_called_with("key")
+        # Should be called twice: initial + retry
+        self.assertEqual(self.mock_tcp_client.get.call_count, 2)
+
     def test_get_rest_success(self):
         """Test get using REST client."""
         self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
