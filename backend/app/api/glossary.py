@@ -6,10 +6,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, selectinload, load_only
 from operator import attrgetter
+from sqlalchemy import func, select
 
 from app.deps import get_db
 from app.models.project import Chapter
-from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, GlossaryVersion
+from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, GlossaryVersion, TermOccurrence
 from app.schemas.glossary import (
     GlossaryTermCreate, 
     GlossaryTermRead, 
@@ -36,17 +37,23 @@ def get_glossary_terms(
     order: str = Query(default="asc")
 ) -> List[GlossaryTerm]:
     """Получить все термины глоссария для проекта с пагинацией/поиском/сортировкой."""
-    q = db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id)
+
+    # Subqueries for relationship counts
+    # We use correlate(GlossaryTerm) so the subquery references the outer GlossaryTerm
+    stmt_source = select(func.count(TermRelationship.id)).where(TermRelationship.source_term_id == GlossaryTerm.id).scalar_subquery()
+    stmt_target = select(func.count(TermRelationship.id)).where(TermRelationship.target_term_id == GlossaryTerm.id).scalar_subquery()
+
+    # Select GlossaryTerm and the counts
+    q = db.query(GlossaryTerm, stmt_source.label("source_count"), stmt_target.label("target_count")).filter(GlossaryTerm.project_id == project_id)
     
     # Eager load for metrics
     q = q.options(
-        selectinload(GlossaryTerm.occurrences),
-        selectinload(GlossaryTerm.source_relationships),
-        selectinload(GlossaryTerm.target_relationships),
+        selectinload(GlossaryTerm.occurrences).load_only(TermOccurrence.chapter_id, TermOccurrence.frequency),
         # Optimize: Only load ID and order to avoid fetching heavy text fields
         selectinload(GlossaryTerm.first_chapter).load_only(Chapter.id, Chapter.order),
         selectinload(GlossaryTerm.last_chapter).load_only(Chapter.id, Chapter.order)
     )
+    # Removed eager loading of source/target relationships as we only need counts
 
     if search:
         s = f"%{search}%"
@@ -69,16 +76,24 @@ def get_glossary_terms(
     
     results = q.all()
     
+    terms = []
     # Populate computed fields
-    for term in results:
-        term.centrality_score = len(term.source_relationships) + len(term.target_relationships)
+    for row in results:
+        # row is a tuple-like result: (GlossaryTerm, source_count, target_count)
+        term = row[0]
+        source_count = row[1] or 0
+        target_count = row[2] or 0
+
+        term.centrality_score = source_count + target_count
         term.occurrences_data = [{"chapter_id": occ.chapter_id, "freq": occ.frequency} for occ in term.occurrences]
         if term.first_chapter:
             term.first_chapter_order = term.first_chapter.order
         if term.last_chapter:
             term.last_chapter_order = term.last_chapter.order
+
+        terms.append(term)
             
-    return results
+    return terms
 
 
 @router.get("/{project_id}/terms/pending", response_model=List[GlossaryTermRead])
