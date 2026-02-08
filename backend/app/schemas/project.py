@@ -58,3 +58,19 @@ class ChapterRead(ChapterBase):
     translation_error: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ChapterList(BaseModel):
+    id: int
+    project_id: int
+    title: str
+    order: int
+    original_text_length: int
+    translated_text_length: Optional[int] = None
+    analysis_status: str
+    translation_status: str
+    created_at: datetime
+    processed_at: Optional[datetime] = None
+    summary: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

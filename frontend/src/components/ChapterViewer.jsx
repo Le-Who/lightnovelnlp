@@ -9,12 +9,13 @@ export default function ChapterViewer({ projectId }) {
   const [loading, setLoading] = useState(false)
   const [selectedChapter, setSelectedChapter] = useState(null)
   const [isFullScreen, setIsFullScreen] = useState(false)
+  const [loadingChapter, setLoadingChapter] = useState(false)
 
   const loadChapters = async () => {
     setLoading(true)
     try {
       const res = await api.get(`/projects/${projectId}/chapters`, { params: { sort_by: 'order', order: 'asc' } })
-      setChapters(res.data.filter(ch => ch.translated_text))
+      setChapters(res.data.filter(ch => (ch.translated_text_length || 0) > 0))
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }
 
@@ -29,6 +30,19 @@ export default function ChapterViewer({ projectId }) {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [isFullScreen])
 
+  const handleSelectChapter = async (chapter) => {
+    if (selectedChapter?.id === chapter.id) return
+    setLoadingChapter(true)
+    try {
+      const res = await api.get(`/projects/chapters/${chapter.id}`)
+      setSelectedChapter(res.data)
+    } catch (e) {
+      console.error("Failed to load chapter", e)
+    } finally {
+      setLoadingChapter(false)
+    }
+  }
+
   const downloadChapter = () => {
     if (!selectedChapter.translated_text) return;
     const blob = new Blob([selectedChapter.translated_text], { type: 'text/plain' });
@@ -42,10 +56,10 @@ export default function ChapterViewer({ projectId }) {
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return (
+  if (loading || loadingChapter) return (
     <div className="flex items-center justify-center p-24 text-accent animate-pulse font-mono tracking-widest text-xs">
       <Spinner className="w-6 h-6 mr-3" />
-      LOADING_READER_MODULE...
+      {loading ? 'LOADING_READER_MODULE...' : 'LOADING_CHAPTER_DATA...'}
     </div>
   )
 
@@ -83,7 +97,7 @@ export default function ChapterViewer({ projectId }) {
             <button
               onClick={() => {
                 const idx = chapters.findIndex(c => c.id === selectedChapter.id);
-                if (idx > 0) setSelectedChapter(chapters[idx - 1]);
+                if (idx > 0) handleSelectChapter(chapters[idx - 1]);
               }}
               disabled={chapters.findIndex(c => c.id === selectedChapter.id) === 0}
               className="p-2 hover:bg-accent/10 border-r border-accent/20 disabled:opacity-30 disabled:hover:bg-transparent"
@@ -94,7 +108,7 @@ export default function ChapterViewer({ projectId }) {
             <button
               onClick={() => {
                 const idx = chapters.findIndex(c => c.id === selectedChapter.id);
-                if (idx < chapters.length - 1) setSelectedChapter(chapters[idx + 1]);
+                if (idx < chapters.length - 1) handleSelectChapter(chapters[idx + 1]);
               }}
               disabled={chapters.findIndex(c => c.id === selectedChapter.id) === chapters.length - 1}
               className="p-2 hover:bg-accent/10 disabled:opacity-30 disabled:hover:bg-transparent"
@@ -203,7 +217,7 @@ export default function ChapterViewer({ projectId }) {
           {chapters.map((chapter, idx) => (
             <div
               key={chapter.id}
-              onClick={() => setSelectedChapter(chapter)}
+              onClick={() => handleSelectChapter(chapter)}
               className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
             >
               {/* Hover Overlay */}
@@ -223,11 +237,11 @@ export default function ChapterViewer({ projectId }) {
               <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground font-mono relative z-10 border-t border-accent/10 pt-4">
                 <div className="flex flex-col">
                   <span className="uppercase opacity-50 mb-1">Source</span>
-                  <span>{chapter.original_text.length.toLocaleString()}B</span>
+                  <span>{(chapter.original_text_length || 0).toLocaleString()}B</span>
                 </div>
                 <div className="flex flex-col text-right">
                   <span className="uppercase opacity-50 mb-1">Output</span>
-                  <span className="text-text">{chapter.translated_text.length.toLocaleString()}B</span>
+                  <span className="text-text">{(chapter.translated_text_length || 0).toLocaleString()}B</span>
                 </div>
               </div>
 
