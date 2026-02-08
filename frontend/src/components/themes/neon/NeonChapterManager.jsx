@@ -5,7 +5,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Terminal, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode, X } from 'lucide-react'
 import { useChapterManager } from '@/hooks/useChapterManager'
 
-export default function ChapterManager({ projectId }) {
+export function NeonChapterManager({ projectId }) {
   const {
     chapters,
     loading,
