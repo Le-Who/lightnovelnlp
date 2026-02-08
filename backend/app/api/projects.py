@@ -22,6 +22,9 @@ from app.core.regex_utils import safe_finditer
 
 router = APIRouter()
 
+MAX_CHAPTERS_PER_UPLOAD = 500
+MAX_PATTERN_LENGTH = 100
+
 
 @router.get("/", response_model=List[ProjectRead])
 def list_projects(db: Session = Depends(get_db)) -> List[Project]:
@@ -211,6 +214,13 @@ def upload_chapters_from_file(
             detail="Only .txt files are supported"
         )
     
+    # Validate regex pattern length
+    if len(chapter_pattern) > MAX_PATTERN_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Regex pattern is too long (max {MAX_PATTERN_LENGTH} chars)."
+        )
+
     try:
         # Читаем содержимое файла
         content = file.file.read().decode('utf-8')
@@ -220,11 +230,17 @@ def upload_chapters_from_file(
         pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
         # Находим все совпадения с их позициями
         try:
-            matches = list(safe_finditer(pattern, content, timeout=10.0))
+            matches = list(safe_finditer(pattern, content, timeout=10.0, limit=MAX_CHAPTERS_PER_UPLOAD + 1))
         except TimeoutError:
             raise HTTPException(
                 status_code=400,
                 detail="Chapter detection timed out. Please simplify your regex pattern or reduce file size."
+            )
+
+        if len(matches) > MAX_CHAPTERS_PER_UPLOAD:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many chapters found (limit {MAX_CHAPTERS_PER_UPLOAD}). Please refine your pattern."
             )
 
         print(f"DEBUG: Found {len(matches)} matches")
@@ -297,6 +313,8 @@ def upload_chapters_from_file(
             status_code=400,
             detail="File encoding error. Please use UTF-8 encoding."
         )
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(
