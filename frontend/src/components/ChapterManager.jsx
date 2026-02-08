@@ -231,7 +231,7 @@ export default function ChapterManager({ projectId }) {
               let processingStatus = chapter.translation_status;
               if (['pending', 'extracting', 'relationships', 'summarizing'].includes(chapter.analysis_status)) {
                 processingStatus = chapter.analysis_status;
-              } else if (chapter.analysis_status === 'completed' && !chapter.translated_text && chapter.translation_status === 'idle') {
+              } else if (chapter.analysis_status === 'completed' && !(chapter.translated_text_length > 0) && chapter.translation_status === 'idle') {
                 processingStatus = 'analyzed';
               } else if (['pending', 'translating'].includes(chapter.translation_status)) {
                 processingStatus = chapter.translation_status;
@@ -246,7 +246,7 @@ export default function ChapterManager({ projectId }) {
                     <FileCode className="w-3 h-3 mr-3 text-secondary-accent opacity-50 group-hover:opacity-100" />
                     <span className="group-hover:text-accent group-hover:translate-x-1 transition-all duration-300">{chapter.title}</span>
                   </div>
-                  <div className="col-span-2 text-[10px] text-muted-foreground font-mono relative z-10">{(chapter.original_text || '').length.toLocaleString()}</div>
+                  <div className="col-span-2 text-[10px] text-muted-foreground font-mono relative z-10">{(chapter.original_text_length || 0).toLocaleString()}</div>
                   <div className="col-span-2 relative z-10">
                     {isProcessing ? (
                       <span className="text-secondary-accent text-[10px] flex items-center animate-pulse tracking-widest">
@@ -257,7 +257,7 @@ export default function ChapterManager({ projectId }) {
                       <span className="inline-flex items-center text-blue-400 text-[10px] tracking-widest px-2 py-0.5 rounded-sm border border-blue-400/30 shadow-[0_0_10px_rgba(96,165,250,0.3)] bg-blue-400/5">
                         <CheckCircle2 className="w-3 h-3 mr-2" /> ANALYZED
                       </span>
-                    ) : chapter.translated_text ? (
+                    ) : (chapter.translated_text_length || 0) > 0 ? (
                       <span className="inline-flex items-center text-accent text-[10px] tracking-widest px-2 py-0.5 rounded-sm border border-accent/30 bg-accent/5 shadow-[0_0_10px_rgba(0,243,255,0.3)]">
                         <CheckCircle2 className="w-3 h-3 mr-2" /> READY
                       </span>

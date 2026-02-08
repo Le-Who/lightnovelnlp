@@ -8,7 +8,7 @@ from urllib.parse import quote
 from app.deps import get_db
 from app.models.project import Project, Chapter
 from app.models.glossary import GlossaryTerm, TermRelationship, GlossaryVersion, BatchJob, BatchJobItem
-from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead, ChapterUpdate
+from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead, ChapterUpdate, ChapterList
 import io
 try:
     import PyPDF2
@@ -63,7 +63,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 
 
 # Главы
-@router.get("/{project_id}/chapters", response_model=List[ChapterRead])
+@router.get("/{project_id}/chapters", response_model=List[ChapterList])
 def list_chapters(
     project_id: int,
     db: Session = Depends(get_db),
@@ -72,9 +72,22 @@ def list_chapters(
     search: str | None = None,
     sort_by: str = Query(default="id"),
     order: str = Query(default="asc")
-) -> List[Chapter]:
+) -> List[ChapterList]:
     """Получить все главы проекта (пагинация/поиск/сортировка)."""
-    q = db.query(Chapter).filter(Chapter.project_id == project_id)
+    q = db.query(
+        Chapter.id,
+        Chapter.project_id,
+        Chapter.title,
+        Chapter.order,
+        Chapter.analysis_status,
+        Chapter.translation_status,
+        Chapter.created_at,
+        Chapter.processed_at,
+        Chapter.summary,
+        func.length(Chapter.original_text).label('original_text_length'),
+        func.length(Chapter.translated_text).label('translated_text_length')
+    ).filter(Chapter.project_id == project_id)
+
     if search:
         s = f"%{search}%"
         q = q.filter(or_(Chapter.title.ilike(s), Chapter.original_text.ilike(s)))
