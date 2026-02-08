@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useId } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database, Edit2, Activity, ShieldCheck, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -257,15 +257,50 @@ const NeonWrapper = ({ children }) => (
 );
 
 const NeonModal = ({ isOpen, onClose, title, children }) => {
+  const titleId = useId();
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg border border-accent bg-surface/95 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-lg border border-accent bg-surface/95 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="flex items-center justify-between p-4 border-b border-accent/20 bg-accent/5">
-          <h3 className="text-accent font-bold uppercase tracking-widest flex items-center">
+          <h3
+            id={titleId}
+            className="text-accent font-bold uppercase tracking-widest flex items-center"
+          >
             <AlertCircle className="w-4 h-4 mr-2" /> {title}
           </h3>
-          <button onClick={onClose} className="text-text-muted hover:text-destructive transition-colors text-xl font-bold">&times;</button>
+          <button
+            onClick={onClose}
+            className="text-text-muted hover:text-destructive transition-colors text-xl font-bold"
+            aria-label="Close"
+          >
+            &times;
+          </button>
         </div>
         <div className="p-6">
           {children}
