@@ -210,7 +210,6 @@
         <h2>📊 Системная информация</h2>
         <div class="api-url" id="apiUrl">API URL: <span id="currentUrl">Загрузка...</span></div>
         <button onclick="checkHealth()">Проверить здоровье API</button>
-        <button onclick="getInfo()">Получить информацию</button>
         <div id="systemResponse" class="response" style="display: none;"></div>
     </div>
 
@@ -742,11 +741,6 @@
         // Системные функции
         async function checkHealth() {
             const result = await makeRequest(`${API_BASE_URL}/health`);
-            showResponse('systemResponse', result);
-        }
-
-        async function getInfo() {
-            const result = await makeRequest(`${API_BASE_URL}/info`);
             showResponse('systemResponse', result);
         }
 
