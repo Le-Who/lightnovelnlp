@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import api from '@/services/apiClient'
 import { Terminal, Database, Activity, Play, ChevronRight, Hash, Clock, Server, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState([])
@@ -196,9 +196,15 @@ const NeonProjectCard = ({ project, onDelete }) => {
     }
   }
 
+  const handleCardClick = (e) => {
+    // Prevent navigation if clicking on link or button to avoid double-navigation
+    if (e.target.closest('a') || e.target.closest('button')) return;
+    navigate(`/projects/${project.id}`);
+  }
+
   return (
     <div
-      onClick={() => navigate(`/projects/${project.id}`)}
+      onClick={handleCardClick}
       className="group relative border border-border bg-surface p-6 transition-all duration-300 hover:border-accent hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] cursor-pointer overflow-hidden hover:bg-surface-highlight"
     >
       {/* Decorative Overlay */}
@@ -212,7 +218,12 @@ const NeonProjectCard = ({ project, onDelete }) => {
             ID: {project.id.toString().padStart(4, '0')}
           </div>
           <h4 className="font-bold text-xl text-text group-hover:text-accent transition-colors line-clamp-1">
-            {project.name}
+            <Link
+              to={`/projects/${project.id}`}
+              className="focus:outline-none focus:underline hover:no-underline text-inherit"
+            >
+              {project.name}
+            </Link>
           </h4>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -221,8 +232,9 @@ const NeonProjectCard = ({ project, onDelete }) => {
           </div>
           <button
             onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive hover:bg-destructive/10 rounded"
+            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity p-1 hover:text-destructive hover:bg-destructive/10 rounded"
             title="DELETE_PROJECT"
+            aria-label={`Delete project ${project.name}`}
           >
             <Trash2 className="w-4 h-4" />
           </button>
