@@ -39,6 +39,22 @@ export default function GlossaryEditor({ projectId }) {
     }
   }, [projectId])
 
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setIsEditModalOpen(false)
+    }
+
+    if (isEditModalOpen) {
+      document.addEventListener('keydown', handleEsc)
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc)
+      document.body.style.overflow = ''
+    }
+  }, [isEditModalOpen])
+
   // Client-side sorting logic
   const getSortedTerms = () => {
     return [...terms].sort((a, b) => {
@@ -343,10 +359,18 @@ export default function GlossaryEditor({ projectId }) {
 
       {/* Edit Term Modal */}
       {isEditModalOpen && editingTerm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-term-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEditModalOpen(false)
+          }}
+        >
           <div className="w-full max-w-lg border border-accent bg-surface/95 relative shadow-[0_0_50px_rgba(0,243,255,0.2)]">
             <div className="flex items-center justify-between p-4 border-b border-accent/20 bg-accent/5">
-              <h3 className="text-accent font-bold uppercase tracking-widest flex items-center">
+              <h3 id="edit-term-title" className="text-accent font-bold uppercase tracking-widest flex items-center">
                 <Edit2 className="w-4 h-4 mr-2" /> Редактирование термина
               </h3>
               <button
