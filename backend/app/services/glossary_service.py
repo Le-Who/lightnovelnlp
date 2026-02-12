@@ -1,7 +1,7 @@
 from typing import List, Set, Dict, Any
 import re
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 from app.models.glossary import GlossaryTerm, TermStatus
 
 class GlossaryService:
@@ -50,6 +50,14 @@ class GlossaryService:
         # But typically we want consistent order, e.g. by source_term length for replacement logic.
         relevant_terms = db.query(GlossaryTerm).filter(
             GlossaryTerm.id.in_(matched_ids)
+        ).options(
+            load_only(
+                GlossaryTerm.id,
+                GlossaryTerm.source_term,
+                GlossaryTerm.translated_term,
+                GlossaryTerm.category,
+                GlossaryTerm.status
+            )
         ).all()
 
         return relevant_terms
