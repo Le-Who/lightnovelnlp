@@ -1,9 +1,26 @@
 import os
+import sys
 import pytest
+import typing
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
+
+# Patch for Python 3.12 compatibility with Pydantic v1 / spaCy
+# This fixes: TypeError: ForwardRef._evaluate() missing 1 required keyword-only argument: 'recursive_guard'
+if sys.version_info >= (3, 12):
+    _original_evaluate = typing.ForwardRef._evaluate
+    def _patched_evaluate(self, globalns, localns, *args, **kwargs):
+        # Pydantic v1 calls: _evaluate(globalns, localns, recursive_guard)
+        # Python 3.12 expects: _evaluate(globalns, localns, type_params=None, *, recursive_guard=frozenset())
+
+        # If called with 1 extra positional arg that is a set/frozenset, and no kwargs, it's likely the old style.
+        if len(args) == 1 and not kwargs and isinstance(args[0], (set, frozenset)):
+             return _original_evaluate(self, globalns, localns, recursive_guard=args[0])
+        return _original_evaluate(self, globalns, localns, *args, **kwargs)
+
+    typing.ForwardRef._evaluate = _patched_evaluate
 
 # Set environment variables BEFORE importing app modules
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
