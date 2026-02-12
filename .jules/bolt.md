@@ -19,3 +19,6 @@
 ## 2025-05-28 - [SQLAlchemy Core vs ORM for Bulk Reads]
 **Learning:** Fetching large number of rows (10k+) using `db.query(Model.col)` (ORM) is significantly slower (2x) than `db.execute(text("SELECT col ..."))` (Core) due to overhead of result processing and object creation in SQLAlchemy ORM, even when fetching specific columns.
 **Action:** For read-heavy operations involving large datasets where only specific columns are needed, prefer SQLAlchemy Core execution `db.execute()` over ORM `db.query()` to bypass overhead.
+## 2024-06-03 - [Optimize Term Frequency Counting]
+**Learning:** Disabling the dependency parser (`parser`) in spaCy's pipeline when only lemmatization is needed yields a significant speedup (~30%) without compromising accuracy for English and Russian.
+**Action:** When using spaCy for basic tasks like lemmatization or tokenization, always explicitly disable unnecessary components (`parser`, `ner`, `textcat`) to save CPU cycles.
