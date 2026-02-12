@@ -70,3 +70,20 @@ def test_safe_finditer_large_output():
     pattern = "a"
     matches = list(safe_finditer(pattern, text, timeout=5.0))
     assert len(matches) == 1000
+
+def test_safe_finditer_limit():
+    """Test that the limit parameter works."""
+    text = "a" * 100
+    pattern = "a"
+
+    # Limit to 10
+    matches = list(safe_finditer(pattern, text, limit=10))
+    assert len(matches) == 10
+
+    # Limit to 50
+    matches = list(safe_finditer(pattern, text, limit=50))
+    assert len(matches) == 50
+
+    # No limit (should be 100)
+    matches = list(safe_finditer(pattern, text))
+    assert len(matches) == 100

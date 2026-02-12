@@ -54,7 +54,7 @@ class SafeMatch:
         return {k: (v if v is not None else default) for k, v in self._group_dict.items()}
 
 
-def _finditer_worker(pattern_str: str, flags: int, text: str, queue: multiprocessing.Queue):
+def _finditer_worker(pattern_str: str, flags: int, text: str, queue: multiprocessing.Queue, limit: Union[int, None] = None):
     """
     Worker function to run regex search in a separate process.
     """
@@ -75,12 +75,20 @@ def _finditer_worker(pattern_str: str, flags: int, text: str, queue: multiproces
                 match.groupdict()
             ))
 
+            if limit is not None and len(matches_data) >= limit:
+                break
+
         queue.put(('success', matches_data))
     except Exception as e:
         queue.put(('error', str(e)))
 
 
-def safe_finditer(pattern: Union[str, re.Pattern], text: str, timeout: float = 1.0) -> Iterator[SafeMatch]:
+def safe_finditer(
+    pattern: Union[str, re.Pattern],
+    text: str,
+    timeout: float = 1.0,
+    limit: Union[int, None] = None
+) -> Iterator[SafeMatch]:
     """
     Executes re.finditer in a separate process with a timeout to prevent ReDoS.
     Returns an iterator of SafeMatch objects.
@@ -89,6 +97,7 @@ def safe_finditer(pattern: Union[str, re.Pattern], text: str, timeout: float = 1
         pattern: Regex pattern string or re.Pattern object
         text: Text to search
         timeout: Timeout in seconds (default 1.0)
+        limit: Maximum number of matches to return (default None for unlimited)
 
     Raises:
         TimeoutError: If regex execution exceeds timeout
@@ -105,7 +114,7 @@ def safe_finditer(pattern: Union[str, re.Pattern], text: str, timeout: float = 1
     ctx = multiprocessing.get_context('spawn')
     result_queue = ctx.Queue()
 
-    process = ctx.Process(target=_finditer_worker, args=(pattern_str, flags, text, result_queue))
+    process = ctx.Process(target=_finditer_worker, args=(pattern_str, flags, text, result_queue, limit))
 
     process.start()
 
