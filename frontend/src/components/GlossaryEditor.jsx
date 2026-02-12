@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import api from '../services/apiClient'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './ui/Table'
 import { Button } from './ui/Button'
@@ -56,7 +56,7 @@ export default function GlossaryEditor({ projectId }) {
   }, [isEditModalOpen])
 
   // Client-side sorting logic
-  const getSortedTerms = () => {
+  const sortedTerms = useMemo(() => {
     return [...terms].sort((a, b) => {
       let valA = a[sortBy]
       let valB = b[sortBy]
@@ -88,7 +88,7 @@ export default function GlossaryEditor({ projectId }) {
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1
       return 0
     })
-  }
+  }, [terms, sortBy, sortOrder])
 
   const approveTerm = async (termId) => {
     try {
@@ -153,14 +153,15 @@ export default function GlossaryEditor({ projectId }) {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 50
 
-  const sortedTerms = getSortedTerms()
-
   // Calculate pagination
   const totalPages = Math.ceil(sortedTerms.length / itemsPerPage)
-  const paginatedTerms = sortedTerms.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+
+  const paginatedTerms = useMemo(() => {
+    return sortedTerms.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    )
+  }, [sortedTerms, currentPage, itemsPerPage])
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
