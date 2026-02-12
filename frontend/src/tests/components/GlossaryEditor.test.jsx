@@ -113,7 +113,7 @@ describe('GlossaryEditor', () => {
     });
 
     // Click sort order button (default is desc, title="По убыванию")
-    const sortBtn = screen.getByTitle('По убыванию');
+    const sortBtn = screen.getByRole('button', { name: 'По убыванию' });
     fireEvent.click(sortBtn);
 
     // Now should be asc: Banana (5), Apple (10), Cherry (20)
@@ -133,10 +133,8 @@ describe('GlossaryEditor', () => {
       });
 
       // Change sort to source_term
-      const selects = screen.getAllByRole('combobox');
-      // The sort select is the first one usually, or find by value
-      const sortSelect = selects.find(s => s.value === 'frequency');
-      // If it's controlled, value matches state.
+      // Now we can query by aria-label
+      const sortSelect = screen.getByRole('combobox', { name: 'Сортировать по' });
 
       fireEvent.change(sortSelect, { target: { value: 'source_term' } });
 
@@ -152,7 +150,7 @@ describe('GlossaryEditor', () => {
       });
 
       // Toggle to asc
-      const sortBtn = screen.getByTitle('По убыванию');
+      const sortBtn = screen.getByRole('button', { name: 'По убыванию' });
       fireEvent.click(sortBtn);
 
       // source_term asc: Apple, Banana, Cherry
@@ -162,5 +160,28 @@ describe('GlossaryEditor', () => {
          expect(rows[2]).toHaveTextContent('Banana');
          expect(rows[3]).toHaveTextContent('Cherry');
       });
+  });
+
+  it('has accessible labels for interactive elements', async () => {
+    render(<GlossaryEditor projectId={1} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Apple')).toBeInTheDocument();
+    });
+
+    // Check sort controls
+    expect(screen.getByRole('combobox', { name: 'Сортировать по' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'По убыванию' })).toBeInTheDocument();
+
+    // Check term action buttons
+    // Apple
+    expect(screen.getByRole('button', { name: 'Редактировать термин: Apple' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Удалить термин: Apple' })).toBeInTheDocument();
+    // Apple is approved, so no approve button
+
+    // Banana (pending)
+    expect(screen.getByRole('button', { name: 'Редактировать термин: Banana' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Утвердить термин: Banana' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Удалить термин: Banana' })).toBeInTheDocument();
   });
 });

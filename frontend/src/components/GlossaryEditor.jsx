@@ -185,6 +185,7 @@ export default function GlossaryEditor({ projectId }) {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+              aria-label="Сортировать по"
             >
               <option value="frequency">Частота</option>
               <option value="source_term">Оригинал (А-Я)</option>
@@ -198,6 +199,7 @@ export default function GlossaryEditor({ projectId }) {
               onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
               className="h-9 w-9 flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent/10 hover:text-accent transition-colors"
               title={sortOrder === 'asc' ? "По возрастанию" : "По убыванию"}
+              aria-label={sortOrder === 'asc' ? "По возрастанию" : "По убыванию"}
             >
               <ArrowUpDown className="h-4 w-4" />
             </button>
@@ -292,6 +294,7 @@ export default function GlossaryEditor({ projectId }) {
                               className="h-8 w-8 p-0 hover:text-accent hover:bg-accent/10"
                               onClick={() => openEditModal(term)}
                               title="Редактировать"
+                              aria-label={`Редактировать термин: ${term.source_term}`}
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -303,6 +306,7 @@ export default function GlossaryEditor({ projectId }) {
                                 className="h-8 w-8 p-0 hover:text-green-500 hover:bg-green-500/10"
                                 onClick={() => approveTerm(term.id)}
                                 title="Утвердить"
+                                aria-label={`Утвердить термин: ${term.source_term}`}
                               >
                                 <Check className="h-4 w-4" />
                               </Button>
@@ -314,6 +318,7 @@ export default function GlossaryEditor({ projectId }) {
                               className="h-8 w-8 p-0 hover:text-destructive hover:bg-destructive/10"
                               onClick={() => deleteTerm(term.id)}
                               title="Удалить"
+                              aria-label={`Удалить термин: ${term.source_term}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -377,6 +382,7 @@ export default function GlossaryEditor({ projectId }) {
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-text-muted hover:text-destructive transition-colors"
+                aria-label="Закрыть"
               >
                 <X className="w-5 h-5" />
               </button>
