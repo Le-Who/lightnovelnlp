@@ -43,6 +43,30 @@ export default function ChapterViewer({ projectId }) {
     }
   }
 
+  // Keyboard navigation for reader mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only navigate if we have a chapter selected and not loading
+      if (!selectedChapter || loadingChapter) return
+
+      // Avoid interfering with inputs
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return
+
+      // Find current index
+      const currentIndex = chapters.findIndex(c => c.id === selectedChapter.id)
+      if (currentIndex === -1) return
+
+      if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) handleSelectChapter(chapters[currentIndex - 1])
+      } else if (e.key === 'ArrowRight') {
+        if (currentIndex < chapters.length - 1) handleSelectChapter(chapters[currentIndex + 1])
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedChapter, chapters, loadingChapter])
+
   const downloadChapter = () => {
     if (!selectedChapter.translated_text) return;
     const blob = new Blob([selectedChapter.translated_text], { type: 'text/plain' });
@@ -101,7 +125,8 @@ export default function ChapterViewer({ projectId }) {
               }}
               disabled={chapters.findIndex(c => c.id === selectedChapter.id) === 0}
               className="p-2 hover:bg-accent/10 border-r border-accent/20 disabled:opacity-30 disabled:hover:bg-transparent"
-              title="Previous Chapter"
+              title="Previous Chapter (←)"
+              aria-label="Previous Chapter"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -112,7 +137,8 @@ export default function ChapterViewer({ projectId }) {
               }}
               disabled={chapters.findIndex(c => c.id === selectedChapter.id) === chapters.length - 1}
               className="p-2 hover:bg-accent/10 disabled:opacity-30 disabled:hover:bg-transparent"
-              title="Next Chapter"
+              title="Next Chapter (→)"
+              aria-label="Next Chapter"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
