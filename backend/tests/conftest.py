@@ -1,9 +1,37 @@
 import os
 import pytest
+import typing
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
+
+# MONKEYPATCH: Fix Pydantic v1 compatibility with Python 3.12
+# The _evaluate method signature changed in 3.12, breaking pydantic v1
+# which is used by spacy.
+_original_evaluate = typing.ForwardRef._evaluate
+
+def _patched_evaluate(self, globalns, localns, *args, **kwargs):
+    # Handle both Pydantic v1 (3 positional args) and Python 3.12 (3 positional + kwarg)
+    recursive_guard = kwargs.get('recursive_guard', frozenset())
+    type_params = None
+
+    if len(args) > 0:
+        if 'recursive_guard' in kwargs:
+             # Python 3.12: args[0] is type_params
+             type_params = args[0]
+        else:
+             # Pydantic v1: args[0] is recursive_guard
+             recursive_guard = args[0]
+
+    import inspect
+    sig = inspect.signature(_original_evaluate)
+    if 'type_params' in sig.parameters:
+        return _original_evaluate(self, globalns, localns, type_params=type_params, recursive_guard=recursive_guard)
+    else:
+        return _original_evaluate(self, globalns, localns, recursive_guard=recursive_guard)
+
+typing.ForwardRef._evaluate = _patched_evaluate
 
 # Set environment variables BEFORE importing app modules
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
