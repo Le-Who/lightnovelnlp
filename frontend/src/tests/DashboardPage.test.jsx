@@ -77,4 +77,18 @@ describe('DashboardPage', () => {
       expect(deleteButton).toBeInTheDocument()
     })
   })
+
+  it('renders INIT_SESSION as an accessible link', async () => {
+    render(
+      <BrowserRouter>
+        <DashboardPage />
+      </BrowserRouter>
+    )
+
+    await waitFor(() => {
+      const links = screen.getAllByRole('link', { name: /INIT_SESSION/i })
+      expect(links.length).toBeGreaterThan(0)
+      expect(links[0]).toHaveAttribute('href', '/projects/1')
+    })
+  })
 })

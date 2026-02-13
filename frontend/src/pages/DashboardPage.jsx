@@ -254,11 +254,14 @@ const NeonProjectCard = ({ project, onDelete }) => {
       </div>
 
       {/* Bottom Action */}
-      <div className="mt-6 pt-4 border-t border-border/30 flex justify-between items-center relative z-10 opacity-70 group-hover:opacity-100 transition-opacity">
+      <div className="mt-6 pt-4 border-t border-border/30 flex justify-between items-center relative z-10 opacity-70 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <span className="text-[10px] text-text-muted">ACCESS_LEVEL_1</span>
-        <span className="text-accent text-xs hover:underline flex items-center tracking-wider font-bold">
+        <Link
+          to={`/projects/${project.id}`}
+          className="text-accent text-xs hover:underline focus:underline focus:outline-none flex items-center tracking-wider font-bold"
+        >
           INIT_SESSION <ChevronRight className="w-3 h-3 ml-1" />
-        </span>
+        </Link>
       </div>
 
       {/* Corner Markers */}
