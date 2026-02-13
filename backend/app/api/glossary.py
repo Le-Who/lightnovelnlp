@@ -20,8 +20,6 @@ from app.schemas.glossary import (
     GlossaryVersionCreate,
     GlossaryVersionRead
 )
-from app.services.cache_service import cache_service
-from app.services.gemini_client import gemini_client
 
 router = APIRouter()
 
@@ -333,25 +331,3 @@ def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> 
     
     db.commit()
     return restored_terms
-
-
-@router.get("/api-usage")
-def get_gemini_api_usage():
-    """Получить статистику использования Gemini API ключей."""
-    # Не дергаем Redis напрямую из ручки; статистика берется у клиента
-    stats = gemini_client.get_usage_stats()
-    return {"success": True, "data": stats}
-
-
-@router.get("/cache-stats")
-def get_cache_stats():
-    """Получить статистику кэширования."""
-    cache_info = {"cache_service_available": True, "timestamp": datetime.now(timezone.utc).isoformat()}
-    test_key = "cache_ping"
-    ok_set = cache_service.set(test_key, "1", ttl=10)
-    # 'тихий' get, без логов даже при отвале
-    val = cache_service.get_quiet(test_key)
-    ok_get = (val == 1) or (val == "1")
-    ok_del = cache_service.delete(test_key)
-    cache_info["cache_working"] = bool(ok_set and ok_get and ok_del)
-    return {"success": True, "data": cache_info}
