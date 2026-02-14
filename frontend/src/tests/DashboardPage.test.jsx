@@ -77,4 +77,32 @@ describe('DashboardPage', () => {
       expect(deleteButton).toBeInTheDocument()
     })
   })
+
+  it('renders empty state when no projects', async () => {
+    api.get.mockResolvedValueOnce({ data: [] })
+
+    render(
+      <BrowserRouter>
+        <DashboardPage />
+      </BrowserRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('NO_DATABASES_DETECTED')).toBeInTheDocument()
+    })
+  })
+
+  it('input has required attribute', async () => {
+    render(
+      <BrowserRouter>
+        <DashboardPage />
+      </BrowserRouter>
+    )
+
+    // Wait for data to load to avoid act() warnings
+    await waitFor(() => screen.findByText('Project Alpha'))
+
+    const input = screen.getByPlaceholderText('ENTER_DESIGNATION...')
+    expect(input).toBeRequired()
+  })
 })
