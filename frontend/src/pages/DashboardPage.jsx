@@ -107,6 +107,7 @@ export default function DashboardPage() {
             <div className="flex items-center border-b border-accent/30 bg-bg/50 px-3 py-1 focus-within:border-accent transition-colors">
               <span className="text-accent mr-3 font-bold">&gt;</span>
               <input
+                required
                 className="bg-transparent border-none focus:outline-none w-full py-2 text-text placeholder:text-muted-foreground/30 font-mono text-base"
                 placeholder="ENTER_DESIGNATION..."
                 value={localName}
@@ -168,12 +169,14 @@ export default function DashboardPage() {
               <span className="tracking-widest">ACCESSING_SECTORS...</span>
             </div>
           </div>
-        ) : (
+        ) : projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((p) => (
               <NeonProjectCard key={p.id} project={p} onDelete={deleteProject} />
             ))}
           </div>
+        ) : (
+          <EmptyState />
         )}
       </div>
     </div>
@@ -236,7 +239,7 @@ const NeonProjectCard = ({ project, onDelete }) => {
             title="DELETE_PROJECT"
             aria-label={`Delete project ${project.name}`}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -257,7 +260,7 @@ const NeonProjectCard = ({ project, onDelete }) => {
       <div className="mt-6 pt-4 border-t border-border/30 flex justify-between items-center relative z-10 opacity-70 group-hover:opacity-100 transition-opacity">
         <span className="text-[10px] text-text-muted">ACCESS_LEVEL_1</span>
         <span className="text-accent text-xs hover:underline flex items-center tracking-wider font-bold">
-          INIT_SESSION <ChevronRight className="w-3 h-3 ml-1" />
+          INIT_SESSION <ChevronRight className="w-3 h-3 ml-1" aria-hidden="true" />
         </span>
       </div>
 
@@ -281,5 +284,13 @@ const StatBlock = ({ label, value, color = "text-text", icon }) => (
     </div>
     {/* Animated Loading Bar at bottom */}
     <div className="absolute bottom-0 left-0 h-[2px] bg-accent w-0 group-hover:w-full transition-all duration-700 ease-out" />
+  </div>
+);
+
+const EmptyState = () => (
+  <div className="flex flex-col items-center justify-center py-24 border border-dashed border-border/30 bg-surface/20">
+    <Database className="w-12 h-12 text-muted-foreground mb-4 opacity-20" aria-hidden="true" />
+    <span className="text-muted-foreground tracking-widest text-sm mb-2 font-mono">NO_DATABASES_DETECTED</span>
+    <span className="text-xs text-muted-foreground/50 font-mono">INITIALIZE NEW SEQUENCE ABOVE</span>
   </div>
 );
