@@ -56,6 +56,8 @@ class GlossaryTerm(Base):
     __table_args__ = (
         Index("ix_glossary_terms_project_id", "project_id"),
         UniqueConstraint("project_id", "source_term", name="uq_glossary_term_per_project"),
+        Index("ix_glossary_terms_project_status_created", "project_id", "status", "created_at"),
+        Index("ix_glossary_terms_project_frequency", "project_id", "frequency"),
     )
 
 

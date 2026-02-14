@@ -1,5 +1,18 @@
 import os
 import pytest
+import typing
+# Monkeypatch to fix pydantic v1 (used by spacy) on Python 3.12
+# Pydantic v1 calls ForwardRef._evaluate with positional arguments, but Python 3.12 expects keyword-only 'recursive_guard'
+_original_evaluate = typing.ForwardRef._evaluate
+def _evaluate_patch(self, globalns, localns, *args, **kwargs):
+    recursive_guard = kwargs.get("recursive_guard")
+    if recursive_guard is None and args:
+        recursive_guard = args[0]
+    if recursive_guard is None:
+        recursive_guard = set()
+    return _original_evaluate(self, globalns, localns, recursive_guard=recursive_guard)
+typing.ForwardRef._evaluate = _evaluate_patch
+
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
