@@ -4,6 +4,25 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
+import typing
+
+# Monkeypatch for Python 3.12 compatibility with older pydantic/spacy
+# Resolves: TypeError: ForwardRef._evaluate() missing 1 required keyword-only argument: 'recursive_guard'
+if hasattr(typing, "ForwardRef"):
+    _original_evaluate = typing.ForwardRef._evaluate
+
+    def _patched_evaluate(self, globalns, localns, *args, **kwargs):
+        # Identify recursive_guard
+        recursive_guard = kwargs.get("recursive_guard")
+        if not recursive_guard and args:
+             recursive_guard = args[0]
+        if not recursive_guard:
+             recursive_guard = frozenset()
+
+        # Python 3.12 requires recursive_guard to be passed as keyword argument
+        return _original_evaluate(self, globalns, localns, recursive_guard=recursive_guard)
+
+    typing.ForwardRef._evaluate = _patched_evaluate
 
 # Set environment variables BEFORE importing app modules
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
@@ -39,7 +58,7 @@ def db() -> Generator[Session, None, None]:
     Creates a fresh database for each test function.
     """
     # Debug: Check if tables are registered
-    print("Registered tables:", Base.metadata.tables.keys())
+    # print("Registered tables:", Base.metadata.tables.keys())
     
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
