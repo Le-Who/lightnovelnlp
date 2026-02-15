@@ -3,54 +3,67 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.glossary import GlossaryTerm, TermStatus
+from app.services.cache_service import cache_service
 
 class GlossaryService:
     @staticmethod
     def get_relevant_terms(db: Session, project_id: int, text: str) -> List[GlossaryTerm]:
         """
         Efficiently retrieves only the terms relevant to the given text for a specific project.
+        Uses caching to avoid DB hits.
 
         This method optimizes performance by:
-        1. Fetching only ID and source_term for all approved terms using Core SQL (fast).
-        2. Filtering terms in Python using simple substring matching (fast for <10k terms).
-        3. Fetching full term objects only for the matches.
-
-        This avoids instantiating full SQLAlchemy models for the majority of terms that are not present in the text.
+        1. Checking cache for project glossary.
+        2. If miss, fetching all approved terms and caching them.
+        3. Filtering terms in Python using simple substring matching.
         """
         if not text:
             return []
 
-        # 1. Fetch lightweight data (ID, source_term)
-        # We only care about APPROVED terms
-        # OPTIMIZATION: Use SQLAlchemy Core execution to bypass ORM overhead.
-        # This is faster than db.query(GlossaryTerm.id, GlossaryTerm.source_term)
-        # as it avoids ORM object creation and processing.
-        stmt = select(GlossaryTerm.id, GlossaryTerm.source_term).where(
-            GlossaryTerm.project_id == project_id,
-            GlossaryTerm.status == TermStatus.APPROVED
-        )
-        result = db.execute(stmt)
+        # 1. Try to get terms from cache
+        cached_terms = cache_service.get_cached_glossary(project_id)
 
-        # 2. Filter in Python
+        term_dicts = []
+        if cached_terms is not None:
+            term_dicts = cached_terms
+        else:
+            # 2. Cache miss: Fetch from DB
+            # Fetch all approved terms
+            terms = db.query(GlossaryTerm).filter(
+                GlossaryTerm.project_id == project_id,
+                GlossaryTerm.status == TermStatus.APPROVED
+            ).all()
+
+            # Convert to dicts for caching
+            for term in terms:
+                # Handle Enum values if present, otherwise use string
+                category_val = getattr(term.category, "value", term.category)
+                status_val = getattr(term.status, "value", term.status)
+
+                term_dicts.append({
+                    "id": term.id,
+                    "project_id": term.project_id,
+                    "source_term": term.source_term,
+                    "translated_term": term.translated_term,
+                    "category": category_val,
+                    "status": status_val,
+                    "context": term.context,
+                    "frequency": term.frequency,
+                })
+
+            # Cache the result (TTL 1 hour)
+            cache_service.cache_glossary(project_id, term_dicts)
+
+        # 3. Filter in Python
         text_lower = text.lower()
-        matched_ids = []
+        relevant_terms = []
 
-        # Result yields tuples (id, source_term) directly from DB driver
-        for row in result:
-            term_id = row[0]
-            source_term = row[1]
+        for term_data in term_dicts:
+            source_term = term_data.get("source_term")
             if source_term and source_term.lower() in text_lower:
-                matched_ids.append(term_id)
-
-        if not matched_ids:
-            return []
-
-        # 3. Fetch full objects for matches
-        # We return them unsorted here, caller can sort if needed.
-        # But typically we want consistent order, e.g. by source_term length for replacement logic.
-        relevant_terms = db.query(GlossaryTerm).filter(
-            GlossaryTerm.id.in_(matched_ids)
-        ).all()
+                # Reconstruct GlossaryTerm object (detached)
+                term_obj = GlossaryTerm(**term_data)
+                relevant_terms.append(term_obj)
 
         return relevant_terms
 
