@@ -164,6 +164,10 @@ def create_glossary_term(term: GlossaryTermCreate, db: Session = Depends(get_db)
     db.add(db_term)
     db.commit()
     db.refresh(db_term)
+
+    # Invalidate cache
+    cache_service.invalidate_glossary_cache(db_term.project_id)
+
     return db_term
 
 
@@ -191,6 +195,10 @@ def update_glossary_term(term_id: int, term: GlossaryTermUpdate, db: Session = D
     
     db.commit()
     db.refresh(db_term)
+
+    # Invalidate cache
+    cache_service.invalidate_glossary_cache(db_term.project_id)
+
     return db_term
 
 
@@ -201,8 +209,12 @@ def delete_glossary_term(term_id: int, db: Session = Depends(get_db)):
     if not db_term:
         raise HTTPException(status_code=404, detail="Term not found")
     
+    project_id = db_term.project_id
     db.delete(db_term)
     db.commit()
+
+    # Invalidate cache
+    cache_service.invalidate_glossary_cache(project_id)
 
 
 @router.post("/terms/{term_id}/approve", response_model=GlossaryTermRead)
@@ -216,6 +228,10 @@ def approve_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossa
     db_term.approved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_term)
+
+    # Invalidate cache
+    cache_service.invalidate_glossary_cache(db_term.project_id)
+
     return db_term
 
 
@@ -230,6 +246,10 @@ def reject_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossar
     db_term.approved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_term)
+
+    # Invalidate cache
+    cache_service.invalidate_glossary_cache(db_term.project_id)
+
     return db_term
 
 
@@ -332,6 +352,10 @@ def restore_glossary_version(version_id: int, db: Session = Depends(get_db)) -> 
         restored_terms.append(term)
     
     db.commit()
+
+    # Invalidate cache
+    cache_service.invalidate_glossary_cache(db_version.project_id)
+
     return restored_terms
 
 
