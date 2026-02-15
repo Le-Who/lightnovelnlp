@@ -175,8 +175,13 @@ def create_batch_analyze_job(
     if len(chapters) != len(chapter_ids):
         raise HTTPException(status_code=404, detail="Some chapters not found")
     
-    # Получаем project_id из первой главы (все главы должны быть из одного проекта)
-    project_id = chapters[0].project_id
+    # Verify all chapters belong to the project in URL
+    for chapter in chapters:
+        if chapter.project_id != project_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Chapter {chapter.id} does not belong to project {project_id}"
+            )
     
     # Создаем задачу
     batch_job = BatchJob(
@@ -229,8 +234,13 @@ def create_batch_translate_job(
     if len(chapters) != len(chapter_ids):
         raise HTTPException(status_code=404, detail="Some chapters not found")
     
-    # Получаем project_id из первой главы (все главы должны быть из одного проекта)
-    project_id = chapters[0].project_id
+    # Verify all chapters belong to the project in URL
+    for chapter in chapters:
+        if chapter.project_id != project_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Chapter {chapter.id} does not belong to project {project_id}"
+            )
     
     # Создаем задачу
     batch_job = BatchJob(
