@@ -174,7 +174,7 @@ export default function ChapterViewer({ projectId }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto p-6 pt-12 font-mono text-xs md:text-sm text-text-muted/60 whitespace-pre-wrap leading-relaxed custom-scrollbar selection:bg-secondary-accent/20 selection:text-secondary-accent">
+          <div tabIndex="0" className="flex-1 overflow-auto p-6 pt-12 font-mono text-xs md:text-sm text-text-muted/60 whitespace-pre-wrap leading-relaxed custom-scrollbar selection:bg-secondary-accent/20 selection:text-secondary-accent">
             {selectedChapter.original_text}
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function ChapterViewer({ projectId }) {
             <div className="w-full h-full bg-[linear-gradient(transparent_0%,rgba(0,243,255,0.1)_50%,transparent_100%)] bg-[length:100%_4px] animate-scan" />
           </div>
 
-          <div className="flex-1 overflow-auto p-8 pt-12 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-loose custom-scrollbar relative z-10 selection:bg-accent/30 selection:text-white">
+          <div tabIndex="0" className="flex-1 overflow-auto p-8 pt-12 font-mono text-xs md:text-sm text-text whitespace-pre-wrap leading-loose custom-scrollbar relative z-10 selection:bg-accent/30 selection:text-white">
             {selectedChapter.translated_text}
           </div>
 
@@ -241,10 +241,11 @@ export default function ChapterViewer({ projectId }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {chapters.map((chapter, idx) => (
-            <div
+            <button
               key={chapter.id}
               onClick={() => handleSelectChapter(chapter)}
-              className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
+              type="button"
+              className="w-full text-left group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
             >
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -275,7 +276,7 @@ export default function ChapterViewer({ projectId }) {
               <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent/0 group-hover:bg-accent/50 transition-colors duration-500 scale-x-0 group-hover:scale-x-100 origin-left" />
               <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+            </button>
           ))}
         </div>
       )}

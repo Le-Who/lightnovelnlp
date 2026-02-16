@@ -216,4 +216,29 @@ describe("ChapterViewer", () => {
     expect(prevButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
   });
+
+  it("renders accessible interactive elements", async () => {
+    render(<ChapterViewer projectId="123" />);
+    await waitFor(() => screen.getByText("Chapter 2"));
+
+    // Check that list items are buttons
+    const buttons = screen.getAllByRole('button');
+    const chapterButtons = buttons.filter(btn => btn.textContent && btn.textContent.includes("Chapter"));
+    expect(chapterButtons.length).toBeGreaterThan(0);
+
+    // Enter reader mode
+    api.get.mockResolvedValue({ data: mockChapterDetail });
+    fireEvent.click(screen.getByText("Chapter 2"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Active_File")).toBeInTheDocument();
+    });
+
+    // Check that scrollable areas are focusable
+    const originalPanel = screen.getByText(mockChapterDetail.original_text).closest('div[tabindex="0"]');
+    expect(originalPanel).toBeInTheDocument();
+
+    const translatedPanel = screen.getByText(mockChapterDetail.translated_text).closest('div[tabindex="0"]');
+    expect(translatedPanel).toBeInTheDocument();
+  });
 });
