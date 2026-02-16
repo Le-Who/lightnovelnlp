@@ -17,6 +17,7 @@ except Exception:
 
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.services.project_service import ProjectService
+from app.core.config import settings
 import re
 from app.core.regex_utils import safe_finditer
 
@@ -147,6 +148,17 @@ def create_chapter_from_file(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # Проверка размера файла
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE} bytes."
+        )
+
     content_bytes = file.file.read()
     text = ""
     filename = (file.filename or "").lower()
@@ -211,6 +223,17 @@ def upload_chapters_from_file(
             detail="Only .txt files are supported"
         )
     
+    # Проверка размера файла
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE} bytes."
+        )
+
     try:
         # Читаем содержимое файла
         content = file.file.read().decode('utf-8')

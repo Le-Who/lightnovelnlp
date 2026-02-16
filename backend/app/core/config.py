@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = Field(default="development", description="Environment (development/production)")
 
+    # File Upload
+    MAX_UPLOAD_SIZE: int = Field(default=10 * 1024 * 1024, description="Max upload size in bytes (default 10MB)")
+
     # CORS - храним как строку, парсим через computed_field
     ALLOWED_ORIGINS_RAW: str = Field(
         default="http://localhost:3000,http://localhost:5173",
