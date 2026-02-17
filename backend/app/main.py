@@ -148,13 +148,3 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
-
-
-@app.get("/info")
-def get_info():
-    return {
-        "environment": settings.ENVIRONMENT,
-        "database_configured": bool(settings.DATABASE_URL),
-        "redis_configured": bool(settings.REDIS_URL),
-        "gemini_keys_count": len(settings.GEMINI_API_KEYS)
-    }
