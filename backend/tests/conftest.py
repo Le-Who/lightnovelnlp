@@ -1,5 +1,15 @@
 import os
 import pytest
+import typing
+# Monkeypatch for Python 3.12 compatibility with older pydantic/typing
+if hasattr(typing.ForwardRef, "_evaluate"):
+    _original_evaluate = typing.ForwardRef._evaluate
+    def _evaluate_wrapper(self, globalns, localns, *args, **kwargs):
+        if 'recursive_guard' not in kwargs:
+            kwargs['recursive_guard'] = set()
+        return _original_evaluate(self, globalns, localns, *args, **kwargs)
+    typing.ForwardRef._evaluate = _evaluate_wrapper
+
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session

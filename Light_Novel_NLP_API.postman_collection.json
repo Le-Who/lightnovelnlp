@@ -20,18 +20,6 @@
 							"path": ["health"]
 						}
 					}
-				},
-				{
-					"name": "API Info",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/info",
-							"host": ["{{base_url}}"],
-							"path": ["info"]
-						}
-					}
 				}
 			]
 		},
@@ -381,35 +369,6 @@
 							"raw": "{{base_url}}/batch/{{batch_job_id}}",
 							"host": ["{{base_url}}"],
 							"path": ["batch", "{{batch_job_id}}"]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Monitoring",
-			"item": [
-				{
-					"name": "API Usage Stats",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/glossary/api-usage",
-							"host": ["{{base_url}}"],
-							"path": ["glossary", "api-usage"]
-						}
-					}
-				},
-				{
-					"name": "Cache Stats",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/glossary/cache-stats",
-							"host": ["{{base_url}}"],
-							"path": ["glossary", "cache-stats"]
 						}
 					}
 				}
