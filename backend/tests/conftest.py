@@ -1,7 +1,23 @@
 import os
+import sys
+import typing
 import pytest
 from typing import Generator
 from sqlalchemy import create_engine
+
+# Monkeypatch for Python 3.12 compatibility with Pydantic v1
+if sys.version_info >= (3, 12):
+    _original_evaluate = typing.ForwardRef._evaluate
+
+    def _evaluate_patched(self, globalns, localns, *args, **kwargs):
+        recursive_guard = kwargs.get("recursive_guard")
+        if recursive_guard is None and args:
+            recursive_guard = args[0]
+        if recursive_guard is None:
+            recursive_guard = set()
+        return _original_evaluate(self, globalns, localns, recursive_guard=recursive_guard)
+
+    typing.ForwardRef._evaluate = _evaluate_patched
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
 
