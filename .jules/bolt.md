@@ -22,3 +22,6 @@
 ## 2024-06-03 - [Optimize Term Frequency Counting]
 **Learning:** Disabling the dependency parser (`parser`) in spaCy's pipeline when only lemmatization is needed yields a significant speedup (~30%) without compromising accuracy for English and Russian.
 **Action:** When using spaCy for basic tasks like lemmatization or tokenization, always explicitly disable unnecessary components (`parser`, `ner`, `textcat`) to save CPU cycles.
+## 2025-06-03 - [Missing Composite Indexes & Schema Drift]
+**Learning:** Found that queries filtering by `(project_id, status)` or `(project_id, frequency)` were missing corresponding composite indexes, relying only on `project_id`. This is suboptimal for high-frequency queries like "pending terms" or "most frequent terms". Also discovered `pydantic v1` + `Python 3.12` compatibility issue in tests requiring a `ForwardRef._evaluate` monkeypatch.
+**Action:** When adding indexes, verify their existence with `sqlalchemy.inspect().get_indexes()` in tests to prevent schema drift between models and migrations. For older dependencies on new Python versions, be prepared to patch standard library internals if upgrades are blocked.
