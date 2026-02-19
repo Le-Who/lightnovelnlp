@@ -19,6 +19,7 @@ from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.services.project_service import ProjectService
 import re
 from app.core.regex_utils import safe_finditer
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -147,6 +148,17 @@ def create_chapter_from_file(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # Check file size
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Max size is {settings.MAX_UPLOAD_SIZE / (1024 * 1024):.1f}MB"
+        )
+
     content_bytes = file.file.read()
     text = ""
     filename = (file.filename or "").lower()
@@ -211,6 +223,24 @@ def upload_chapters_from_file(
             detail="Only .txt files are supported"
         )
     
+    # Check file size
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Max size is {settings.MAX_UPLOAD_SIZE / (1024 * 1024):.1f}MB"
+        )
+
+    # Check pattern length
+    if len(chapter_pattern) > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Chapter pattern too long. Max 100 characters."
+        )
+
     try:
         # Читаем содержимое файла
         content = file.file.read().decode('utf-8')
@@ -238,6 +268,12 @@ def upload_chapters_from_file(
                 detail=f"No chapters found with the specified pattern: '{chapter_pattern}'"
             )
         
+        if len(matches) > 500:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many chapters found ({len(matches)}). Max 500 allowed per upload."
+            )
+
         created_chapters = []
         
         # Обрабатываем текст до первой главы
@@ -292,6 +328,8 @@ def upload_chapters_from_file(
             ]
         }
         
+    except HTTPException:
+        raise
     except UnicodeDecodeError:
         raise HTTPException(
             status_code=400,
