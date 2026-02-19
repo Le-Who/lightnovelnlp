@@ -216,4 +216,19 @@ describe("ChapterViewer", () => {
     expect(prevButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
   });
+
+  it("renders chapter list items as accessible buttons", async () => {
+    render(<ChapterViewer projectId="123" />);
+
+    // Wait for the chapters to load
+    await waitFor(() => {
+      expect(screen.getByText("Chapter 1")).toBeInTheDocument();
+    });
+
+    // Check if each chapter item is a button (accessible)
+    // The previous implementation used divs which would fail this check
+    const chapterButtons = screen.getAllByRole("button", { name: /Chapter \d/ });
+    expect(chapterButtons.length).toBe(3); // 3 mocked chapters
+    expect(chapterButtons[0]).toHaveTextContent("Chapter 1");
+  });
 });
