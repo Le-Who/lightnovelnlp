@@ -1,7 +1,43 @@
 import os
 import pytest
+import typing
 from typing import Generator
 from sqlalchemy import create_engine
+
+# Monkeypatch for Pydantic v1 / Python 3.12 compatibility
+# This must be done before any Pydantic models are imported
+_original_evaluate = typing.ForwardRef._evaluate
+
+def _evaluate_patch(self, globalns, localns, recursive_guard=None):
+    # Determine if recursive_guard is passed as positional (older python/pydantic calls)
+    # or keyword (newer python requirement)
+    # Actually, Python 3.12 requires it as keyword-only argument.
+    # Pydantic v1 calls it positionally: _evaluate(globalns, localns, set())
+    # So we need to map the 3rd positional arg to the keyword arg.
+
+    # However, since we are redefining the function, we can just define it to accept both.
+    # But we need to call the original correctly.
+
+    if recursive_guard is None:
+        recursive_guard = set()
+
+    return _original_evaluate(self, globalns, localns, recursive_guard=recursive_guard)
+
+# We need to handle the case where Pydantic calls it with 3 positional args
+# But Python 3.12 defined it as def _evaluate(self, globalns, localns, *, recursive_guard):
+# So we need a wrapper that accepts *args to catch the positional argument.
+
+def _evaluate_flexible(self, globalns, localns, *args, **kwargs):
+    recursive_guard = kwargs.get('recursive_guard')
+    if not recursive_guard and args:
+        recursive_guard = args[0]
+
+    if recursive_guard is None:
+        recursive_guard = set()
+
+    return _original_evaluate(self, globalns, localns, recursive_guard=recursive_guard)
+
+typing.ForwardRef._evaluate = _evaluate_flexible
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
 

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     GEMINI_API_RESET_TIMEZONE: str = Field(default="America/Los_Angeles", description="Timezone for daily limit reset (Mountain View, CA)")
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=131072, description="Max output tokens for Gemini models")
 
+    # Upload
+    MAX_UPLOAD_SIZE: int = Field(default=10 * 1024 * 1024, description="Max upload size in bytes (10MB)")
+
     # Environment
     ENVIRONMENT: str = Field(default="development", description="Environment (development/production)")
 
