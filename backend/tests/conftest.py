@@ -1,9 +1,33 @@
 import os
 import pytest
+import typing
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
+
+# Monkeypatch for Python 3.12 compatibility with pydantic v1 (used by spaCy).
+# Pydantic v1 calls ForwardRef._evaluate with 3 positional arguments (globalns, localns, recursive_guard),
+# but Python 3.12 changed the signature to require 'recursive_guard' as a keyword-only argument
+# and added 'type_params' as the 3rd positional argument.
+# This wrapper detects the Pydantic v1 call pattern and adapts it to the Python 3.12 signature.
+
+if hasattr(typing, "ForwardRef"):
+    _original_evaluate = typing.ForwardRef._evaluate
+
+    def _evaluate_wrapper(self, globalns, localns, type_params=None, *, recursive_guard=None):
+        # If recursive_guard is missing (not passed as keyword), check if it was passed positionally
+        # (as the 3rd argument, which Python 3.12 expects to be type_params).
+        if recursive_guard is None:
+             if isinstance(type_params, (set, frozenset)):
+                  recursive_guard = type_params
+                  type_params = None
+             else:
+                  recursive_guard = frozenset()
+        return _original_evaluate(self, globalns, localns, type_params=type_params, recursive_guard=recursive_guard)
+
+    typing.ForwardRef._evaluate = _evaluate_wrapper
+
 
 # Set environment variables BEFORE importing app modules
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
