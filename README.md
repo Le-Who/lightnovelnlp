@@ -215,32 +215,118 @@ docker-compose up --build -d
 
 ## 🔧 Конфигурация (.env)
 
+### Подключения
+
+**Supabase PostgreSQL** — использовать **Session pooler** (порт **5432**):
+```
+# Supabase Dashboard → Project Settings → Database → Connection String → URI
+# Выбрать: Session mode (порт 5432), НЕ Transaction mode (6543)
+DATABASE_URL=postgresql://postgres.[ref]:[PASSWORD]@aws-0-eu-west-1.pooler.supabase.com:5432/postgres
+```
+
+**Redis Labs** — брать из Redis Cloud Console:
+```
+REDIS_URL=redis://default:[PASSWORD]@[HOST]:[PORT]
+```
+
+---
+
+### Маппинг Старых → Новых Переменных (v1→v2)
+
+| Старая переменная | Статус | Замена / Примечание |
+|-------------------|--------|---------------------|
+| `DATABASE_URL` | ✅ Без изменений | — |
+| `REDIS_URL` | ✅ Без изменений | — |
+| `GEMINI_API_KEYS_RAW` | ✅ Без изменений | — |
+| `ENVIRONMENT` | ✅ Без изменений | — |
+| `ALLOWED_ORIGINS_RAW` | ✅ Без изменений | — |
+| `GEMINI_API_RESET_TIMEZONE` | ✅ Без изменений | — |
+| `UPSTASH_REDIS_REST_URL` | ⚠️ Опционально | Только для Upstash REST API |
+| `UPSTASH_REDIS_REST_TOKEN` | ⚠️ Опционально | Только для Upstash REST API |
+| `GEMINI_API_LIMIT_PER_KEY` | ❌ Удалено | → `GEMINI_RPD_LIMITS` per-model |
+| `GEMINI_API_LIMIT_THRESHOLD_PERCENT` | ❌ Удалено | Не используется |
+| `GEMINI_MAX_OUTPUT_TOKENS` | ❌ Удалено | → `GEMINI_MAX_TOKENS_*` per-task |
+
+---
+
 ### Обязательные
 | Переменная | Описание |
 |------------|----------|
-| `DATABASE_URL` | Строка подключения к PostgreSQL |
-| `REDIS_URL` | Адрес Redis сервера |
-| `GEMINI_API_KEYS_RAW` | Ключи Google AI (через запятую) |
+| `DATABASE_URL` | PostgreSQL connection string (Session mode, port 5432) |
+| `REDIS_URL` | Redis connection string |
+| `GEMINI_API_KEYS_RAW` | Ключи Google AI через запятую (каждый ключ = отдельный GCP проект) |
 
-### Gemini — Per-task модели (опционально)
+### Приложение
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `ENVIRONMENT` | `development` | `development` или `production` |
+| `ALLOWED_ORIGINS_RAW` | `http://localhost:3000,http://localhost:5173` | CORS origins через запятую |
+
+### Gemini — Ротация Ключей
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `GEMINI_API_RESET_TIMEZONE` | `America/Los_Angeles` | Таймзона сброса RPD (Google сбрасывает в полночь по Лос-Анджелесу) |
+| `GEMINI_API_COOLDOWN_MINUTES` | `5` | Мягкий таймаут ключа после 429 (в минутах) |
+
+### Gemini — Модели по Задаче
 | Переменная | Default | Описание |
 |------------|---------|----------|
 | `GEMINI_MODEL_EXTRACTION` | `gemini-3.1-flash-lite-preview` | Модель для extraction |
 | `GEMINI_MODEL_TRANSLATION` | `gemini-3-flash-preview` | Модель для перевода |
-| `GEMINI_MODEL_SUMMARIZATION` | `gemini-3.1-flash-lite-preview` | Модель для саммари |
-| `GEMINI_MODEL_RELATIONSHIPS` | `gemini-3.1-flash-lite-preview` | Модель для связей |
-| `GEMINI_MODEL_EMBEDDING` | `gemini-embedding-2-preview` | Модель для эмбеддингов |
+| `GEMINI_MODEL_SUMMARIZATION` | `gemini-3.1-flash-lite-preview` | Модель для суммаризации |
+| `GEMINI_MODEL_RELATIONSHIPS` | `gemini-3.1-flash-lite-preview` | Модель для анализа связей |
+| `GEMINI_MODEL_EMBEDDING` | `gemini-embedding-2-preview` | Модель эмбеддингов (768-dim MRL) |
+| `GEMINI_FALLBACK_MODELS` | `gemini-2.5-flash,gemini-flash-latest` | Резервные модели через запятую |
 
-### Gemini — Per-task thinking levels
-| Переменная | Default | Описание |
-|------------|---------|----------|
-| `GEMINI_THINKING_EXTRACTION` | `medium` | Уровень thinking для extraction |
-| `GEMINI_THINKING_TRANSLATION` | `high` | Уровень thinking для перевода |
+### Gemini — Уровень Мышления
+| Переменная | Default | Допустимые значения |
+|------------|---------|---------------------|
+| `GEMINI_THINKING_EXTRACTION` | `medium` | `minimal` / `low` / `medium` / `high` |
+| `GEMINI_THINKING_TRANSLATION` | `high` | `minimal` / `low` / `medium` / `high` |
+| `GEMINI_THINKING_SUMMARIZATION` | `medium` | `minimal` / `low` / `medium` / `high` |
+| `GEMINI_THINKING_RELATIONSHIPS` | `medium` | `minimal` / `low` / `medium` / `high` |
 
-### Gemini — Rate Limiting
+> Для Gemini 2.5.x `thinkingBudget` устанавливается автоматически: `minimal`→0, `low`→1024, `medium`→8192, `high`→24576.
+
+### Gemini — Rate Limits
 | Переменная | Default | Формат |
 |------------|---------|--------|
-| `GEMINI_RPM_LIMITS` | `gemini-3-flash-preview=10, ...` | `"model=limit, model=limit"` |
-| `GEMINI_RPD_LIMITS` | `gemini-3-flash-preview=500, ...` | `"model=limit, model=limit"` |
-| `GEMINI_API_COOLDOWN_MINUTES` | `5` | Минуты мягкого cooldown при 429 |
-| `GEMINI_API_RESET_TIMEZONE` | `America/Los_Angeles` | Таймзона сброса дневных лимитов |
+| `GEMINI_RPM_LIMITS` | `gemini-3-flash-preview=10, gemini-3.1-flash-lite-preview=15, ...` | `"model=N, model=M"` |
+| `GEMINI_RPD_LIMITS` | `gemini-3-flash-preview=500, gemini-3.1-flash-lite-preview=1000, ...` | `"model=N, model=M"` |
+
+### Gemini — Токены по Задаче
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `GEMINI_MAX_TOKENS_EXTRACTION` | `8192` | Макс. токенов ответа для extraction |
+| `GEMINI_MAX_TOKENS_TRANSLATION` | `65536` | Макс. токенов для перевода |
+| `GEMINI_MAX_TOKENS_SUMMARIZATION` | `2048` | Макс. токенов для суммаризации |
+| `GEMINI_MAX_TOKENS_RELATIONSHIPS` | `4096` | Макс. токенов для анализа связей |
+| `GEMINI_MAX_TOKENS_DEFAULT` | `8192` | Fallback |
+
+### Опционально
+| Переменная | Описание |
+|------------|----------|
+| `UPSTASH_REDIS_REST_URL` | Upstash REST endpoint (только если используется Upstash) |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash REST token (только если используется Upstash) |
+
+---
+
+### Шаблон для Production
+
+```env
+# ── Обязательные ───────────────────────────────────────────
+DATABASE_URL=postgresql://postgres.[ref]:[PWD]@aws-0-eu-west-1.pooler.supabase.com:5432/postgres
+REDIS_URL=redis://default:[PWD]@[HOST]:[PORT]
+GEMINI_API_KEYS_RAW=AIza...,AIza...,AIza...
+
+# ── Приложение ─────────────────────────────────────────────
+ENVIRONMENT=production
+ALLOWED_ORIGINS_RAW=https://your-frontend.northflank.app
+
+# ── Gemini ─────────────────────────────────────────────────
+GEMINI_API_RESET_TIMEZONE=America/Los_Angeles
+GEMINI_API_COOLDOWN_MINUTES=5
+GEMINI_RPM_LIMITS=gemini-3-flash-preview=10,gemini-3.1-flash-lite-preview=15
+GEMINI_RPD_LIMITS=gemini-3-flash-preview=500,gemini-3.1-flash-lite-preview=1000
+```
+
