@@ -11,9 +11,9 @@ from app.models.glossary import GlossaryTerm, TermRelationship, GlossaryVersion,
 from app.schemas.project import ProjectCreate, ProjectRead, ChapterCreate, ChapterRead, ChapterUpdate, ChapterList
 import io
 try:
-    import PyPDF2
+    import pypdf
 except Exception:
-    PyPDF2 = None
+    pypdf = None
 
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.services.project_service import ProjectService
@@ -152,9 +152,9 @@ def create_chapter_from_file(
     filename = (file.filename or "").lower()
     if filename.endswith(".txt"):
         text = content_bytes.decode(errors="ignore")
-    elif filename.endswith(".pdf") and PyPDF2 is not None:
+    elif filename.endswith(".pdf") and pypdf is not None:
         try:
-            reader = PyPDF2.PdfReader(io.BytesIO(content_bytes))
+            reader = pypdf.PdfReader(io.BytesIO(content_bytes))
             pages = [page.extract_text() or "" for page in reader.pages]
             text = "\n".join(pages)
         except Exception:

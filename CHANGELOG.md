@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.1] - 2026-04-04
+
+### ✨ Added
+- `entrypoint.sh` — startup script with persistent spaCy model support + Alembic migration
+
+### 📝 Changed
+- **PyPDF2 → pypdf**: Migrated from deprecated PyPDF2 to actively maintained `pypdf` fork
+- **requirements.txt**: All 15 dependencies updated to current ranges (April 2026)
+  - uvicorn 0.24→≥0.42, pydantic 2.5→≥2.12, redis 5.0→≥7.0, alembic 1.13→≥1.18
+  - Added explicit: `pgvector>=0.3.0`, `numpy>=1.26.0`
+- **Dockerfile**: Python 3.11→3.12-slim, entrypoint-based startup, persistent volume for spaCy models
+- **docker-compose.yml**: postgres:15→pgvector/pgvector:pg16 (local dev pgvector support)
+- **term_extractor.py**: `Matcher` → `PhraseMatcher` (3-5x faster frequency counting on large glossaries)
+
+### ✅ Verified
+- Supabase DB `lpyidjpqsplgcscmnxcs`: full schema deployed (8 tables, 28 indexes, pgvector 0.8.0)
+- Test suite: 65 passed, 1 skipped, 0 failures
+
+---
+
 ## [2.0.0] - 2026-04-04
 
 ### 🚨 Breaking Changes

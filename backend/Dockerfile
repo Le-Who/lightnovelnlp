@@ -1,7 +1,7 @@
-# Используем официальный Python образ
-FROM python:3.11-slim
+# Production Dockerfile — LightNovelNLP Backend
+FROM python:3.12-slim
 
-# Устанавливаем системные зависимости
+# System dependencies for psycopg2, spaCy C extensions
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -9,27 +9,29 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем файлы зависимостей
+# Install Python dependencies (cached layer)
 COPY requirements.txt .
-
-# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    python -m spacy download en_core_web_sm
+    pip install --no-cache-dir -r requirements.txt
 
-# Копируем код приложения
+# Copy application code
 COPY . .
 
-# Создаем пользователя для безопасности
+# Entrypoint handles: spaCy model download (with persistent volume check) + migrations + server
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+# Non-root user for security
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
 USER app
 
-# Открываем порт
+# spaCy models directory (mount persistent volume here in production)
+ENV SPACY_DATA=/app/spacy_models
+RUN mkdir -p /app/spacy_models
+
 EXPOSE 8000
 
-# Команда запуска с миграцией и проверкой конфигурации
-CMD ["sh", "-c", "python check_config.py && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["./entrypoint.sh"]
