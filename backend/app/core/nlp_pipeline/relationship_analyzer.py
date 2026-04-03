@@ -45,6 +45,7 @@ class RelationshipAnalyzer:
             logger.info("[REL] Calling Gemini API...")
             response = self.client.complete(
                 prompt,
+                task_type="relationships",
                 response_schema=RelationshipResponse
             )
             # logger.info(f"[REL] Gemini returned response of type: {type(response).__name__}")

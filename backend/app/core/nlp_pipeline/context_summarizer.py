@@ -32,7 +32,7 @@ class ContextSummarizer:
         prompt = self._build_summary_prompt(text, chapter_title, previous_summary)
         
         try:
-            response = self.client.complete(prompt)
+            response = self.client.complete(prompt, task_type="summarization")
             return response.strip()
         except Exception as e:
             logger.error(f"Error summarizing context: {e}")

@@ -68,6 +68,16 @@ class Project(Base):
     target_language = Column(String(10), default="ru", nullable=False)  # Целевой язык перевода
     custom_genre_instructions = Column(Text, nullable=True)  # Кастомные инструкции для жанра
     
+    # Per-project Gemini model overrides (NULL = inherit from ENV/config defaults)
+    model_extraction = Column(String(100), nullable=True)     # e.g. "gemini-3.1-flash-lite-preview"
+    model_translation = Column(String(100), nullable=True)    # e.g. "gemini-3-flash-preview"
+    model_summarization = Column(String(100), nullable=True)
+    
+    # Per-project thinking level overrides (NULL = inherit from ENV/config defaults)
+    # Values: "minimal", "low", "medium", "high"
+    thinking_extraction = Column(String(20), nullable=True)
+    thinking_translation = Column(String(20), nullable=True)
+    
     # Связи
     chapters = relationship("Chapter", back_populates="project", cascade="all, delete-orphan")
     glossary_terms = relationship("GlossaryTerm", back_populates="project", cascade="all, delete-orphan")

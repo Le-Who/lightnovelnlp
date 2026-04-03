@@ -200,7 +200,7 @@ class TranslationService:
         The response should be structured and specific.
         """
         
-        review_text = gemini_client.complete(review_prompt)
+        review_text = gemini_client.complete(review_prompt, task_type="translation")
         
         review_key = f"translation_review:{chapter_id}"
         cache_service.set(review_key, review_text, ttl=3600)

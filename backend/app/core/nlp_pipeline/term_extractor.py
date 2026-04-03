@@ -71,7 +71,7 @@ class TermExtractor:
             # Используем новую поддержку response_schema в GeminiClient
             response = self.client.complete(
                 prompt, 
-                max_tokens=8192,  # Увеличиваем лимит для больших глав
+                task_type="extraction",
                 response_schema=TermExtractionResponse
             )
             logger.info(f"Received response from Gemini, type: {type(response).__name__}")

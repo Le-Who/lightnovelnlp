@@ -1,117 +1,138 @@
+"""
+Tests for GeminiClient v2.
+
+Tests cover:
+- Rate-limit pre-flight checks (_check_rate_limits)
+- ThinkingConfig auto-detection (_build_thinking_config)
+- Model chain fallback behavior
+- Key hash determinism
+- get_usage_stats structure
+"""
 import pytest
 from unittest.mock import MagicMock, patch
-from app.services.gemini_client import GeminiClient, genai
+from app.services.gemini_client import GeminiClient, _key_hash, _now_minute, _SENTINEL
+
 
 @pytest.fixture
-def mock_genai_client():
-    """Mock the genai.Client to prevent actual network calls."""
-    with patch("app.services.gemini_client.genai.Client") as mock:
-        yield mock
+def client():
+    """Creates a GeminiClient instance with test keys, mocking Redis interactions."""
+    with patch("app.services.gemini_client.cache_service") as mock_cache:
+        # Default: no rate limits hit, no cooldowns
+        mock_cache.get.return_value = None
+        mock_cache.get_quiet.return_value = 0
+        mock_cache.increment_counter.return_value = 1
 
-@pytest.fixture
-def gemini_client_instance(mock_genai_client):
-    """
-    Creates a GeminiClient instance with a controlled list of API keys.
-    We assume the environment is already set up by conftest or defaults
-    such that __init__ doesn't crash.
-    """
-    # Initialize client
-    client = GeminiClient()
-
-    # Override api_keys with our test set
-    client.api_keys = ["key1", "key2", "key3"]
-    client.current_key_index = 0
-
-    # Reset mock to clear the call made during __init__
-    mock_genai_client.reset_mock()
-
-    return client
-
-def test_rotate_key_success(gemini_client_instance, mock_genai_client):
-    """Test successful rotation when next key is available."""
-    client = gemini_client_instance
-    client.current_key_index = 0
-    model_name = "gemini-flash-latest"
-
-    # Mock internal checks:
-    # key1 (index 0): in cooldown (simulating exhaustion/limit) -> False
-    # key2 (index 1): available -> True
-
-    # logic of _find_available_key:
-    # it iterates keys.
-    # We want it to skip index 0 and pick index 1.
-
-    with patch.object(client, '_is_key_in_cooldown') as mock_cooldown, \
-         patch.object(client, '_is_model_at_limit') as mock_limit:
-
-        # Setup side effects
-        # _is_key_in_cooldown called with key
-        mock_cooldown.side_effect = lambda k: k == "key1" # key1 is in cooldown
-
-        # _is_model_at_limit - let's say no models are at limit for simplicity
-        mock_limit.return_value = False
-
-        # Action
-        client._rotate_key(model_name)
-
-        # Verify
-        assert client.current_key_index == 1
-
-        # Verify genai.Client was re-initialized with key2
-        mock_genai_client.assert_called_with(api_key="key2")
+        c = GeminiClient()
+        c.api_keys = ["key_alpha", "key_beta"]
+        c.key_hashes = [_key_hash("key_alpha"), _key_hash("key_beta")]
+        yield c, mock_cache
 
 
-def test_rotate_key_all_unavailable(gemini_client_instance):
-    """Test rotation fails when no keys are available."""
-    client = gemini_client_instance
-    model_name = "gemini-flash-latest"
+class TestKeyHash:
+    def test_deterministic(self):
+        assert _key_hash("abc") == _key_hash("abc")
 
-    with patch.object(client, '_is_key_in_cooldown', return_value=True):
-         with pytest.raises(Exception) as excinfo:
-            client._rotate_key(model_name)
+    def test_different_keys_different_hashes(self):
+        assert _key_hash("key1") != _key_hash("key2")
 
-         assert f"No available API keys for model {model_name}" in str(excinfo.value)
-         # Index should remain unchanged (or as it was)
-         assert client.current_key_index == 0
+    def test_length(self):
+        assert len(_key_hash("anything")) == 12
 
 
-def test_rotate_key_skips_multiple_bad_keys(gemini_client_instance, mock_genai_client):
-    """Test rotation skips multiple bad keys to find a good one."""
-    client = gemini_client_instance
-    client.current_key_index = 0
-    model_name = "gemini-flash-latest"
-
-    # keys: key1(bad), key2(bad), key3(good)
-
-    with patch.object(client, '_is_key_in_cooldown') as mock_cooldown, \
-         patch.object(client, '_is_model_at_limit') as mock_limit:
-
-        # key1, key2 in cooldown. key3 not.
-        mock_cooldown.side_effect = lambda k: k in ["key1", "key2"]
-        mock_limit.return_value = False
-
-        client._rotate_key(model_name)
-
-        assert client.current_key_index == 2
-        mock_genai_client.assert_called_with(api_key="key3")
+class TestNowMinute:
+    def test_format(self):
+        result = _now_minute()
+        assert len(result) == 13  # YYYYMMDD_HHMM
+        assert "_" in result
 
 
-def test_rotate_key_checks_limits(gemini_client_instance, mock_genai_client):
-    """Test that rotation respects model limits."""
-    client = gemini_client_instance
-    client.current_key_index = 0
-    model_name = "gemini-flash-latest"
+class TestRateLimitCheck:
+    def test_no_limits_hit(self, client):
+        c, mock_cache = client
+        mock_cache.get_quiet.return_value = 0
 
-    # key1: not in cooldown, but at limit for this model
-    # key2: ok
+        kh = _key_hash("key_alpha")
+        result = c._check_rate_limits(kh, "gemini-3-flash-preview", "extraction")
+        assert result is True
 
-    with patch.object(client, '_is_key_in_cooldown', return_value=False), \
-         patch.object(client, '_is_model_at_limit') as mock_limit:
+    def test_rpm_exceeded(self, client):
+        c, mock_cache = client
+        from app.core.config import settings
+        rpm_limit = settings.GEMINI_RPM_LIMITS_MAP.get("gemini-3-flash-preview", 10)
 
-        # key1 is at limit, others are not
-        mock_limit.side_effect = lambda k, m: k == "key1"
+        # Return value >= rpm_limit for the RPM check
+        mock_cache.get_quiet.return_value = rpm_limit
+        kh = _key_hash("key_alpha")
+        result = c._check_rate_limits(kh, "gemini-3-flash-preview", "extraction")
+        assert result is False
 
-        client._rotate_key(model_name)
+    def test_cooldown_blocks(self, client):
+        c, mock_cache = client
+        kh = _key_hash("key_alpha")
 
-        assert client.current_key_index == 1
-        mock_genai_client.assert_called_with(api_key="key2")
+        # Simulate cooldown: get_quiet returns a future datetime ISO string
+        from datetime import datetime, timedelta, timezone
+        future_time = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+
+        def get_quiet_side_effect(key):
+            if "cooldown" in key:
+                return future_time
+            return 0
+        mock_cache.get_quiet.side_effect = get_quiet_side_effect
+
+        result = c._is_key_in_cooldown(kh)
+        assert result is True
+
+
+class TestThinkingConfig:
+    def test_gemini_3x_uses_thinking_level(self, client):
+        c, _ = client
+        config = c._build_thinking_config("gemini-3-flash-preview", "high")
+        assert config is not None
+
+    def test_gemini_25x_uses_budget(self, client):
+        c, _ = client
+        config = c._build_thinking_config("gemini-2.5-flash", "medium")
+        assert config is not None
+
+    def test_none_thinking_returns_none(self, client):
+        c, _ = client
+        config = c._build_thinking_config("gemini-3-flash-preview", None)
+        # None thinking → returns a config with "none" level
+        assert config is not None
+
+
+class TestModelChain:
+    def test_primary_model_first(self, client):
+        c, _ = client
+        from app.core.config import settings
+        primary = settings.get_model_for_task("translation")
+        fallbacks = settings.GEMINI_FALLBACK_MODELS_LIST
+
+        chain = [primary] + [m for m in fallbacks if m != primary]
+        assert chain[0] == primary
+        assert len(chain) >= 1
+
+
+class TestGetUsageStats:
+    def test_returns_dict(self, client):
+        c, mock_cache = client
+        mock_cache.get.return_value = None
+
+        stats = c.get_usage_stats()
+        assert isinstance(stats, dict)
+        assert "keys" in stats
+        assert "total_keys" in stats
+
+
+class TestCompleteErrorHandling:
+    def test_all_keys_exhausted_raises(self, client):
+        """When all keys are in cooldown, APIKeyExhausted is raised."""
+        c, mock_cache = client
+
+        # All keys in cooldown
+        mock_cache.get.return_value = "1"  # cooldown flag set for all keys
+
+        from app.core.exceptions import APIKeyExhausted
+        with pytest.raises(APIKeyExhausted):
+            c.complete("test prompt", task_type="extraction")

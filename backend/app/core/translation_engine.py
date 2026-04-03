@@ -50,7 +50,7 @@ class TranslationEngine:
         )
         
         try:
-            response = self.client.complete(prompt)
+            response = self.client.complete(prompt, task_type="translation")
             return response.strip()
         except Exception as e:
             logger.error(f"Error translating text: {e}")

@@ -440,3 +440,91 @@ def generate_project_summary(project_id: int, db: Session = Depends(get_db)) -> 
             status_code=500,
             detail=f"Failed to generate project summary: {str(e)}"
         )
+
+
+# ──────────────────────────────────────────────
+# Project Gemini Settings (model/thinking overrides)
+# ──────────────────────────────────────────────
+
+@router.get("/{project_id}/settings")
+def get_project_settings(project_id: int, db: Session = Depends(get_db)) -> dict:
+    """Получить настройки модели и thinking для проекта."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    from app.core.config import settings as app_settings
+
+    return {
+        "project_id": project_id,
+        "overrides": {
+            "model_extraction": project.model_extraction,
+            "model_translation": project.model_translation,
+            "model_summarization": project.model_summarization,
+            "thinking_extraction": project.thinking_extraction,
+            "thinking_translation": project.thinking_translation,
+        },
+        "effective": {
+            "model_extraction": project.model_extraction or app_settings.GEMINI_MODEL_EXTRACTION,
+            "model_translation": project.model_translation or app_settings.GEMINI_MODEL_TRANSLATION,
+            "model_summarization": project.model_summarization or app_settings.GEMINI_MODEL_SUMMARIZATION,
+            "thinking_extraction": project.thinking_extraction or app_settings.GEMINI_THINKING_EXTRACTION,
+            "thinking_translation": project.thinking_translation or app_settings.GEMINI_THINKING_TRANSLATION,
+        },
+    }
+
+
+@router.patch("/{project_id}/settings")
+def update_project_settings(
+    project_id: int,
+    settings_update: dict,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Обновить настройки модели и thinking для проекта. Передайте null для сброса к defaults."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    allowed_fields = {
+        "model_extraction", "model_translation", "model_summarization",
+        "thinking_extraction", "thinking_translation",
+    }
+    valid_thinking = {"minimal", "low", "medium", "high", None}
+
+    for field, value in settings_update.items():
+        if field not in allowed_fields:
+            raise HTTPException(status_code=400, detail=f"Unknown setting: {field}")
+        if field.startswith("thinking_") and value is not None and value not in valid_thinking:
+            raise HTTPException(status_code=400, detail=f"Invalid thinking level: {value}. Use: minimal/low/medium/high")
+        setattr(project, field, value)
+
+    db.commit()
+    db.refresh(project)
+
+    return get_project_settings(project_id, db)
+
+
+@router.get("/models/available")
+def get_available_models() -> dict:
+    """Возвращает белый список моделей для UI."""
+    from app.core.config import settings as app_settings
+
+    return {
+        "generation_models": [
+            {"id": "gemini-3-flash-preview", "name": "Gemini 3 Flash Preview", "thinking": True, "tier": "flash"},
+            {"id": "gemini-3.1-flash-lite-preview", "name": "Gemini 3.1 Flash Lite Preview", "thinking": True, "tier": "lite"},
+            {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "thinking": True, "tier": "flash"},
+            {"id": "gemini-flash-latest", "name": "Gemini Flash Latest", "thinking": True, "tier": "flash"},
+        ],
+        "embedding_models": [
+            {"id": "gemini-embedding-2-preview", "name": "Gemini Embedding 2 Preview", "dimensions": 768},
+        ],
+        "thinking_levels": ["minimal", "low", "medium", "high"],
+        "defaults": {
+            "extraction": app_settings.GEMINI_MODEL_EXTRACTION,
+            "translation": app_settings.GEMINI_MODEL_TRANSLATION,
+            "summarization": app_settings.GEMINI_MODEL_SUMMARIZATION,
+            "relationships": app_settings.GEMINI_MODEL_RELATIONSHIPS,
+        },
+    }
+
