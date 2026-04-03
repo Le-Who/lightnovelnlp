@@ -1,7 +1,35 @@
 import os
 import pytest
+import typing
 from typing import Generator
 from sqlalchemy import create_engine
+
+# Monkeypatch for pydantic v1 / python 3.12 compatibility
+# This resolves TypeError: ForwardRef._evaluate() missing 1 required keyword-only argument: 'recursive_guard'
+# when importing spacy (which uses pydantic v1)
+if hasattr(typing.ForwardRef, "_evaluate"):
+    _evaluate_original = typing.ForwardRef._evaluate
+
+    def _evaluate_patched(self, globalns, localns, *args, **kwargs):
+        type_params = kwargs.get("type_params", None)
+        recursive_guard = kwargs.get("recursive_guard", None)
+
+        if args:
+            # If called with positional args, check what they are
+            # Pydantic v1 calls: _evaluate(globalns, localns, recursive_guard)
+            # Python 3.12 calls: _evaluate(globalns, localns, type_params, recursive_guard=...)
+            arg0 = args[0]
+            if isinstance(arg0, set):
+                recursive_guard = arg0
+            else:
+                type_params = arg0
+
+        if recursive_guard is None:
+            recursive_guard = set()
+
+        return _evaluate_original(self, globalns, localns, type_params=type_params, recursive_guard=recursive_guard)
+
+    typing.ForwardRef._evaluate = _evaluate_patched
 from sqlalchemy.orm import sessionmaker, Session
 from unittest.mock import MagicMock
 
