@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/Label'
 import { Spinner } from '@/components/ui/Spinner'
 import api from '@/services/apiClient'
 
-import ChapterManager from '@/components/ChapterManager.jsx'
+import { NeonChapterManager } from '@/components/themes/neon/NeonChapterManager.jsx'
 import ChapterViewer from '@/components/ChapterViewer.jsx'
 import GlossaryEditor from '@/components/GlossaryEditor.jsx'
 import RelationshipsViewer from '@/components/RelationshipsViewer.jsx'
@@ -137,7 +137,7 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
         <div className="absolute inset-0 bg-scanline pointer-events-none opacity-5" />
 
         <div className="p-6 relative z-10">
-          {activeModule === 'chapters' && <ChapterManager projectId={projectId} />}
+          {activeModule === 'chapters' && <NeonChapterManager projectId={projectId} />}
           {activeModule === 'glossary' && <NeonWrapper><GlossaryEditor projectId={projectId} /></NeonWrapper>}
           {activeModule === 'relationships' && <NeonWrapper><RelationshipsViewer projectId={projectId} /></NeonWrapper>}
           {activeModule === 'translations' && <ChapterViewer projectId={projectId} />}
