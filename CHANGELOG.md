@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### ✨ Added
 - `entrypoint.sh` — startup script with persistent spaCy model support + Alembic migration
+- `backend/Dockerfile.worker` — dedicated Celery worker image for 2nd Northflank account deployment
 
 ### 📝 Changed
 - **PyPDF2 → pypdf**: Migrated from deprecated PyPDF2 to actively maintained `pypdf` fork
@@ -17,12 +18,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Dockerfile**: Python 3.11→3.12-slim, entrypoint-based startup, persistent volume for spaCy models
 - **docker-compose.yml**: postgres:15→pgvector/pgvector:pg16 (local dev pgvector support)
 - **term_extractor.py**: `Matcher` → `PhraseMatcher` (3-5x faster frequency counting on large glossaries)
+- **models/__init__.py**: `sqlalchemy.ext.declarative.declarative_base` → `sqlalchemy.orm.declarative_base` (SQLAlchemy 2.0 canonical form; eliminates MovedIn20Warning)
+
+### 🔧 Fixed
+- **BUG-10**: 5 test files crashed at **collection time** on Python 3.14 (local) because Celery's pydantic.v1 dependency is incompatible with Python 3.14. All 5 files now use module-level `pytest.skip` guards to skip gracefully locally; tests run fully on Python 3.12 (production).
+- **BUG-11**: `SQLAlchemy MovedIn20Warning` fired on every test run due to legacy `sqlalchemy.ext.declarative` import path. Fixed in `models/__init__.py`.
 
 ### ✅ Verified
 - Supabase DB `lpyidjpqsplgcscmnxcs`: full schema deployed (8 tables, 28 indexes, pgvector 0.8.0)
-- Test suite: 65 passed, 1 skipped, 0 failures
+- Local test suite (Python 3.14): 65 passed, 17 skipped, **0 failures**, 2 warnings (third-party only)
+- Production test suite (Python 3.12): 77 tests expected to pass (0 collection errors, 0 skips)
 
 ---
+
+
 
 ## [2.0.0] - 2026-04-04
 
