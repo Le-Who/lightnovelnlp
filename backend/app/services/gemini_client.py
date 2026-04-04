@@ -435,7 +435,7 @@ class GeminiClient:
                     f"Invalid thinkingLevel '{level}', defaulting to 'medium'"
                 )
                 level = "medium"
-            return types.ThinkingConfig(thinking_level=level)
+            return types.ThinkingConfig(thinking_level=level)  # type: ignore[arg-type]
         else:
             # Gemini 2.5.x: map named levels to budget integers
             budget_map = {"minimal": 0, "low": 1024, "medium": 4096, "high": 8192}

@@ -125,7 +125,7 @@ class TermExtractor:
                 doc = nlp(text, disable=["ner", "textcat", "parser"])
                 matches = matcher(doc)
 
-                counts = Counter()
+                counts: Counter[str] = Counter()
                 for match_id, start, end in matches:
                     term_name = nlp.vocab.strings[match_id]
                     counts[term_name] += 1

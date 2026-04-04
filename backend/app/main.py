@@ -79,8 +79,9 @@ async def lifespan(app: FastAPI):
 # Создаем таблицы
 # Base.metadata.create_all(bind=engine)  # Убрано - используем Alembic для миграций
 
-app = FastAPI(
-    title="Light Novel NLP API",
+# type: ignore[has-type] - mypy confuses var 'app' with the 'app' module
+app: FastAPI = FastAPI(
+    title=settings.PROJECT_NAME,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
