@@ -148,9 +148,35 @@ def read_root():
 
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy"}
-
+def health_check(db: Session = Depends(get_db)):
+    health_status = {"status": "healthy", "database": "unknown", "redis": "unknown"}
+    
+    # Check Database
+    try:
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        health_status["database"] = "connected"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["database"] = "disconnected"
+        
+    # Check Redis
+    try:
+        from app.services.cache_service import cache_service
+        # Use existing ping checking mechanism or just get a dummy key
+        res = cache_service.redis_client.ping() if cache_service.redis_client else False
+        health_status["redis"] = "connected" if res else "disconnected"
+        if not res:
+            health_status["status"] = "degraded"
+    except Exception as e:
+        health_status["redis"] = "disconnected"
+        health_status["status"] = "degraded"
+        
+    if health_status["status"] == "unhealthy":
+        from fastapi import Response
+        return Response(content='{"status": "unhealthy"}', status_code=503, media_type="application/json")
+        
+    return health_status
 
 @app.get("/info")
 def get_info():

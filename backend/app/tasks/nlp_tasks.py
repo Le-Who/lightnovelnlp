@@ -4,10 +4,11 @@ from app.db import SessionLocal
 from app.models.glossary import BatchJob, BatchJobItem
 from app.api.processing import process_chapter_sync
 from app.services.translation_service import TranslationService
+from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
-
+@celery_app.task
 def analyze_chapter_task(chapter_id: int):
     """
     Sync task for chapter analysis (term extraction).
@@ -27,6 +28,7 @@ def analyze_chapter_task(chapter_id: int):
         db.close()
 
 
+@celery_app.task
 def translate_chapter_task(chapter_id: int):
     """
     Синхронная задача для перевода главы.
@@ -45,6 +47,7 @@ def translate_chapter_task(chapter_id: int):
         db.close()
 
 
+@celery_app.task
 def process_batch_analyze_task(batch_job_id: int):
     """Синхронная задача пакетного анализа. Вызывается через BackgroundTasks."""
     logger.info(f"Starting batch analysis job {batch_job_id}")
@@ -142,6 +145,7 @@ def process_batch_analyze_task(batch_job_id: int):
         db.close()
 
 
+@celery_app.task
 def process_batch_translate_task(batch_job_id: int):
     """Синхронная задача пакетного перевода. Вызывается через BackgroundTasks."""
     logger.info(f"Starting batch translation job {batch_job_id}")

@@ -268,26 +268,71 @@ export default function BatchProcessor({ projectId }) {
     if (projectId) loadJobs()
   }, [projectId])
 
-  // Real-time polling for active jobs
+  const ssePool = React.useRef({})
+
+  // Cleanup on unmount
   useEffect(() => {
-    if (activeJobs.size === 0) return
-    const interval = setInterval(async () => {
-      try {
-        const res = await api.get(`/batch/${projectId}/jobs`)
-        const data = Array.isArray(res.data) ? res.data : []
-        setJobs(data)
-        const stillActive = new Set()
-        data.forEach(job => {
-          if (job.status === 'pending' || job.status === 'running') stillActive.add(job.id)
-        })
-        setActiveJobs(stillActive)
-        if (stillActive.size === 0) clearInterval(interval)
-      } catch (e) {
-        console.error('Error updating jobs:', e)
+    return () => {
+      Object.values(ssePool.current).forEach(sse => sse.close())
+    }
+  }, [])
+
+  // Real-time SSE streaming for active jobs
+  useEffect(() => {
+    // Setup new streams
+    activeJobs.forEach(jobId => {
+      if (!ssePool.current[jobId]) {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        const sse = new EventSource(`${baseUrl}/api/v1/batch/jobs/${jobId}/stream`)
+        
+        sse.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            
+            // Update job list
+            setJobs(prevJobs => {
+              const newJobs = [...prevJobs]
+              const idx = newJobs.findIndex(j => j.id === jobId)
+              if (idx !== -1) {
+                newJobs[idx] = { ...newJobs[idx], ...data }
+              }
+              return newJobs
+            })
+
+            // If terminal state, close and remove from active set
+            if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+              sse.close()
+              delete ssePool.current[jobId]
+              setActiveJobs(prev => {
+                const next = new Set(prev)
+                next.delete(jobId)
+                return next
+              })
+            }
+          } catch (e) {
+            console.error('SSE parsing error', e)
+          }
+        }
+
+        sse.onerror = (err) => {
+          console.error(`SSE error on job ${jobId}`)
+          sse.close()
+          delete ssePool.current[jobId]
+          // Optional: fallback to polling if SSE drops, but for now we just log
+        }
+        
+        ssePool.current[jobId] = sse
       }
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [activeJobs, projectId])
+    })
+
+    // Cleanup any that are no longer active
+    Object.keys(ssePool.current).forEach(id => {
+      if (!activeJobs.has(Number(id))) {
+        ssePool.current[id].close()
+        delete ssePool.current[id]
+      }
+    })
+  }, [activeJobs])
 
   const createAnalyzeJob = async () => {
     setCreatingJob(true)

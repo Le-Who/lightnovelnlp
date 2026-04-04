@@ -232,27 +232,27 @@ export default function GlossaryEditor({ projectId }) {
                     {paginatedTerms.map((term) => (
                       <TableRow key={term.id} className="hover:bg-accent/5 transition-colors border-accent/5">
                         {/* Source Term - Wraps text */}
-                        <TableCell className="font-medium text-card-foreground align-top p-3 break-words whitespace-normal leading-tight">
+                        <TableCell className="font-medium align-top p-3 wrap-break-word whitespace-normal leading-tight">
                           {term.source_term}
                           {term.context && (
-                            <div className="text-xs text-muted-foreground mt-1 italic whitespace-normal leading-tight opacity-70">
+                            <div className="font-mono text-[10px] wrap-break-word px-2 text-primary">
                               {term.context}
                             </div>
                           )}
                         </TableCell>
 
                         {/* Translated Term - Wraps text */}
-                        <TableCell className="text-card-foreground align-top p-3 break-words whitespace-normal leading-tight">
+                        <TableCell className="align-top p-3 wrap-break-word whitespace-normal leading-tight">
                           {term.translated_term || <span className="text-muted-foreground/40 italic">Не переведено</span>}
                         </TableCell>
 
-                        <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3">
+                        <TableCell className="hidden md:table-cell align-top text-center p-3">
                           <span className="inline-flex px-2 py-0.5 rounded text-xs bg-secondary/20 text-secondary-foreground border border-secondary/30">
                             {getCategoryLabel(term.category)}
                           </span>
                         </TableCell>
 
-                        <TableCell className="text-card-foreground align-top text-center p-3 font-mono">{term.frequency || 1}</TableCell>
+                        <TableCell className="align-top text-center p-3 font-mono">{term.frequency ?? 1}</TableCell>
 
                         <TableCell className="h-full p-1 hidden lg:table-cell align-top">
                           {term.occurrences_data && term.occurrences_data.length > 0 ? (

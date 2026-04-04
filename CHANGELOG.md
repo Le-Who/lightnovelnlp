@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `create_project_summary()` output changed from Russian section headers (ПРЕДЫСТОРИЯ/ПОСЛЕДНИЕ СОБЫТИЯ) to English (PREVIOUSLY/RECENT EVENTS).
 
 ### ✨ Added
+- **Deployment Hardening (Northflank/PaaS)**:
+  - Added dedicated `worker` service pulling from `./backend` routing to Celery in `docker-compose.yml`.
+  - Upgraded `/health` endpoint in `main.py` to ping PostgreSQL and Redis subsystems.
+  - Rewired `app.tasks.nlp_tasks` to properly inject `@celery_app.task` wrappers and explicitly offload queueing via `.delay()`.
+- **Live SSE Streaming**: Replaced database polling with `EventSource` and `StreamingResponse` on `GET /api/v1/batch/jobs/{job_id}/stream` for 0-latency progress synchronization in `BatchProcessor.jsx`.
+- **AI Audit UI (Review Interface)**: Introduced `AiReviewPanel.jsx` in Neon Theme. Exposes visual QA metrics (GLOSSARY_VIOLATIONS, TRANSLATION_SCORE, STYLE_NOTES) directly inside the React Modals with automated "AI_CORRECTION" re-trigger capabilities.
 - **Per-project Language Selection**: Projects now have configurable `source_language` (zh/ja/ko/en) and `target_language` (ru/en) fields. All NLP pipeline calls (extraction, summarization, relationships, translation) now receive and use these dynamically.
 - **Per-project Embedding Threshold**: New `embedding_threshold` column on `projects` table. Overrides the global `EMBEDDING_SIMILARITY_THRESHOLD` (0.75) for fine-grained term matching.
 - **Auto-Calibration Endpoint**: `POST /projects/{id}/calibrate-threshold` — computes optimal cosine similarity threshold from pairwise distances between approved terms with embeddings (requires ≥5 terms). Returns distribution stats (min/max/mean/median/p25/p75).
@@ -130,7 +136,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `conftest.py` refactored for lazy app imports (isolates unit tests from spaCy issues)
 - Test suite: 77 tests, 13 new GeminiClient v2 tests
 
-### 🔧 Fixed
+### 🐛 Fixed
+- **Glossary Frequency Data Integrity**: Fixed the frequency display bug where `GlossaryTerm.frequency` was permanently rendered as `1`. Root cause isolated to a missing `frequency: int` validation field in `GlossaryTermRead` Pydantic Schema that caused serialization stripping. Added `?? 1` fallback handler in React.
 - **BUG-1**: Global `per_minute_limit=10` applied to all models → per-model per-key RPM
 - **BUG-2**: RPD tracked globally instead of per-key → per-key per-model RPD
 - **BUG-3**: Mutable `current_key_index` in Python heap → eliminated stateful key tracking

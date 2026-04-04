@@ -14,6 +14,6 @@ celery_app.conf.update(
     timezone=settings.GEMINI_API_RESET_TIMEZONE,
     enable_utc=True,
     task_routes={
-        "app.worker.nlp_tasks.*": {"queue": "nlp_queue"},
+        "app.tasks.nlp_tasks.*": {"queue": "nlp_queue"},
     },
 )

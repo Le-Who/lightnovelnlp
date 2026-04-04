@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
 import { Terminal, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode, X } from 'lucide-react'
 import { useChapterManager } from '@/hooks/useChapterManager'
+import { AiReviewPanel } from './AiReviewPanel'
 
 export function NeonChapterManager({ projectId }) {
   const {
@@ -81,7 +82,7 @@ export function NeonChapterManager({ projectId }) {
       {/* File List */}
       <div className="border border-accent/30 bg-surface/20 min-h-[400px] relative">
         {/* Decorative Grid Lines */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.02)_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none" />
 
         <div className="grid grid-cols-12 gap-4 p-3 border-b border-accent/20 text-[10px] text-accent/70 bg-surface/80 font-bold tracking-widest relative z-10 uppercase">
           <div className="col-span-1">ID_Tag</div>
@@ -239,12 +240,21 @@ export function NeonChapterManager({ projectId }) {
         isOpen={!!previewData}
         onClose={() => setPreviewData(null)}
         title="DATA_PREVIEW"
-        className="max-w-4xl border-accent"
+        className="max-w-6xl border-accent"
       >
         {previewData && (
-          <div className="grid grid-cols-2 gap-4 h-[60vh]">
-            <div className="border border-border bg-bg/50 p-4 overflow-auto font-mono text-xs text-muted-foreground whitespace-pre-wrap">{previewData.original_text}</div>
-            <div className="border border-accent/30 bg-accent/5 p-4 overflow-auto font-mono text-xs text-text whitespace-pre-wrap shadow-inner">{previewData.translated_text}</div>
+          <div className="flex flex-col gap-4 h-[75vh]">
+            <div className={`grid ${previewData.translated_text ? 'grid-cols-2 flex-1' : 'grid-cols-1 flex-1'} gap-4`}>
+              <div className="border border-border bg-bg/50 p-4 overflow-auto font-mono text-xs text-muted-foreground whitespace-pre-wrap">{previewData.original_text}</div>
+              {previewData.translated_text && (
+                <div className="border border-accent/30 bg-accent/5 p-4 overflow-auto font-mono text-xs text-text whitespace-pre-wrap shadow-inner">{previewData.translated_text}</div>
+              )}
+            </div>
+            {previewData.translated_text && (
+              <div className="shrink-0 h-1/3 overflow-y-auto w-full">
+                <AiReviewPanel chapterId={previewData.chapter_id} onCorrectionStarted={() => setPreviewData(null)} />
+              </div>
+            )}
           </div>
         )}
       </Modal>

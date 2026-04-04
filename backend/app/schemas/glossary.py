@@ -32,6 +32,7 @@ class GlossaryTermRead(GlossaryTermBase):
     id: int
     project_id: int
     status: str
+    frequency: int
     created_at: datetime
     approved_at: Optional[datetime] = None
     first_chapter_id: Optional[int] = None
