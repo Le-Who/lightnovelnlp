@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
+from sqlalchemy.orm import Session
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +15,7 @@ try:
     from app.api import projects, glossary, processing, translation, batch
     from app.core.config import settings
     from app.core.exceptions import RateLimitExceeded, APIKeyExhausted
+    from app.deps import get_db
     
     logger.info("Configuration loaded successfully")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
