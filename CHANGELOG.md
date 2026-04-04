@@ -4,11 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.0.1] - 2026-04-04
+## [2.1.0] - 2026-04-04
 
 ### ✨ Added
-- `entrypoint.sh` — startup script with persistent spaCy model support + Alembic migration
-- `backend/Dockerfile.worker` — dedicated Celery worker image for 2nd Northflank account deployment
+- **UI/UX Polish**: Full "Neon Operator" dashboard aesthetic.
+  - Added `NeonSkeleton` component for shimmer loading states in Project Cards and File Rows.
+  - Rebuilt `BatchProcessor.jsx` with neon glow progress bars, animated scanlines, and cyberpunk typography.
+- **AI Feedback Loop**: Automated glossary adherence enforcement.
+  - `TranslationService.review_translation` now returns a structured JSON verdict (score, violations).
+  - New `translate_with_review` flow and `POST /api/v1/chapters/{id}/translate-with-review` endpoint. Automatically runs a correction pass with explicitly embedded feedback if glossary violations are found.
+- **EPUB Support**: Native parsing for `.epub` uploads.
+  - Added `ebooklib>=0.18` to requirements.
+  - `projects.py` now supports `.epub` in both single-file (`/upload`) and batch (`/upload_chapters`) endpoints. Batch endpoints correctly split chapters based on the EPUB spine.
+
+## [2.0.1] - 2026-04-04
 
 ### 📝 Changed
 - **PyPDF2 → pypdf**: Migrated from deprecated PyPDF2 to actively maintained `pypdf` fork

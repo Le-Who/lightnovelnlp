@@ -23,4 +23,5 @@ numpy>=1.26.0
 # Utilities
 python-multipart>=0.0.18
 pytz>=2024.1
+ebooklib>=0.18
 pypdf>=5.0.0

@@ -18,9 +18,37 @@ except Exception:
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.services.project_service import ProjectService
 import re
+from html.parser import HTMLParser
+import html
+try:
+    import ebooklib
+    from ebooklib import epub
+except ImportError:
+    ebooklib = None
+    epub = None
+
 from app.core.regex_utils import safe_finditer
 
 router = APIRouter()
+
+class HTMLStripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.strict = False
+        self.convert_charrefs = True
+        self.text = []
+
+    def handle_data(self, d):
+        self.text.append(d)
+
+    def get_data(self):
+        return ''.join(self.text)
+
+def _strip_html_tags(html_content: str) -> str:
+    s = HTMLStripper()
+    s.feed(html_content)
+    return html.unescape(s.get_data()).strip()
 
 
 @router.get("/", response_model=List[ProjectRead])
@@ -166,8 +194,24 @@ def create_chapter_from_file(
     elif filename.endswith(".doc"):
         # .doc без внешних зависимостей корректно не парсится; попытаемся как текст
         text = content_bytes.decode(errors="ignore")
+    elif filename.endswith(".epub") and epub is not None:
+        try:
+            # Парсинг EPUB и объединение всех глав в один текст
+            with open("temp.epub", "wb") as f:
+                f.write(content_bytes)
+            book = epub.read_epub("temp.epub")
+            parts = []
+            for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+                raw_html = item.get_content().decode("utf-8", errors="ignore")
+                parts.append(_strip_html_tags(raw_html))
+            text = "\n\n".join(parts)
+            import os
+            if os.path.exists("temp.epub"):
+                os.remove("temp.epub")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse EPUB: {e}")
     else:
-        raise HTTPException(status_code=400, detail="Unsupported file type. Use txt/pdf/rtf/doc")
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use txt/pdf/rtf/doc/epub")
 
     if not text.strip():
         raise HTTPException(status_code=400, detail="File has no extractable text")
@@ -205,15 +249,60 @@ def upload_chapters_from_file(
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Проверяем тип файла
-    if not file.filename.endswith('.txt'):
+    filename = file.filename.lower()
+    if not (filename.endswith('.txt') or filename.endswith('.epub')):
         raise HTTPException(
             status_code=400, 
-            detail="Only .txt files are supported"
+            detail="Only .txt and .epub files are supported"
         )
     
     try:
-        # Читаем содержимое файла
-        content = file.file.read().decode('utf-8')
+        content_bytes = file.file.read()
+        created_chapters = []
+
+        if filename.endswith('.epub') and epub is not None:
+            print("DEBUG: Processing EPUB file")
+            # Save to temporary file since ebooklib expects a file path
+            with open("temp.epub", "wb") as f:
+                f.write(content_bytes)
+            
+            book = epub.read_epub("temp.epub")
+            
+            for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+                raw_html = item.get_content().decode("utf-8", errors="ignore")
+                chapter_text = _strip_html_tags(raw_html)
+                if len(chapter_text.strip()) > 50:  # Skip tiny dummy files
+                    created_chapters.append(chapter_text)
+
+            import os
+            if os.path.exists("temp.epub"):
+                os.remove("temp.epub")
+            
+            if not created_chapters:
+                raise HTTPException(status_code=400, detail="No readable chapters found in EPUB")
+            
+            # Create chapters from exact EPUB spine
+            max_order = db.query(func.max(Chapter.order)).filter(Chapter.project_id == project_id).scalar() or 0
+            db_chapters = []
+            for i, text in enumerate(created_chapters):
+                # Optionally extract title from the first line or just use numbering
+                lines = [l.strip() for l in text.split("\n") if l.strip()]
+                c_title = lines[0] if lines and len(lines[0]) < 100 else f"Глава {i+1}"
+                ch = Chapter(
+                    project_id=project_id,
+                    title=c_title,
+                    original_text=text,
+                    order=max_order + 1 + i
+                )
+                db.add(ch)
+                db_chapters.append(ch)
+            
+            db.commit()
+            return {"message": f"Successfully uploaded {len(db_chapters)} chapters from EPUB", "chapters_count": len(db_chapters)}
+            
+        else:
+            # Читаем содержимое txt файла
+            content = content_bytes.decode('utf-8')
         print(f"DEBUG: File content length: {len(content)}")
         
         # Разделяем текст на главы по паттерну

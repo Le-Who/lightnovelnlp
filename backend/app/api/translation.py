@@ -83,6 +83,34 @@ def translate_chapter(
         )
 
 
+@router.post("/chapters/{chapter_id}/translate-with-review", status_code=status.HTTP_200_OK)
+def translate_chapter_with_review(
+    chapter_id: int,
+    db: Session = Depends(get_db),
+    max_retries: int = Query(default=1, description="Max correction passes to run if violations found")
+) -> dict:
+    """Оркестрация перевода главы с автоматическим ревью и исправлением нарушений глоссария."""
+    try:
+        result = TranslationService.translate_with_review(db, chapter_id, max_retries)
+        
+        if "error" in result:
+            raise HTTPException(status_code=result.get("status_code", 400), detail=result["error"])
+            
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=502,
+            detail=f"Translation with review failed: {str(e)}"
+        )
+
+
 @router.post("/chapters/{chapter_id}/translate-async", status_code=status.HTTP_202_ACCEPTED)
 def translate_chapter_async(
     chapter_id: int,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import api from '@/services/apiClient'
 import { Terminal, Database, Activity, Play, ChevronRight, Hash, Clock, Server, Trash2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import { NeonProjectCardSkeleton } from '@/components/ui/NeonSkeleton'
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState([])
@@ -162,11 +163,10 @@ export default function DashboardPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-24 border border-dashed border-border/30 bg-surface/20">
-            <div className="flex flex-col items-center text-accent animate-pulse">
-              <Activity className="w-8 h-8 mb-4" />
-              <span className="tracking-widest">ACCESSING_SECTORS...</span>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <NeonProjectCardSkeleton key={i} />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

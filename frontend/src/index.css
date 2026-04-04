@@ -150,6 +150,17 @@ h6 {
     animation: scan 4s linear infinite;
 }
 
+/* Skeleton shimmer sweep */
+@keyframes shimmer {
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+.animate-shimmer {
+    animation: shimmer 1.6s infinite;
+}
+
 /* Scrollbar styling for Neon theme */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

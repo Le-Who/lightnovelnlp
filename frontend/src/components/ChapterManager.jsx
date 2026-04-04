@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
 import { Terminal, CheckCircle2, Eye, Plus, Languages, Trash2, Upload, Activity, AlertTriangle, FileCode, X } from 'lucide-react'
 import { useChapterManager } from '@/hooks/useChapterManager'
+import { NeonFileRowSkeleton } from '@/components/ui/NeonSkeleton'
 
 export default function ChapterManager({ projectId }) {
   const {
@@ -68,7 +69,7 @@ export default function ChapterManager({ projectId }) {
             <label className={`flex items-center px-4 py-1 bg-accent/10 hover:bg-accent text-accent hover:text-bg transition-all uppercase text-[10px] font-bold cursor-pointer tracking-wider focus-within:ring-2 focus-within:ring-accent focus-within:outline-none rounded-sm ${uploadingChapters ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {uploadingChapters ? <Spinner className="w-3 h-3 mr-2" /> : <Upload className="w-3 h-3 mr-2" />}
               {uploadingChapters ? 'UPLOADING...' : 'UPLOAD_BATCH'}
-              <input type="file" className="sr-only" onChange={handleFileSelect} disabled={uploadingChapters} />
+              <input type="file" className="sr-only" accept=".txt,.epub" onChange={handleFileSelect} disabled={uploadingChapters} />
             </label>
           </div>
           <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-6 py-2 bg-accent text-bg hover:bg-secondary-accent transition-colors uppercase text-[10px] tracking-widest font-bold shadow-[0_0_10px_rgba(0,243,255,0.3)]">
@@ -92,9 +93,10 @@ export default function ChapterManager({ projectId }) {
         </div>
 
         {loading ? (
-          <div className="p-24 flex flex-col items-center justify-center text-accent animate-pulse">
-            <Activity className="w-8 h-8 mb-4" />
-            <div className="tracking-widest text-xs">SCANNING_SECTOR_DATA...</div>
+          <div className="divide-y divide-accent/5 relative z-10">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <NeonFileRowSkeleton key={i} index={i} />
+            ))}
           </div>
         ) : (
           <div className="divide-y divide-accent/5 relative z-10">
