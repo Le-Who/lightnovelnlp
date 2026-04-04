@@ -1,12 +1,18 @@
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+"""Quick diagnostic: verifies google-genai SDK is installed and functional."""
+from google import genai
+from google.genai import types
 
-print(f"Version: {genai.__version__}")
+print(f"google-genai version: {genai.__version__}")
 
 try:
-    config = GenerationConfig(response_mime_type="application/json")
-    print("GenerationConfig accepts response_mime_type: YES")
-except TypeError:
-    print("GenerationConfig accepts response_mime_type: NO")
+    cfg = types.GenerateContentConfig(response_mime_type="application/json")
+    print("GenerateContentConfig(response_mime_type=...): OK")
 except Exception as e:
-    print(f"Other error: {e}")
+    print(f"GenerateContentConfig error: {e}")
+
+try:
+    thinking = types.ThinkingConfig(thinking_budget=1024)
+    print("ThinkingConfig(thinking_budget=1024): OK")
+except Exception as e:
+    print(f"ThinkingConfig error: {e}")
+
