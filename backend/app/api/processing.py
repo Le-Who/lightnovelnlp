@@ -1,20 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.nlp_pipeline.context_summarizer import context_summarizer
+from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
+from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.db import SessionLocal
 from app.deps import get_db
-from app.models.project import Chapter, Project, ProjectGenre, AnalysisStatus
-from app.core.nlp_pipeline.term_extractor import term_extractor
-from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
-from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.models.glossary import (
     GlossaryTerm,
-    TermStatus,
     TermCategory,
-    TermRelationship,
     TermOccurrence,
+    TermRelationship,
+    TermStatus,
 )
+from app.models.project import AnalysisStatus, Chapter, Project, ProjectGenre
 from app.services.cache_service import cache_service
 
 router = APIRouter()

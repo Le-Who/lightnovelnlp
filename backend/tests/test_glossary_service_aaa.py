@@ -14,11 +14,10 @@ Original issues in test_glossary_service.py:
   - test_filter_terms_substring_safety misleadingly named (it tests substring match, not safety).
 """
 
+from conftest import make_glossary_term, make_project
 from sqlalchemy.orm import Session
 
 from app.services.glossary_service import GlossaryService
-from conftest import make_project, make_glossary_term
-
 
 # ── Helper mock for filter_terms_by_text (pure function tests) ────────────────
 

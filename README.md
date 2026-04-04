@@ -7,8 +7,9 @@
 ![Python](https://img.shields.io/badge/Backend-FastAPI-blue)
 ![React](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-cyan)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini%203.x-orange)
-![Architecture](https://img.shields.io/badge/Architecture-v2.3-purple)
+![Architecture](https://img.shields.io/badge/Architecture-v2.3.1-purple)
 ![Testing](https://img.shields.io/badge/Testing-AAA%20Pattern%20%7C%20130%2B%20Tests-brightgreen)
+![Linting](https://img.shields.io/badge/Code%20Quality-Ruff%20%7C%20ESLint-yellow)
 
 ---
 

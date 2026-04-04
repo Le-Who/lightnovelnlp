@@ -1,15 +1,16 @@
-from sqlalchemy.orm import Session, load_only
-from typing import List, Dict, Any, Optional
 import json
 import logging
+from typing import Any, Dict, List, Optional
 
-from app.models.project import Chapter
-from app.models.glossary import GlossaryTerm
-from app.services.cache_service import cache_service
-from app.services.glossary_service import GlossaryService
-from app.core.translation_engine import translation_engine
+from sqlalchemy.orm import Session, load_only
+
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
+from app.core.translation_engine import translation_engine
+from app.models.glossary import GlossaryTerm
+from app.models.project import Chapter
+from app.services.cache_service import cache_service
 from app.services.gemini_client import gemini_client
+from app.services.glossary_service import GlossaryService
 
 logger = logging.getLogger(__name__)
 

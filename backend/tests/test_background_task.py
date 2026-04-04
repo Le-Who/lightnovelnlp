@@ -13,6 +13,7 @@ This function handles the FastAPI BackgroundTasks execution path
 """
 
 from unittest.mock import MagicMock, patch
+
 from app.api.translation import translate_chapter_background
 from app.models.project import TranslationStatus
 

@@ -136,7 +136,7 @@ export function AiReviewPanel({ chapterId, onCorrectionStarted }) {
                     <li key={i} className="text-[10px] flex items-start gap-2 bg-black/40 p-2 border border-destructive/10">
                       <span className="text-destructive font-bold mt-0.5">[{String(i+1).padStart(2, '0')}]</span>
                       <div>
-                        <div className="text-text font-bold mb-0.5">"{v.term}" → <span className="text-destructive line-through opacity-70">{v.found}</span> <span className="text-secondary-accent">{v.expected}</span></div>
+                        <div className="text-text font-bold mb-0.5">&quot;{v.term}&quot; → <span className="text-destructive line-through opacity-70">{v.found}</span> <span className="text-secondary-accent">{v.expected}</span></div>
                         {v.context && <div className="text-muted-foreground opacity-80">{v.context}</div>}
                       </div>
                     </li>

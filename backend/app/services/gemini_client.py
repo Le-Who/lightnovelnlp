@@ -19,9 +19,9 @@ import warnings
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
+import pytz
 from google import genai
 from google.genai import types
-import pytz
 
 # Suppress Pydantic warnings from google-genai types
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
@@ -34,8 +34,8 @@ warnings.filterwarnings(
 logger = logging.getLogger(__name__)
 
 from app.core.config import settings
-from app.services.cache_service import cache_service
 from app.core.exceptions import APIKeyExhausted
+from app.services.cache_service import cache_service
 
 
 def _key_hash(api_key: str) -> str:
@@ -128,8 +128,6 @@ class GeminiClient:
         model_chain = [primary_model] + [
             m for m in self.fallback_models if m != primary_model
         ]
-
-        last_error: Exception | None = None
 
         for model_name in model_chain:
             result = self._try_model_across_keys(

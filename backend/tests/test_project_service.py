@@ -15,23 +15,22 @@ Original issues:
   - Two scenarios in test_delete_project share state via db.reset_mock() which is fragile.
 """
 
-import pytest
 from unittest.mock import MagicMock
-from fastapi import HTTPException
 
+import pytest
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.services.project_service import ProjectService
-from app.models.project import Project, Chapter
 from app.models.glossary import (
-    GlossaryTerm,
-    TermRelationship,
-    GlossaryVersion,
     BatchJob,
     BatchJobItem,
+    GlossaryTerm,
+    GlossaryVersion,
+    TermRelationship,
 )
+from app.models.project import Chapter, Project
 from app.schemas.project import ProjectCreate
-
+from app.services.project_service import ProjectService
 
 # ── get_projects ──────────────────────────────────────────────────────────────
 

@@ -1,29 +1,29 @@
 from __future__ import annotations
 
-from typing import List
 from datetime import datetime, timezone
+from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session, selectinload
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
 
 from app.deps import get_db
-from app.models.project import Chapter
 from app.models.glossary import (
     GlossaryTerm,
-    TermStatus,
-    TermRelationship,
     GlossaryVersion,
     TermOccurrence,
+    TermRelationship,
+    TermStatus,
 )
+from app.models.project import Chapter
 from app.schemas.glossary import (
     GlossaryTermCreate,
     GlossaryTermRead,
     GlossaryTermUpdate,
-    TermRelationshipCreate,
-    TermRelationshipRead,
     GlossaryVersionCreate,
     GlossaryVersionRead,
+    TermRelationshipCreate,
+    TermRelationshipRead,
 )
 from app.services.cache_service import cache_service
 from app.services.gemini_client import gemini_client

@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request, Depends
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import logging
 from sqlalchemy.orm import Session
 
 # Настройка логирования
@@ -10,12 +11,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from app.db import engine
-    from app.models import *  # Импортируем все модели для регистрации
-    from app.api import projects, glossary, processing, translation, batch
+    from app.api import batch, glossary, processing, projects, translation
     from app.core.config import settings
-    from app.core.exceptions import RateLimitExceeded, APIKeyExhausted
+    from app.core.exceptions import APIKeyExhausted, RateLimitExceeded
+    from app.db import engine
     from app.deps import get_db
+    import app.models  # noqa: F401  # Импортируем все модели для регистрации
 
     logger.info("Configuration loaded successfully")
     logger.info(f"Environment: {settings.ENVIRONMENT}")

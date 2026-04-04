@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.3.1] - 2026-04-04
+
+### 🚀 Added
+- **Gemini Failover Unit Tests**: Added unit tests to `GeminiClient` (`test_gemini_failover_complete.py`) mimicking real-world API `429 Too Many Requests` to ensure graceful and robust API Key rotation logic.
+- **Service Contract Testing**: Added dedicated integration tests pinning `TranslationService` expected return signatures and error dictionaries (`test_translation_service_contract.py`).
+
+### 🐛 Fixed
+- **Crucial Testing Blocker**: Fixed a missing import error (`ImportError: cannot import name 'Base' from 'app.db'`) in `conftest.py` by aligning with the SQLAlchemy 2.0 `models` structure. This unblocks over 40+ database integration tests.
+- **Linting & Hygiene**: Zero-warning enforcement across schemas. Solved 85 `ruff` violations in the backend (unused imports, ambiguous variables, non-explicit None comparisons) and removed 5 trailing `eslint` warnings in the neon UI frontend.
+- **Frontend Test AAA Upgrades**: Refactored `Button.test.jsx` and verified `ChapterManager.test.jsx` under strict Arrange-Act-Assert isolation to prevent test pollution.
+
 ## [2.3.0] - 2026-04-04
 
 ### 🚀 Added

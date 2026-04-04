@@ -1,7 +1,8 @@
-from unittest.mock import patch
 from datetime import datetime, timezone
-from app.models.project import Project, Chapter
+from unittest.mock import patch
+
 from app.models.glossary import BatchJob
+from app.models.project import Chapter, Project
 
 
 def test_create_batch_analyze_all_chapters(client, db):

@@ -20,8 +20,8 @@ Design rationale:
 """
 
 from unittest.mock import patch
-from conftest import make_project, make_chapter, make_glossary_term
 
+from conftest import make_chapter, make_glossary_term, make_project
 
 MOCK_TRANSLATION = "Переведённый текст главы."
 MOCK_REVIEW_JSON = (

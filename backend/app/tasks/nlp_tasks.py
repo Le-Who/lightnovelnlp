@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime, timezone
+
+from app.api.processing import process_chapter_sync
+from app.core.celery_app import celery_app
 from app.db import SessionLocal
 from app.models.glossary import BatchJob, BatchJobItem
-from app.api.processing import process_chapter_sync
 from app.services.translation_service import TranslationService
-from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 

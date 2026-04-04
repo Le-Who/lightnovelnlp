@@ -14,10 +14,10 @@ a dedicated, self-contained test.
 """
 
 import pytest
-from app.services.translation_service import TranslationService
+
 from app.models.glossary import GlossaryTerm, TermRelationship, TermStatus
 from app.models.project import Project, ProjectGenre
-
+from app.services.translation_service import TranslationService
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

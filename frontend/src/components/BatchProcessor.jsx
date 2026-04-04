@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import api from '../services/apiClient'
-import { Activity, XCircle, Play, RefreshCw, Cpu, AlertOctagon, CheckCircle2, Clock, Zap } from 'lucide-react'
+import { Activity, XCircle, Play, RefreshCw, Cpu, AlertOctagon, Clock, Zap } from 'lucide-react'
 
 // ─── Neon Status Config ───────────────────────────────────────────
 const STATUS_CONFIG = {

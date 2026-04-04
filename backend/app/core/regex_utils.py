@@ -1,7 +1,7 @@
-import re
 import multiprocessing
 import queue  # Required for queue.Empty
-from typing import Iterator, List, Dict, Any, Union, Tuple
+import re
+from typing import Any, Dict, Iterator, List, Tuple, Union
 
 
 class SafeMatch:

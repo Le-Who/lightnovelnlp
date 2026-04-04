@@ -1,16 +1,17 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 from typing import List, Optional
-from fastapi import HTTPException
 
-from app.models.project import Project, Chapter
+from fastapi import HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.glossary import (
-    GlossaryTerm,
-    TermRelationship,
-    GlossaryVersion,
     BatchJob,
     BatchJobItem,
+    GlossaryTerm,
+    GlossaryVersion,
+    TermRelationship,
 )
+from app.models.project import Chapter, Project
 from app.schemas.project import ProjectCreate
 
 

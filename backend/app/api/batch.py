@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
+import logging
 from datetime import datetime, timezone
 from typing import List
-import logging
 
-logger = logging.getLogger(__name__)
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 from app.deps import get_db
-from app.models.project import Chapter
 from app.models.glossary import (
     BatchJob,
     BatchJobItem,
 )
+from app.models.project import Chapter
 from app.tasks.nlp_tasks import process_batch_analyze_task, process_batch_translate_task
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,7 +31,7 @@ def create_batch_analyze_all_chapters(
     # Получаем все необработанные главы проекта
     chapters = (
         db.query(Chapter)
-        .filter(Chapter.project_id == project_id, Chapter.processed_at == None)
+        .filter(Chapter.project_id == project_id, Chapter.processed_at is None)
         .all()
     )
 
@@ -82,7 +83,7 @@ def create_batch_translate_all_chapters(
     # Получаем все непереведенные главы проекта
     chapters = (
         db.query(Chapter)
-        .filter(Chapter.project_id == project_id, Chapter.translated_text == None)
+        .filter(Chapter.project_id == project_id, Chapter.translated_text is None)
         .all()
     )
 

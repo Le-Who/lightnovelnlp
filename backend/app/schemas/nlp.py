@@ -1,5 +1,6 @@
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NLPBaseModel(BaseModel):

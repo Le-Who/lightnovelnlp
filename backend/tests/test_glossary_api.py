@@ -1,107 +1,75 @@
-import time
+"""
+Integration tests — Glossary API pagination endpoints.
+
+Level: Integration (FastAPI TestClient + SQLite in-memory).
+Covers:
+  - GET /glossary/{project_id}/terms → default limit of 50 terms enforced.
+  - GET /glossary/{project_id}/terms?limit=10 → overrides default limit.
+  - GET /glossary/{project_id}/terms?limit=100 → respects explicit large limit.
+
+AAA fixes applied over the original:
+  - Removed print() debug statements (not part of test assertions).
+  - Removed time.time() timing measurements (fragile, not a behavioral assertion).
+  - Extracted repeated glossary population into a helper function.
+  - Separated Arrange sections from Act.
+"""
+
+import pytest
+from conftest import make_project
+
 from app.models.glossary import GlossaryTerm, TermStatus
 
 
-def test_glossary_terms_default_limit_enforced(client, db):
-    # 1. Create a project
-    project_response = client.post(
-        "/projects/", json={"name": "Test Project", "genre": "fantasy"}
-    )
-    assert project_response.status_code == 201
-    project_id = project_response.json()["id"]
-
-    # 2. Add 150 glossary terms
-    for i in range(150):
-        term = GlossaryTerm(
+def _populate_glossary(db, project_id: int, count: int) -> None:
+    """Adds `count` approved glossary terms to the DB for the given project."""
+    terms = [
+        GlossaryTerm(
             project_id=project_id,
             source_term=f"Term {i}",
             translated_term=f"Translation {i}",
             category="other",
             status=TermStatus.APPROVED,
         )
-        db.add(term)
+        for i in range(count)
+    ]
+    db.add_all(terms)
     db.commit()
 
-    # 3. Call GET /{project_id}/terms without limit
-    start_time = time.time()
-    response = client.get(f"/glossary/{project_id}/terms")
-    end_time = time.time()
 
-    assert response.status_code == 200
-    data = response.json()
+@pytest.mark.integration
+class TestGlossaryTermsPagination:
+    def test_default_limit_returns_50_terms_when_150_exist(self, client, db):
+        # Arrange
+        project = make_project(db, name="Pagination Test Project")
+        _populate_glossary(db, project.id, count=150)
 
-    # 4. Assert that only 50 terms are returned (default limit)
-    print(
-        f"\n[Optimization] Fetched {len(data)} terms in {end_time - start_time:.4f} seconds."
-    )
-    assert len(data) == 50, "Expected 50 terms to be returned by default."
+        # Act
+        response = client.get(f"/glossary/{project.id}/terms")
 
+        # Assert
+        assert response.status_code == 200
+        assert len(response.json()) == 50
 
-def test_glossary_terms_with_limit_override(client, db):
-    # 1. Create a project
-    project_response = client.post(
-        "/projects/", json={"name": "Test Project 2", "genre": "fantasy"}
-    )
-    assert project_response.status_code == 201
-    project_id = project_response.json()["id"]
+    def test_explicit_limit_10_returns_exactly_10_terms(self, client, db):
+        # Arrange
+        project = make_project(db, name="Limit=10 Test Project")
+        _populate_glossary(db, project.id, count=150)
 
-    # 2. Add 150 glossary terms
-    for i in range(150):
-        term = GlossaryTerm(
-            project_id=project_id,
-            source_term=f"Term {i}",
-            translated_term=f"Translation {i}",
-            category="other",
-            status=TermStatus.APPROVED,
-        )
-        db.add(term)
-    db.commit()
+        # Act
+        response = client.get(f"/glossary/{project.id}/terms?limit=10")
 
-    # 3. Call GET /{project_id}/terms with explicit limit
-    start_time = time.time()
-    response = client.get(f"/glossary/{project_id}/terms?limit=10")
-    end_time = time.time()
+        # Assert
+        assert response.status_code == 200
+        assert len(response.json()) == 10
 
-    assert response.status_code == 200
-    data = response.json()
+    def test_explicit_limit_100_returns_exactly_100_terms(self, client, db):
+        # Arrange
+        project = make_project(db, name="Limit=100 Test Project")
+        _populate_glossary(db, project.id, count=150)
 
-    # 4. Assert that 10 terms are returned
-    print(
-        f"\n[Limit=10] Fetched {len(data)} terms in {end_time - start_time:.4f} seconds."
-    )
-    assert len(data) == 10, "Expected 10 terms to be returned with limit=10."
+        # Act
+        response = client.get(f"/glossary/{project.id}/terms?limit=100")
 
-
-def test_glossary_terms_with_limit_large(client, db):
-    # 1. Create a project
-    project_response = client.post(
-        "/projects/", json={"name": "Test Project 3", "genre": "fantasy"}
-    )
-    assert project_response.status_code == 201
-    project_id = project_response.json()["id"]
-
-    # 2. Add 150 glossary terms
-    for i in range(150):
-        term = GlossaryTerm(
-            project_id=project_id,
-            source_term=f"Term {i}",
-            translated_term=f"Translation {i}",
-            category="other",
-            status=TermStatus.APPROVED,
-        )
-        db.add(term)
-    db.commit()
-
-    # 3. Call GET /{project_id}/terms with explicit limit > 50
-    start_time = time.time()
-    response = client.get(f"/glossary/{project_id}/terms?limit=100")
-    end_time = time.time()
-
-    assert response.status_code == 200
-    data = response.json()
-
-    # 4. Assert that 100 terms are returned
-    print(
-        f"\n[Limit=100] Fetched {len(data)} terms in {end_time - start_time:.4f} seconds."
-    )
-    assert len(data) == 100, "Expected 100 terms to be returned with limit=100."
+        # Assert
+        assert response.status_code == 200
+        assert len(response.json()) == 100

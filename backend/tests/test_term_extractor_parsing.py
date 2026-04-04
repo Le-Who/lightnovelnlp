@@ -1,4 +1,5 @@
 import json
+
 import pytest
 
 # spaCy unavailable on Python 3.14 (local). Skipped here, runs on 3.12 (production).

@@ -5,14 +5,14 @@ Base = declarative_base()
 
 
 # Импортируем все модели для регистрации
-from .project import Project, Chapter
 from .glossary import (
-    GlossaryTerm,
-    TermRelationship,
-    GlossaryVersion,
     BatchJob,
     BatchJobItem,
+    GlossaryTerm,
+    GlossaryVersion,
+    TermRelationship,
 )
+from .project import Chapter, Project
 
 __all__ = [
     "Base",

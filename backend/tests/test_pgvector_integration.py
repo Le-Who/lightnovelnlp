@@ -31,10 +31,10 @@ Notes:
 """
 
 import math
-import pytest
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 
+import pytest
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ class TestPgvectorSchema:
 
     def test_embedding_vec_column_accepts_768_dim_vector(self, postgres_db: Session):
         # Arrange
-        from tests.conftest import make_project, make_glossary_term
+        from tests.conftest import make_glossary_term, make_project
 
         project = make_project(postgres_db)
         term = make_glossary_term(postgres_db, project.id, source_term="Dragon")
@@ -193,7 +193,7 @@ class TestFindSimilarTerms:
     ):
         # Arrange
         from app.services.embedding_service import EmbeddingService
-        from tests.conftest import make_project, make_glossary_term
+        from tests.conftest import make_glossary_term, make_project
 
         project = make_project(postgres_db, name="Embed Project")
         term = make_glossary_term(postgres_db, project.id, source_term="Sword of Light")
@@ -215,7 +215,7 @@ class TestFindSimilarTerms:
     def test_returns_empty_when_no_embeddings_stored(self, postgres_db: Session):
         # Arrange
         from app.services.embedding_service import EmbeddingService
-        from tests.conftest import make_project, make_glossary_term
+        from tests.conftest import make_glossary_term, make_project
 
         project = make_project(postgres_db, name="Empty Embed Project")
         make_glossary_term(postgres_db, project.id, source_term="Shadow Realm")
@@ -235,7 +235,7 @@ class TestFindSimilarTerms:
     def test_threshold_filters_out_dissimilar_terms(self, postgres_db: Session):
         # Arrange
         from app.services.embedding_service import EmbeddingService
-        from tests.conftest import make_project, make_glossary_term
+        from tests.conftest import make_glossary_term, make_project
 
         project = make_project(postgres_db, name="Threshold Project")
         similar_term = make_glossary_term(postgres_db, project.id, source_term="Hero")
@@ -264,7 +264,7 @@ class TestFindSimilarTerms:
     def test_respects_project_id_isolation(self, postgres_db: Session):
         # Arrange — two projects, each with a term + embedding
         from app.services.embedding_service import EmbeddingService
-        from tests.conftest import make_project, make_glossary_term
+        from tests.conftest import make_glossary_term, make_project
 
         project_a = make_project(postgres_db, name="Project A")
         project_b = make_project(postgres_db, name="Project B")

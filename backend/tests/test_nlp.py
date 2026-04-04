@@ -1,4 +1,5 @@
 import json
+
 import pytest
 
 # spaCy → Celery pydantic.v1 → incompatible with Python 3.14 (local only).

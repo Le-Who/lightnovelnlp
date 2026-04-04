@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from app.services.gemini_client import gemini_client
 from app.models.glossary import GlossaryTerm, TermStatus
+from app.services.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 

@@ -9,8 +9,10 @@ Tests cover:
 - get_usage_stats structure
 """
 
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from app.services.gemini_client import GeminiClient, _key_hash, _now_minute
 
 

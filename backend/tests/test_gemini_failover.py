@@ -15,12 +15,13 @@ Critical behavior: the rate-limit failover is the primary reliability mechanism.
 If it breaks, every translation job silently fails during peak load.
 """
 
-import pytest
-from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
-from app.services.gemini_client import GeminiClient, _key_hash
+import pytest
+
 from app.core.exceptions import APIKeyExhausted
+from app.services.gemini_client import GeminiClient, _key_hash
 
 
 @pytest.fixture()

@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List, Dict, Any
-
-from app.services.gemini_client import gemini_client
-from app.models.project import ProjectGenre
-from app.schemas.nlp import TermExtractionResponse
-
-logger = logging.getLogger(__name__)
-
+import re
+from collections import Counter
+from typing import Any, Dict, List
 
 import spacy
 from spacy.matcher import PhraseMatcher
-from collections import Counter
+
+from app.models.project import ProjectGenre
+from app.schemas.nlp import TermExtractionResponse
+from app.services.gemini_client import gemini_client
+
+logger = logging.getLogger(__name__)
 
 # ─── Language display names ─────────────────────────────────────────────────
 LANG_NAMES = {
@@ -137,7 +137,6 @@ class TermExtractor:
                     f"spaCy frequency count failed for {source_language}: {e}. Fallback to regex."
                 )
 
-        import re
 
         text_lower = text.lower()
         frequency = {}

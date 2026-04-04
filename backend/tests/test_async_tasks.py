@@ -16,8 +16,9 @@ Note: Celery + pydantic.v1 are incompatible with Python 3.14. Tests are guarded
 with module-level skip, they run normally on Python 3.12 (production).
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 try:
     from app.tasks.nlp_tasks import translate_chapter_task

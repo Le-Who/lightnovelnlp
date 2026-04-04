@@ -4,7 +4,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
-
 class ProjectBase(BaseModel):
     name: str = Field(..., max_length=255)
     genre: str = Field("other", max_length=50)

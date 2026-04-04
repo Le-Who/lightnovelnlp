@@ -1,6 +1,8 @@
-import pytest
 import re
 import time
+
+import pytest
+
 from app.core.regex_utils import safe_finditer
 
 

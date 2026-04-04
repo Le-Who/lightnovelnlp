@@ -32,13 +32,17 @@ os.environ.setdefault(
 os.environ.setdefault("GEMINI_API_COOLDOWN_MINUTES", "1")
 os.environ.setdefault("GEMINI_API_RESET_TIMEZONE", "UTC")
 
-import pytest
-from typing import Generator
+from typing import TYPE_CHECKING, Generator
 from unittest.mock import MagicMock
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool, NullPool
 
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import NullPool, StaticPool
+
+if TYPE_CHECKING:
+    from app.models.glossary import GlossaryTerm
+    from app.models.project import Chapter, Project
 
 # ── CLI option + marker hooks ──────────────────────────────────────────────────
 
@@ -103,7 +107,7 @@ def db() -> Generator[Session, None, None]:
     a clean slate regardless of test order.
     """
     _ensure_models()
-    from app.db import Base
+    from app.models import Base
 
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
@@ -125,8 +129,9 @@ def client(db: Session) -> Generator:
     """
     try:
         from fastapi.testclient import TestClient
-        from app.main import app
+
         from app.deps import get_db
+        from app.main import app
     except Exception as e:
         pytest.skip(f"Cannot import app (likely spaCy/Celery on Python 3.14): {e}")
         return
@@ -252,7 +257,7 @@ def postgres_db(request: pytest.FixtureRequest) -> Generator[Session, None, None
         pytest.skip("--postgres-url not provided; skipping postgres test")
 
     _ensure_models()
-    from app.db import Base
+    from app.models import Base
 
     pg_engine = create_engine(postgres_url, poolclass=NullPool)
     PgSession = sessionmaker(autocommit=False, autoflush=False, bind=pg_engine)

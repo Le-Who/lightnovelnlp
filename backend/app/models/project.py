@@ -5,13 +5,13 @@ from enum import Enum
 
 from sqlalchemy import (
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey,
-    Float,
-    Index,
 )
 from sqlalchemy.orm import relationship
 

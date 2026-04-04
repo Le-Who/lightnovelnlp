@@ -1,9 +1,11 @@
-import pytest
 import time
+
+import pytest
 from sqlalchemy import event
-from app.models.project import Project, Chapter
-from app.models.glossary import GlossaryTerm, TermRelationship, TermOccurrence
+
 from app.api.glossary import get_glossary_terms
+from app.models.glossary import GlossaryTerm, TermOccurrence, TermRelationship
+from app.models.project import Chapter, Project
 
 
 @pytest.fixture

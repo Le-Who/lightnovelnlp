@@ -4,14 +4,14 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from sqlalchemy import (
+    JSON,
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey,
-    JSON,
-    Index,
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship

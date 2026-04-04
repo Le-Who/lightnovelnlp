@@ -1,44 +1,46 @@
+import io
 from typing import List
+from urllib.parse import quote
+
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    status,
-    Query,
-    UploadFile,
     File,
     Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
 )
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from urllib.parse import quote
+from sqlalchemy.orm import Session
 
 from app.deps import get_db
-from app.models.project import Project, Chapter
 from app.models.glossary import (
     GlossaryTerm,
 )
+from app.models.project import Chapter, Project
 from app.schemas.project import (
-    ProjectCreate,
-    ProjectRead,
     ChapterCreate,
+    ChapterList,
     ChapterRead,
     ChapterUpdate,
-    ChapterList,
+    ProjectCreate,
+    ProjectRead,
 )
-import io
 
 try:
     import pypdf
 except Exception:
     pypdf = None
 
-from app.core.nlp_pipeline.context_summarizer import context_summarizer
-from app.services.project_service import ProjectService
+import html
 import re
 from html.parser import HTMLParser
-import html
+
+from app.core.nlp_pipeline.context_summarizer import context_summarizer
+from app.services.project_service import ProjectService
 
 try:
     import ebooklib
@@ -333,7 +335,7 @@ def upload_chapters_from_file(
             db_chapters = []
             for i, text in enumerate(created_chapters):
                 # Optionally extract title from the first line or just use numbering
-                lines = [l.strip() for l in text.split("\n") if l.strip()]
+                lines = [line.strip() for line in text.split("\n") if line.strip()]
                 c_title = (
                     lines[0] if lines and len(lines[0]) < 100 else f"Глава {i + 1}"
                 )
