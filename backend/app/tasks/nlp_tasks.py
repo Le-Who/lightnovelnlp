@@ -8,6 +8,7 @@ from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
+
 @celery_app.task
 def analyze_chapter_task(chapter_id: int):
     """
@@ -19,7 +20,11 @@ def analyze_chapter_task(chapter_id: int):
     try:
         result = process_chapter_sync(chapter_id, db)
         if "error" in result:
-            return {"status": "error", "chapter_id": chapter_id, "error": result["error"]}
+            return {
+                "status": "error",
+                "chapter_id": chapter_id,
+                "error": result["error"],
+            }
         return {"status": "completed", "chapter_id": chapter_id, **result}
     except Exception as e:
         logger.error(f"Error analyzing chapter {chapter_id}: {e}")
@@ -58,15 +63,19 @@ def process_batch_analyze_task(batch_job_id: int):
         if not batch_job:
             logger.warning(f"Batch job {batch_job_id} not found")
             return
-        
+
         batch_job.status = "running"
         batch_job.started_at = datetime.now(timezone.utc)
         db.commit()
-        
-        job_items = db.query(BatchJobItem).filter(BatchJobItem.batch_job_id == batch_job_id).all()
+
+        job_items = (
+            db.query(BatchJobItem)
+            .filter(BatchJobItem.batch_job_id == batch_job_id)
+            .all()
+        )
         processed_items = 0
         failed_items = 0
-        
+
         for job_item in job_items:
             if job_item.status == "completed":
                 processed_items += 1
@@ -78,18 +87,18 @@ def process_batch_analyze_task(batch_job_id: int):
             try:
                 # Re-fetch item to ensure fresh state/session attachment if needed
                 # (though here we use same session, it's safer for long running tasks)
-                
+
                 job_item.status = "processing"
                 job_item.started_at = datetime.now(timezone.utc)
                 db.commit()
-                
+
                 # Use shared process_chapter_sync for chapter analysis
                 if job_item.item_type == "chapter":
                     result = process_chapter_sync(job_item.item_id, db)
                     if "error" in result:
                         raise Exception(result["error"])
                     job_item.result = result
-                
+
                 job_item.status = "completed"
                 job_item.completed_at = datetime.now(timezone.utc)
                 processed_items += 1
@@ -97,7 +106,9 @@ def process_batch_analyze_task(batch_job_id: int):
                 # Update progress
                 batch_job.processed_items = processed_items
                 if batch_job.total_items > 0:
-                    batch_job.progress_percentage = round((processed_items + failed_items) / batch_job.total_items * 100)
+                    batch_job.progress_percentage = round(
+                        (processed_items + failed_items) / batch_job.total_items * 100
+                    )
 
                 db.commit()
             except Exception as e:
@@ -109,10 +120,12 @@ def process_batch_analyze_task(batch_job_id: int):
                 # Update progress
                 batch_job.failed_items = failed_items
                 if batch_job.total_items > 0:
-                    batch_job.progress_percentage = round((processed_items + failed_items) / batch_job.total_items * 100)
+                    batch_job.progress_percentage = round(
+                        (processed_items + failed_items) / batch_job.total_items * 100
+                    )
 
                 db.commit()
-                
+
         batch_job.status = "completed"
         batch_job.completed_at = datetime.now(timezone.utc)
         batch_job.job_data = {"processed": processed_items, "failed": failed_items}
@@ -121,19 +134,25 @@ def process_batch_analyze_task(batch_job_id: int):
         batch_job.processed_items = processed_items
         batch_job.failed_items = failed_items
         if batch_job.total_items > 0:
-            batch_job.progress_percentage = round((processed_items + failed_items) / batch_job.total_items * 100)
+            batch_job.progress_percentage = round(
+                (processed_items + failed_items) / batch_job.total_items * 100
+            )
 
         db.commit()
-        
-        logger.info(f"Batch analysis job {batch_job_id} completed: {processed_items} processed, {failed_items} failed")
-        
+
+        logger.info(
+            f"Batch analysis job {batch_job_id} completed: {processed_items} processed, {failed_items} failed"
+        )
+
     except Exception as e:
-        logger.error(f"CRITICAL ERROR in batch analyze {batch_job_id}: {e}", exc_info=True)
+        logger.error(
+            f"CRITICAL ERROR in batch analyze {batch_job_id}: {e}", exc_info=True
+        )
         try:
             # Try to recover batch_job object if session became invalid
             if not batch_job:
-                 batch_job = db.get(BatchJob, batch_job_id)
-            
+                batch_job = db.get(BatchJob, batch_job_id)
+
             if batch_job:
                 batch_job.status = "failed"
                 batch_job.error_message = f"Critical job failure: {str(e)}"
@@ -161,7 +180,11 @@ def process_batch_translate_task(batch_job_id: int):
         batch_job.started_at = datetime.now(timezone.utc)
         db.commit()
 
-        job_items = db.query(BatchJobItem).filter(BatchJobItem.batch_job_id == batch_job_id).all()
+        job_items = (
+            db.query(BatchJobItem)
+            .filter(BatchJobItem.batch_job_id == batch_job_id)
+            .all()
+        )
         processed = 0
         failed = 0
 
@@ -177,12 +200,12 @@ def process_batch_translate_task(batch_job_id: int):
                 item.status = "processing"
                 item.started_at = datetime.now(timezone.utc)
                 db.commit()
-                
+
                 # Реальный вызов перевода через TranslationService
                 if item.item_type == "chapter":
                     result = TranslationService.translate_chapter(db, item.item_id)
                     item.result = result
-                
+
                 item.status = "completed"
                 item.completed_at = datetime.now(timezone.utc)
                 processed += 1
@@ -190,7 +213,9 @@ def process_batch_translate_task(batch_job_id: int):
                 # Update progress
                 batch_job.processed_items = processed
                 if batch_job.total_items > 0:
-                    batch_job.progress_percentage = round((processed + failed) / batch_job.total_items * 100)
+                    batch_job.progress_percentage = round(
+                        (processed + failed) / batch_job.total_items * 100
+                    )
 
                 db.commit()
             except Exception as e:
@@ -202,7 +227,9 @@ def process_batch_translate_task(batch_job_id: int):
                 # Update progress
                 batch_job.failed_items = failed
                 if batch_job.total_items > 0:
-                    batch_job.progress_percentage = round((processed + failed) / batch_job.total_items * 100)
+                    batch_job.progress_percentage = round(
+                        (processed + failed) / batch_job.total_items * 100
+                    )
 
                 db.commit()
 
@@ -214,17 +241,23 @@ def process_batch_translate_task(batch_job_id: int):
         batch_job.processed_items = processed
         batch_job.failed_items = failed
         if batch_job.total_items > 0:
-            batch_job.progress_percentage = round((processed + failed) / batch_job.total_items * 100)
+            batch_job.progress_percentage = round(
+                (processed + failed) / batch_job.total_items * 100
+            )
 
         db.commit()
-        
-        logger.info(f"Batch translation job {batch_job_id} completed: {processed} processed, {failed} failed")
+
+        logger.info(
+            f"Batch translation job {batch_job_id} completed: {processed} processed, {failed} failed"
+        )
     except Exception as e:
-        logger.error(f"CRITICAL ERROR in batch translate {batch_job_id}: {e}", exc_info=True)
+        logger.error(
+            f"CRITICAL ERROR in batch translate {batch_job_id}: {e}", exc_info=True
+        )
         try:
             if not batch_job:
-                 batch_job = db.get(BatchJob, batch_job_id)
-            
+                batch_job = db.get(BatchJob, batch_job_id)
+
             if batch_job:
                 batch_job.status = "failed"
                 batch_job.error_message = f"Critical job failure: {str(e)}"
@@ -234,4 +267,3 @@ def process_batch_translate_task(batch_job_id: int):
             logger.error(f"Failed to update batch job status to failed: {db_e}")
     finally:
         db.close()
-

@@ -8,9 +8,10 @@ Tests cover:
 - Key hash determinism
 - get_usage_stats structure
 """
+
 import pytest
-from unittest.mock import MagicMock, patch
-from app.services.gemini_client import GeminiClient, _key_hash, _now_minute, _SENTINEL
+from unittest.mock import patch
+from app.services.gemini_client import GeminiClient, _key_hash, _now_minute
 
 
 @pytest.fixture
@@ -58,6 +59,7 @@ class TestRateLimitCheck:
     def test_rpm_exceeded(self, client):
         c, mock_cache = client
         from app.core.config import settings
+
         rpm_limit = settings.GEMINI_RPM_LIMITS_MAP.get("gemini-3-flash-preview", 10)
 
         # Return value >= rpm_limit for the RPM check
@@ -72,12 +74,14 @@ class TestRateLimitCheck:
 
         # Simulate cooldown: get_quiet returns a future datetime ISO string
         from datetime import datetime, timedelta, timezone
+
         future_time = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
 
         def get_quiet_side_effect(key):
             if "cooldown" in key:
                 return future_time
             return 0
+
         mock_cache.get_quiet.side_effect = get_quiet_side_effect
 
         result = c._is_key_in_cooldown(kh)
@@ -106,6 +110,7 @@ class TestModelChain:
     def test_primary_model_first(self, client):
         c, _ = client
         from app.core.config import settings
+
         primary = settings.get_model_for_task("translation")
         fallbacks = settings.GEMINI_FALLBACK_MODELS_LIST
 
@@ -134,5 +139,6 @@ class TestCompleteErrorHandling:
         mock_cache.get.return_value = "1"  # cooldown flag set for all keys
 
         from app.core.exceptions import APIKeyExhausted
+
         with pytest.raises(APIKeyExhausted):
             c.complete("test prompt", task_type="extraction")

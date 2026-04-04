@@ -9,6 +9,7 @@ Key design decisions:
 - Flat retry loop: models → keys → next model (no nested try/except hell).
 - Stage-aware logging: every log line includes [GEMINI:{task_type}].
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -26,13 +27,15 @@ import pytz
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 logging.getLogger("google.genai.types").setLevel(logging.ERROR)
 logging.getLogger("google_genai").setLevel(logging.ERROR)
-warnings.filterwarnings("ignore", message=".*shadows an attribute.*", category=UserWarning)
+warnings.filterwarnings(
+    "ignore", message=".*shadows an attribute.*", category=UserWarning
+)
 
 logger = logging.getLogger(__name__)
 
 from app.core.config import settings
 from app.services.cache_service import cache_service
-from app.core.exceptions import RateLimitExceeded, APIKeyExhausted
+from app.core.exceptions import APIKeyExhausted
 
 
 def _key_hash(api_key: str) -> str:
@@ -53,7 +56,9 @@ def _today_mv(tz: Any) -> str:
 def _seconds_until_mv_midnight(tz: Any) -> int:
     """Seconds remaining until midnight in Mountain View timezone."""
     now_mv = datetime.now(tz)
-    tomorrow_mv = now_mv.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    tomorrow_mv = now_mv.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(
+        days=1
+    )
     return int((tomorrow_mv - now_mv).total_seconds())
 
 
@@ -113,10 +118,16 @@ class GeminiClient:
         # Resolve defaults from settings
         primary_model = model_override or settings.get_model_for_task(task_type)
         thinking = thinking_override or settings.get_thinking_for_task(task_type)
-        effective_max_tokens = max_tokens if max_tokens is not None else settings.get_max_tokens_for_task(task_type)
+        effective_max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else settings.get_max_tokens_for_task(task_type)
+        )
 
         # Build model chain: primary → fallbacks
-        model_chain = [primary_model] + [m for m in self.fallback_models if m != primary_model]
+        model_chain = [primary_model] + [
+            m for m in self.fallback_models if m != primary_model
+        ]
 
         last_error: Exception | None = None
 
@@ -134,7 +145,9 @@ class GeminiClient:
                 return result
             # If _try_model_across_keys returned _SENTINEL, all keys failed for this model.
             # Try next model in fallback chain.
-            logger.warning(f"[GEMINI:{task_type}] All keys failed for {model_name}, trying next fallback...")
+            logger.warning(
+                f"[GEMINI:{task_type}] All keys failed for {model_name}, trying next fallback..."
+            )
 
         raise APIKeyExhausted(
             f"All models and keys exhausted for task '{task_type}'. "
@@ -146,11 +159,17 @@ class GeminiClient:
         today = _today_mv(self.reset_tz)
         current_minute = _now_minute()
 
-        all_models = list(set(
-            [settings.GEMINI_MODEL_EXTRACTION, settings.GEMINI_MODEL_TRANSLATION,
-             settings.GEMINI_MODEL_SUMMARIZATION, settings.GEMINI_MODEL_RELATIONSHIPS]
-            + self.fallback_models
-        ))
+        all_models = list(
+            set(
+                [
+                    settings.GEMINI_MODEL_EXTRACTION,
+                    settings.GEMINI_MODEL_TRANSLATION,
+                    settings.GEMINI_MODEL_SUMMARIZATION,
+                    settings.GEMINI_MODEL_RELATIONSHIPS,
+                ]
+                + self.fallback_models
+            )
+        )
 
         stats: Dict[str, Any] = {
             "reset_timezone": settings.GEMINI_API_RESET_TIMEZONE,
@@ -209,7 +228,9 @@ class GeminiClient:
         for key_idx, (api_key, kh) in enumerate(zip(self.api_keys, self.key_hashes)):
             # Skip keys in cooldown
             if self._is_key_in_cooldown(kh):
-                logger.debug(f"[GEMINI:{task_type}] Key #{key_idx} in cooldown, skipping")
+                logger.debug(
+                    f"[GEMINI:{task_type}] Key #{key_idx} in cooldown, skipping"
+                )
                 continue
 
             # Pre-flight rate limit check for this key × model
@@ -242,7 +263,9 @@ class GeminiClient:
                 self._record_usage(kh, model_name, task_type)
 
                 # Process response
-                result = self._extract_result(response, model_name, task_type, max_tokens)
+                result = self._extract_result(
+                    response, model_name, task_type, max_tokens
+                )
                 logger.info(
                     f"[GEMINI:{task_type}] ← OK from {model_name} "
                     f"(key #{key_idx}, {elapsed_ms}ms)"
@@ -273,7 +296,9 @@ class GeminiClient:
     # Rate Limiting (per-key per-model)
     # ──────────────────────────────────────────────────────────────
 
-    def _check_rate_limits(self, key_hash: str, model_name: str, task_type: str) -> bool:
+    def _check_rate_limits(
+        self, key_hash: str, model_name: str, task_type: str
+    ) -> bool:
         """
         Pre-flight check: is this key within RPM/RPD limits for this model?
         Returns True if OK to proceed, False if limit reached.
@@ -335,7 +360,11 @@ class GeminiClient:
             return False
         try:
             cooldown_time = datetime.fromisoformat(str(cooldown_until))
-            now_dt = datetime.now(cooldown_time.tzinfo) if cooldown_time.tzinfo else datetime.now(self.reset_tz)
+            now_dt = (
+                datetime.now(cooldown_time.tzinfo)
+                if cooldown_time.tzinfo
+                else datetime.now(self.reset_tz)
+            )
             return now_dt < cooldown_time
         except Exception:
             return False
@@ -343,7 +372,9 @@ class GeminiClient:
     def _put_key_in_cooldown(self, key_hash: str) -> None:
         """Soft cooldown: key is unavailable for N minutes (not the whole day)."""
         cooldown_key = f"gemini_cooldown:{key_hash}"
-        cooldown_until = (datetime.now(self.reset_tz) + timedelta(minutes=self.cooldown_minutes)).isoformat()
+        cooldown_until = (
+            datetime.now(self.reset_tz) + timedelta(minutes=self.cooldown_minutes)
+        ).isoformat()
         ttl_seconds = self.cooldown_minutes * 60 + 60  # buffer
         cache_service.set(cooldown_key, cooldown_until, ttl=ttl_seconds)
         logger.info(f"Key {key_hash[:6]} in cooldown for {self.cooldown_minutes} min")
@@ -383,7 +414,9 @@ class GeminiClient:
 
         return types.GenerateContentConfig(**config_args) if config_args else None
 
-    def _build_thinking_config(self, model_name: str, level_or_budget: str) -> types.ThinkingConfig | None:
+    def _build_thinking_config(
+        self, model_name: str, level_or_budget: str
+    ) -> types.ThinkingConfig | None:
         """
         Auto-detect Gemini generation and build correct ThinkingConfig.
         - Gemini 3.x → thinkingLevel (minimal/low/medium/high)
@@ -394,15 +427,24 @@ class GeminiClient:
         if is_gemini_3:
             # Validate level
             valid_levels = {"minimal", "low", "medium", "high"}
-            level = level_or_budget.lower() if isinstance(level_or_budget, str) else "medium"
+            level = (
+                level_or_budget.lower()
+                if isinstance(level_or_budget, str)
+                else "medium"
+            )
             if level not in valid_levels:
-                logger.warning(f"Invalid thinkingLevel '{level}', defaulting to 'medium'")
+                logger.warning(
+                    f"Invalid thinkingLevel '{level}', defaulting to 'medium'"
+                )
                 level = "medium"
             return types.ThinkingConfig(thinking_level=level)
         else:
             # Gemini 2.5.x: map named levels to budget integers
             budget_map = {"minimal": 0, "low": 1024, "medium": 4096, "high": 8192}
-            if isinstance(level_or_budget, str) and level_or_budget.lower() in budget_map:
+            if (
+                isinstance(level_or_budget, str)
+                and level_or_budget.lower() in budget_map
+            ):
                 budget = budget_map[level_or_budget.lower()]
             elif isinstance(level_or_budget, str) and level_or_budget.isdigit():
                 budget = int(level_or_budget)
@@ -414,7 +456,9 @@ class GeminiClient:
     # Response Extraction
     # ──────────────────────────────────────────────────────────────
 
-    def _extract_result(self, response: Any, model_name: str, task_type: str, max_tokens: int) -> Any:
+    def _extract_result(
+        self, response: Any, model_name: str, task_type: str, max_tokens: int
+    ) -> Any:
         """Extract text or parsed result from a successful Gemini response."""
         candidate = response.candidates[0]
 
@@ -425,7 +469,9 @@ class GeminiClient:
                 f"from {model_name}"
             )
         elif candidate.finish_reason not in ("STOP", "OTHER", None):
-            logger.warning(f"[GEMINI:{task_type}] Unexpected finish_reason: {candidate.finish_reason}")
+            logger.warning(
+                f"[GEMINI:{task_type}] Unexpected finish_reason: {candidate.finish_reason}"
+            )
 
         # Prefer parsed (structured output)
         if hasattr(response, "parsed") and response.parsed:
@@ -439,7 +485,9 @@ class GeminiClient:
                     text_parts.append(part.text)
 
         result_text = "".join(text_parts)
-        logger.info(f"[GEMINI:{task_type}] Response: {len(result_text)} chars from {model_name}")
+        logger.info(
+            f"[GEMINI:{task_type}] Response: {len(result_text)} chars from {model_name}"
+        )
         return result_text
 
     # ──────────────────────────────────────────────────────────────

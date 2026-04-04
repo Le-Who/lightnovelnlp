@@ -10,13 +10,16 @@ from __future__ import annotations
 
 class ServiceError(Exception):
     """Base exception for service layer errors."""
+
     pass
 
 
 class RateLimitExceeded(ServiceError):
     """Raised when API rate limit is exceeded."""
-    
-    def __init__(self, message: str = "Rate limit exceeded", retry_after: int | None = None):
+
+    def __init__(
+        self, message: str = "Rate limit exceeded", retry_after: int | None = None
+    ):
         self.message = message
         self.retry_after = retry_after  # seconds until retry is allowed
         super().__init__(self.message)
@@ -24,7 +27,7 @@ class RateLimitExceeded(ServiceError):
 
 class APIKeyExhausted(ServiceError):
     """Raised when all API keys are exhausted or in cooldown."""
-    
+
     def __init__(self, message: str = "All API keys exhausted"):
         self.message = message
         super().__init__(self.message)
@@ -32,7 +35,7 @@ class APIKeyExhausted(ServiceError):
 
 class ExternalAPIError(ServiceError):
     """Raised when external API returns an error."""
-    
+
     def __init__(self, message: str, status_code: int | None = None):
         self.message = message
         self.status_code = status_code

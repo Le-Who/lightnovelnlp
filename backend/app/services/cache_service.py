@@ -4,12 +4,11 @@ import json
 import hashlib
 import logging
 from typing import Any, Optional
-from datetime import datetime, timedelta
 
-import os
 import time
 import redis
 from app.core.config import settings
+
 try:
     from upstash_redis import Redis as UpstashRedis
 except Exception:
@@ -20,10 +19,14 @@ class CacheService:
     def __init__(self):
         # Initialize logger early so we can use it in init
         self.logger = logging.getLogger("cache_service")
-        
+
         # Инициализация REST-клиента Upstash (предпочтительно на free-tier)
         self.rest_client = None
-        if UpstashRedis and settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
+        if (
+            UpstashRedis
+            and settings.UPSTASH_REDIS_REST_URL
+            and settings.UPSTASH_REDIS_REST_TOKEN
+        ):
             try:
                 temp_client = UpstashRedis(
                     url=settings.UPSTASH_REDIS_REST_URL,
@@ -34,7 +37,9 @@ class CacheService:
                 self.rest_client = temp_client
             except Exception as e:
                 # Если REST недоступен, остаемся на TCP (self.rest_client = None)
-                self.logger.warning(f"Upstash REST unavailable, falling back to TCP: {e}")
+                self.logger.warning(
+                    f"Upstash REST unavailable, falling back to TCP: {e}"
+                )
                 self.rest_client = None
 
         # TCP-клиент как запасной вариант
@@ -47,7 +52,7 @@ class CacheService:
             socket_timeout=5,
             socket_connect_timeout=5,
             retry_on_timeout=True,
-            health_check_interval=30
+            health_check_interval=30,
         )
 
     def _generate_key(self, prefix: str, *args) -> str:
@@ -64,7 +69,7 @@ class CacheService:
         """Получить значение из кэша."""
         rest_success = False
         value = None
-        
+
         # Сначала пробуем REST, если он доступен
         if self.rest_client:
             try:
@@ -154,7 +159,7 @@ class CacheService:
                     self.redis_client.close()
                 except Exception:
                     pass
-                
+
                 self.redis_client = self._make_tcp_client()
                 # Verify immediately
                 self.redis_client.ping()
@@ -285,12 +290,16 @@ class CacheService:
         """Генерирует ключ кэша для перевода главы."""
         return self._generate_key("translation", chapter_id, glossary_hash)
 
-    def get_cached_translation(self, chapter_id: int, glossary_hash: str) -> Optional[str]:
+    def get_cached_translation(
+        self, chapter_id: int, glossary_hash: str
+    ) -> Optional[str]:
         """Получить кэшированный перевод."""
         key = self.get_translation_cache_key(chapter_id, glossary_hash)
         return self.get(key)
 
-    def cache_translation(self, chapter_id: int, glossary_hash: str, translation: str, ttl: int = 86400) -> bool:
+    def cache_translation(
+        self, chapter_id: int, glossary_hash: str, translation: str, ttl: int = 86400
+    ) -> bool:
         """Кэшировать перевод (TTL 24 часа)."""
         key = self.get_translation_cache_key(chapter_id, glossary_hash)
         return self.set(key, translation, ttl)
@@ -350,7 +359,9 @@ class CacheService:
         key = self.get_relationships_cache_key(project_id)
         return self.get(key)
 
-    def cache_relationships(self, project_id: int, relationships: list, ttl: int = 3600) -> bool:
+    def cache_relationships(
+        self, project_id: int, relationships: list, ttl: int = 3600
+    ) -> bool:
         """Кэшировать связи (TTL 1 час)."""
         key = self.get_relationships_cache_key(project_id)
         return self.set(key, relationships, ttl)
@@ -364,7 +375,7 @@ class CacheService:
     def generate_glossary_hash(self, glossary_terms: list) -> str:
         """Генерирует хеш глоссария для отслеживания изменений."""
         # Сортируем термины для стабильного хеша
-        sorted_terms = sorted(glossary_terms, key=lambda x: x.get('source_term', ''))
+        sorted_terms = sorted(glossary_terms, key=lambda x: x.get("source_term", ""))
         terms_string = json.dumps(sorted_terms, sort_keys=True)
         return self._generate_content_hash(terms_string)
 
@@ -375,7 +386,7 @@ class CacheService:
             return {
                 "rest_client": True,
                 "connected": True,
-                "note": "Using Upstash REST (no INFO available)"
+                "note": "Using Upstash REST (no INFO available)",
             }
         # TCP INFO
         try:
@@ -386,7 +397,7 @@ class CacheService:
                 "connected_clients": info.get("connected_clients", 0),
                 "total_commands_processed": info.get("total_commands_processed", 0),
                 "keyspace_hits": info.get("keyspace_hits", 0),
-                "keyspace_misses": info.get("keyspace_misses", 0)
+                "keyspace_misses": info.get("keyspace_misses", 0),
             }
         except Exception as e:
             self.logger.warning(f"Cache stats error: {e}")

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from app.models.project import Project, Chapter
 from app.models.glossary import BatchJob
 
+
 def test_create_batch_analyze_all_chapters(client, db):
     # 1. Setup: Create a Project and Chapters
     project = Project(name="Test Batch Project", genre="fantasy")
@@ -15,14 +16,14 @@ def test_create_batch_analyze_all_chapters(client, db):
         project_id=project.id,
         title="Chapter 1",
         original_text="This is processed.",
-        processed_at=datetime.now(timezone.utc)
+        processed_at=datetime.now(timezone.utc),
     )
     # Unprocessed chapter (should be included)
     unprocessed_chapter = Chapter(
         project_id=project.id,
         title="Chapter 2",
         original_text="This needs analysis.",
-        processed_at=None
+        processed_at=None,
     )
 
     db.add(processed_chapter)
@@ -58,6 +59,7 @@ def test_create_batch_analyze_all_chapters(client, db):
         assert batch_job.processed_items == 0
         assert batch_job.failed_items == 0
 
+
 def test_create_batch_analyze_no_chapters(client, db):
     # 1. Setup: Create a Project with only processed chapters
     project = Project(name="Test Empty Batch Project", genre="scifi")
@@ -69,7 +71,7 @@ def test_create_batch_analyze_no_chapters(client, db):
         project_id=project.id,
         title="Chapter 1",
         original_text="Already done.",
-        processed_at=datetime.now(timezone.utc)
+        processed_at=datetime.now(timezone.utc),
     )
     db.add(processed_chapter)
     db.commit()

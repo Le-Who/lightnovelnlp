@@ -5,12 +5,11 @@ Uses gemini-embedding-2-preview with output_dimensionality=768 (MRL-optimized).
 All embeddings are L2-normalized before storage.
 Uses pgvector for ANN search with HNSW index.
 """
+
 from __future__ import annotations
 
-import json
 import logging
-import struct
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from google import genai
@@ -110,9 +109,14 @@ class EmbeddingService:
         """
 
         from sqlalchemy import text
+
         result = db_session.execute(
             text(sql),
-            {"project_id": project_id, "threshold": effective_threshold, "limit": limit},
+            {
+                "project_id": project_id,
+                "threshold": effective_threshold,
+                "limit": limit,
+            },
         )
 
         return [

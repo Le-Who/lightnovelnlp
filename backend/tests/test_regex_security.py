@@ -3,6 +3,7 @@ import re
 import time
 from app.core.regex_utils import safe_finditer
 
+
 def test_safe_finditer_normal():
     """Test normal regex matching with multiple groups."""
     text = "Chapter 1: The Beginning\nChapter 2: The End"
@@ -25,6 +26,7 @@ def test_safe_finditer_normal():
     m2 = matches[1]
     assert m2.group(1) == "2"
 
+
 def test_safe_finditer_compiled_pattern():
     """Test using a compiled regex pattern."""
     text = "abc"
@@ -33,17 +35,19 @@ def test_safe_finditer_compiled_pattern():
     assert len(matches) == 1
     assert matches[0].group() == "b"
 
+
 def test_safe_finditer_invalid_regex():
     """Test invalid regex syntax raises RuntimeError."""
     with pytest.raises(RuntimeError) as excinfo:
         list(safe_finditer(r"(", "text"))
     assert "Regex error" in str(excinfo.value)
 
+
 def test_safe_finditer_timeout_redos():
     """Test that ReDoS patterns trigger a TimeoutError."""
     # Pattern known to cause catastrophic backtracking
     pattern = r"(a+)+$"
-    content = "a" * 30 + "!" # Fail at the end
+    content = "a" * 30 + "!"  # Fail at the end
 
     start = time.time()
     with pytest.raises(TimeoutError) as excinfo:
@@ -56,12 +60,14 @@ def test_safe_finditer_timeout_redos():
     assert duration < 2.0
     assert "timed out" in str(excinfo.value)
 
+
 def test_safe_finditer_no_match():
     """Test no matches found."""
     text = "abc"
     pattern = "d"
     matches = list(safe_finditer(pattern, text))
     assert len(matches) == 0
+
 
 def test_safe_finditer_large_output():
     """Test that passing large data back works correctly."""

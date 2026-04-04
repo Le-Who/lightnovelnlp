@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, JSON, Index, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    JSON,
+    Index,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from . import Base
@@ -37,25 +46,41 @@ class GlossaryTerm(Base):
     frequency = Column(Integer, default=1, server_default="1")  # Частота встречаемости
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     approved_at = Column(DateTime, nullable=True)  # When the term was approved/rejected
-    
+
     # New metrics
-    first_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True, index=True)
-    last_chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=True, index=True)
-    
+    first_chapter_id = Column(
+        Integer, ForeignKey("chapters.id"), nullable=True, index=True
+    )
+    last_chapter_id = Column(
+        Integer, ForeignKey("chapters.id"), nullable=True, index=True
+    )
+
     # Связи
     project = relationship("Project", back_populates="glossary_terms")
-    source_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.source_term_id", back_populates="source_term")
-    target_relationships = relationship("TermRelationship", foreign_keys="TermRelationship.target_term_id", back_populates="target_term")
-    
+    source_relationships = relationship(
+        "TermRelationship",
+        foreign_keys="TermRelationship.source_term_id",
+        back_populates="source_term",
+    )
+    target_relationships = relationship(
+        "TermRelationship",
+        foreign_keys="TermRelationship.target_term_id",
+        back_populates="target_term",
+    )
+
     # Chapter relationships
     first_chapter = relationship("Chapter", foreign_keys=[first_chapter_id])
     last_chapter = relationship("Chapter", foreign_keys=[last_chapter_id])
-    
-    occurrences = relationship("TermOccurrence", back_populates="term", cascade="all, delete-orphan")
+
+    occurrences = relationship(
+        "TermOccurrence", back_populates="term", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_glossary_terms_project_id", "project_id"),
-        UniqueConstraint("project_id", "source_term", name="uq_glossary_term_per_project"),
+        UniqueConstraint(
+            "project_id", "source_term", name="uq_glossary_term_per_project"
+        ),
     )
 
 
@@ -64,17 +89,29 @@ class TermRelationship(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    source_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
-    target_term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
+    source_term_id = Column(
+        Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True
+    )
+    target_term_id = Column(
+        Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True
+    )
     relation_type = Column(String(50), nullable=False)
     confidence = Column(Integer, nullable=True)  # 0-100
     context = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+
     # Связи
     project = relationship("Project", back_populates="term_relationships")
-    source_term = relationship("GlossaryTerm", foreign_keys=[source_term_id], back_populates="source_relationships")
-    target_term = relationship("GlossaryTerm", foreign_keys=[target_term_id], back_populates="target_relationships")
+    source_term = relationship(
+        "GlossaryTerm",
+        foreign_keys=[source_term_id],
+        back_populates="source_relationships",
+    )
+    target_term = relationship(
+        "GlossaryTerm",
+        foreign_keys=[target_term_id],
+        back_populates="target_relationships",
+    )
 
 
 class GlossaryVersion(Base):
@@ -87,7 +124,7 @@ class GlossaryVersion(Base):
     terms_data = Column(JSON, nullable=False)  # Снимок терминов в JSON
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(100), nullable=True)  # Кто создал версию
-    
+
     # Связи
     project = relationship("Project", back_populates="glossary_versions")
 
@@ -98,7 +135,9 @@ class BatchJob(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     job_type = Column(String(50), nullable=False)  # 'analyze', 'translate', 'process'
-    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    status = Column(
+        String(20), default="pending"
+    )  # pending, running, completed, failed
     total_items = Column(Integer, default=0)
     processed_items = Column(Integer, default=0)
     failed_items = Column(Integer, default=0)
@@ -107,13 +146,15 @@ class BatchJob(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    
+
     # Дополнительные данные для разных типов задач
     job_data = Column(JSON, nullable=True)  # Дополнительные параметры
-    
+
     # Связи
     project = relationship("Project", back_populates="batch_jobs")
-    items = relationship("BatchJobItem", back_populates="batch_job", cascade="all, delete-orphan")
+    items = relationship(
+        "BatchJobItem", back_populates="batch_job", cascade="all, delete-orphan"
+    )
 
 
 class BatchJobItem(Base):
@@ -121,15 +162,19 @@ class BatchJobItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    batch_job_id = Column(Integer, ForeignKey("batch_jobs.id"), nullable=False, index=True)
+    batch_job_id = Column(
+        Integer, ForeignKey("batch_jobs.id"), nullable=False, index=True
+    )
     item_type = Column(String(50), nullable=False)  # 'chapter', 'term', etc.
     item_id = Column(Integer, nullable=False)  # ID элемента (главы, термина и т.д.)
-    status = Column(String(20), default="pending")  # pending, processing, completed, failed
+    status = Column(
+        String(20), default="pending"
+    )  # pending, processing, completed, failed
     result = Column(JSON, nullable=True)  # Результат обработки
     error_message = Column(Text, nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    
+
     # Связи
     project = relationship("Project", back_populates="batch_job_items")
     batch_job = relationship("BatchJob", back_populates="items")
@@ -140,7 +185,9 @@ class TermOccurrence(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    term_id = Column(Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True)
+    term_id = Column(
+        Integer, ForeignKey("glossary_terms.id"), nullable=False, index=True
+    )
     chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=False, index=True)
     frequency = Column(Integer, nullable=False, default=1)
 
@@ -148,7 +195,7 @@ class TermOccurrence(Base):
     project = relationship("Project")
     term = relationship("GlossaryTerm", back_populates="occurrences")
     chapter = relationship("Chapter")
-    
+
     __table_args__ = (
         UniqueConstraint("term_id", "chapter_id", name="uq_term_occurrence"),
     )

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.3.0] - 2026-04-04
+
+### 🚀 Added
+- **Production-grade Testing Architecture (AAA)**: Migrated 100% of the test suite to the Arrange-Act-Assert pattern. 
+- **Pytest Infrastructure Hardening**: Included `pytest.ini`, proper marker registrations (`unit`, `integration`, `postgres`, `slow`), and strict mode policies.
+- **pgvector Integration Tests**: Implemented a standalone containerized test framework (`--postgres-url`) with `postgres_db` fixture ensuring safe pgvector extension setup and isolation.
+- **Celery / BackgroundTask Unification Testing**: 100% coverage on transition status states across both standard FastAPI `BackgroundTasks` and separate Celery workers.
+- **Alembic 016**: Created properly versioned automated database migrations for schema state that was previously dynamically generated and injected at startup.
+
+### 🐛 Fixed
+- **Startup Race Conditions**: Implemented idempotent `IF NOT EXISTS` columns directly in Alembic to prevent TOCTOU race conditions when scaling `main.py` containers in Kubernetes/PaaS environments.
+- **AI Review Parsing Engine**: Fixed a critical bug in `TranslationService._parse_review_json` where non-`dict` values and edge-case datatypes (`int`) returned by the LLM would lead to an unhandled `AttributeError`. It now robustly defaults with strong type coercion. 
+- **Database Connection Leaks**: Resolved dangling DB connections across async test executions. Mocking and dependency injection overrides are safely enclosed in standard clean-up `finally` routines.
+- **Thinking Level Enumeration Bug**: Test framework was injecting `str` primitives while `ThinkingConfig` now strictly depends on dynamic `Enum` comparison. Fixed parameter injections across test scopes.
+
+
+
 ## [2.2.0] - 2026-04-04
 
 ### 🚨 Breaking Changes

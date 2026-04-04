@@ -11,8 +11,12 @@ from app.models.glossary import GlossaryTerm
 logger = logging.getLogger(__name__)
 
 LANG_NAMES = {
-    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
-    "en": "English", "ru": "Russian", "other": "Other",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "en": "English",
+    "ru": "Russian",
+    "other": "Other",
 }
 
 
@@ -39,28 +43,32 @@ class RelationshipAnalyzer:
         Returns:
             List[Dict]: List of relationships
         """
-        logger.info(f"[REL] Starting relationship analysis for {len(terms)} terms (Genre: {project_genre})")
+        logger.info(
+            f"[REL] Starting relationship analysis for {len(terms)} terms (Genre: {project_genre})"
+        )
 
         if len(terms) < 2:
             logger.info("[REL] Less than 2 terms, skipping")
             return []
 
-        prompt = self._build_relationship_prompt(text, terms, project_genre, target_language)
+        prompt = self._build_relationship_prompt(
+            text, terms, project_genre, target_language
+        )
         logger.info(f"[REL] Built prompt, length: {len(prompt)} chars")
 
         try:
             logger.info("[REL] Calling Gemini API...")
             response = self.client.complete(
-                prompt,
-                task_type="relationships",
-                response_schema=RelationshipResponse
+                prompt, task_type="relationships", response_schema=RelationshipResponse
             )
             result = self._parse_relationship_response(response)
 
             # Filter low confidence results
-            filtered_result = [r for r in result if r.get('confidence', 0) >= 70]
+            filtered_result = [r for r in result if r.get("confidence", 0) >= 70]
 
-            logger.info(f"[REL] Parsed {len(result)} relationships, kept {len(filtered_result)} after filtering")
+            logger.info(
+                f"[REL] Parsed {len(result)} relationships, kept {len(filtered_result)} after filtering"
+            )
             return filtered_result
         except Exception as e:
             logger.error(f"[REL] Error analyzing relationships: {e}", exc_info=True)
@@ -81,10 +89,9 @@ class RelationshipAnalyzer:
             cat = getattr(term, "category", None)
             return getattr(cat, "value", cat)
 
-        terms_text = "\n".join([
-            f"- {term.source_term} ({cat_label(term)})"
-            for term in terms
-        ])
+        terms_text = "\n".join(
+            [f"- {term.source_term} ({cat_label(term)})" for term in terms]
+        )
 
         genre_block = ""
         genre_lower = project_genre.lower() if project_genre else "other"
@@ -142,9 +149,11 @@ Return JSON with found relationships:"""
         """Parse response from Gemini API (Native JSON Mode or Response Schema)."""
         try:
             # SDK-parsed response
-            if hasattr(response, 'relationships'):
-                return [rel.model_dump() if hasattr(rel, 'model_dump') else rel.dict()
-                        for rel in response.relationships]
+            if hasattr(response, "relationships"):
+                return [
+                    rel.model_dump() if hasattr(rel, "model_dump") else rel.dict()
+                    for rel in response.relationships
+                ]
 
             # String fallback
             if isinstance(response, str):
@@ -167,10 +176,10 @@ Return JSON with found relationships:"""
 
             # Dict response
             if isinstance(response, dict):
-                if 'relationships' in response:
+                if "relationships" in response:
                     validated = RelationshipResponse.model_validate(response)
                     return [rel.model_dump() for rel in validated.relationships]
-                return response.get('relationships', [])
+                return response.get("relationships", [])
 
             logger.error(f"Unexpected response type: {type(response)}")
             return []

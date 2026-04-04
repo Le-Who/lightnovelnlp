@@ -10,76 +10,60 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from app.db import engine, Base
+    from app.db import engine
     from app.models import *  # Импортируем все модели для регистрации
     from app.api import projects, glossary, processing, translation, batch
     from app.core.config import settings
     from app.core.exceptions import RateLimitExceeded, APIKeyExhausted
     from app.deps import get_db
-    
+
     logger.info("Configuration loaded successfully")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Database configured: {bool(settings.DATABASE_URL)}")
     logger.info(f"Redis configured: {bool(settings.REDIS_URL)}")
     logger.info(f"Gemini keys count: {len(settings.GEMINI_API_KEYS)}")
-    
+
 except Exception as e:
     logger.error(f"Failed to load configuration: {e}")
     raise
 
 
-def run_migrations():
-    """Выполняет автоматические миграции при запуске, если нужные колонки отсутствуют."""
-    from sqlalchemy import text, inspect
-    
-    try:
-        inspector = inspect(engine)
-        migrations = []
-        
-        # Миграции для таблицы chapters
-        chapter_columns = [col['name'] for col in inspector.get_columns('chapters')]
-        
-        if 'analysis_status' not in chapter_columns:
-            migrations.append(
-                "ALTER TABLE chapters ADD COLUMN analysis_status VARCHAR(20) DEFAULT 'idle' NOT NULL"
-            )
-        if 'analysis_error' not in chapter_columns:
-            migrations.append("ALTER TABLE chapters ADD COLUMN analysis_error TEXT")
-        if 'translation_status' not in chapter_columns:
-            migrations.append(
-                "ALTER TABLE chapters ADD COLUMN translation_status VARCHAR(20) DEFAULT 'idle' NOT NULL"
-            )
-        if 'translation_error' not in chapter_columns:
-            migrations.append("ALTER TABLE chapters ADD COLUMN translation_error TEXT")
-        
-        # Миграции для таблицы projects
-        project_columns = [col['name'] for col in inspector.get_columns('projects')]
-        
-        if 'source_language' not in project_columns:
-            migrations.append(
-                "ALTER TABLE projects ADD COLUMN source_language VARCHAR(10) DEFAULT 'en' NOT NULL"
-            )
-        if 'target_language' not in project_columns:
-            migrations.append(
-                "ALTER TABLE projects ADD COLUMN target_language VARCHAR(10) DEFAULT 'ru' NOT NULL"
-            )
-        if 'custom_genre_instructions' not in project_columns:
-            migrations.append("ALTER TABLE projects ADD COLUMN custom_genre_instructions TEXT")
-        if 'embedding_threshold' not in project_columns:
-            migrations.append("ALTER TABLE projects ADD COLUMN embedding_threshold FLOAT")
-        
-        if migrations:
-            with engine.connect() as conn:
-                for sql in migrations:
-                    logger.info(f"Running migration: {sql}")
-                    conn.execute(text(sql))
-                conn.commit()
-            logger.info(f"Migrations completed: added {len(migrations)} columns")
-        else:
-            logger.info("No migrations needed - all columns exist")
-            
-    except Exception as e:
-        logger.warning(f"Migration check failed (non-critical): {e}")
+def run_migrations() -> None:
+    """
+    Run one-off column additions not yet tracked by Alembic.
+
+    Design constraints:
+    - IDEMPOTENT: uses ADD COLUMN IF NOT EXISTS; each statement runs in its own
+      transaction so a concurrent pod adding the same column is harmless.
+    - SAFE FOR PARALLEL DEPLOYS: no read-then-write (TOCTOU) pattern.
+    - NON-BLOCKING: individual failures are logged but do NOT crash startup.
+
+    Long-term goal: graduate these to proper numbered Alembic migrations.
+    """
+    from sqlalchemy import text
+
+    # (table, column, type+constraints)
+    COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
+        ("chapters", "analysis_status", "VARCHAR(20) DEFAULT 'idle' NOT NULL"),
+        ("chapters", "analysis_error", "TEXT"),
+        ("chapters", "translation_status", "VARCHAR(20) DEFAULT 'idle' NOT NULL"),
+        ("chapters", "translation_error", "TEXT"),
+        ("projects", "source_language", "VARCHAR(10) DEFAULT 'en' NOT NULL"),
+        ("projects", "target_language", "VARCHAR(10) DEFAULT 'ru' NOT NULL"),
+        ("projects", "custom_genre_instructions", "TEXT"),
+        ("projects", "embedding_threshold", "FLOAT"),
+    ]
+
+    for table, column, definition in COLUMN_MIGRATIONS:
+        sql = f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
+        try:
+            with engine.begin() as conn:  # auto-commits on clean exit
+                conn.execute(text(sql))
+            logger.debug(f"[MIGRATION] Applied: {table}.{column}")
+        except Exception as e:
+            # Expected on SQLite (no IF NOT EXISTS for ADD COLUMN) or if the
+            # column was added by a concurrent process between our checks.
+            logger.info(f"[MIGRATION] Skipped {table}.{column}: {e}")
 
 
 @asynccontextmanager
@@ -95,11 +79,11 @@ async def lifespan(app: FastAPI):
 # Base.metadata.create_all(bind=engine)  # Убрано - используем Alembic для миграций
 
 app = FastAPI(
-    title="Light Novel NLP API", 
+    title="Light Novel NLP API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Настройка CORS
@@ -126,59 +110,62 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded)
     if exc.retry_after:
         headers["Retry-After"] = str(exc.retry_after)
     return JSONResponse(
-        status_code=429,
-        content={"detail": exc.message},
-        headers=headers
+        status_code=429, content={"detail": exc.message}, headers=headers
     )
 
 
 @app.exception_handler(APIKeyExhausted)
 async def api_key_exhausted_handler(request: Request, exc: APIKeyExhausted):
-    return JSONResponse(
-        status_code=503,
-        content={"detail": exc.message}
-    )
+    return JSONResponse(status_code=503, content={"detail": exc.message})
 
 
 @app.get("/")
 def read_root():
     return {
-        "message": "Light Novel NLP API", 
+        "message": "Light Novel NLP API",
         "version": "1.0.0",
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
     }
 
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):
     health_status = {"status": "healthy", "database": "unknown", "redis": "unknown"}
-    
+
     # Check Database
     try:
         from sqlalchemy import text
+
         db.execute(text("SELECT 1"))
         health_status["database"] = "connected"
-    except Exception as e:
+    except Exception:
         health_status["status"] = "unhealthy"
         health_status["database"] = "disconnected"
-        
+
     # Check Redis
     try:
         from app.services.cache_service import cache_service
+
         # Use existing ping checking mechanism or just get a dummy key
         res = cache_service.redis_client.ping() if cache_service.redis_client else False
         health_status["redis"] = "connected" if res else "disconnected"
         if not res:
             health_status["status"] = "degraded"
-    except Exception as e:
+    except Exception:
         health_status["redis"] = "disconnected"
         health_status["status"] = "degraded"
-        
+
     if health_status["status"] == "unhealthy":
         from fastapi import Response
-        return Response(content='{"status": "unhealthy"}', status_code=503, media_type="application/json")
-        
+
+        return Response(
+            content='{"status": "unhealthy"}',
+            status_code=503,
+            media_type="application/json",
+        )
+
     return health_status
+
 
 @app.get("/info")
 def get_info():
@@ -186,5 +173,5 @@ def get_info():
         "environment": settings.ENVIRONMENT,
         "database_configured": bool(settings.DATABASE_URL),
         "redis_configured": bool(settings.REDIS_URL),
-        "gemini_keys_count": len(settings.GEMINI_API_KEYS)
+        "gemini_keys_count": len(settings.GEMINI_API_KEYS),
     }

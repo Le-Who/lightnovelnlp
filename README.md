@@ -7,7 +7,8 @@
 ![Python](https://img.shields.io/badge/Backend-FastAPI-blue)
 ![React](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-cyan)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini%203.x-orange)
-![Architecture](https://img.shields.io/badge/Architecture-v2.2-purple)
+![Architecture](https://img.shields.io/badge/Architecture-v2.3-purple)
+![Testing](https://img.shields.io/badge/Testing-AAA%20Pattern%20%7C%20130%2B%20Tests-brightgreen)
 
 ---
 
@@ -204,9 +205,9 @@ docker-compose up --build -d
 │   │   ├── models/       # SQLAlchemy модели (Project, Chapter, GlossaryTerm)
 │   │   ├── services/     # Бизнес-логика (GeminiClient v2, EmbeddingService, CacheService)
 │   │   └── tasks/        # Celery задачи (Async translation/analysis)
-│   ├── alembic/          # Миграции БД (015 миграций)
+│   ├── alembic/          # Миграции БД (016 миграций)
 │   ├── scripts/          # Утилиты (calibrate_threshold.py)
-│   └── tests/            # Pytest (77 тестов)
+│   └── tests/            # Pytest suite (AAA pattern, 130+ тестов)
 ├── frontend/
 │   ├── src/
 │   │   ├── components/   # UI Компоненты (ChapterManager, GlossaryEditor)
@@ -214,6 +215,32 @@ docker-compose up --build -d
 │   │   └── services/     # API клиент (Axios)
 └── docker-compose.yml
 ```
+
+---
+
+## 🧪 Тестирование (Testing Architecture)
+
+Проект использует паттерн **AAA (Arrange-Act-Assert)** для всех тестов, гарантируя высокую надежность и изоляцию стейта.
+
+Запуск осуществляется через `pytest`. Тесты разделены на маркеры:
+
+```bash
+cd backend
+
+# Локальный запуск: unit и SQLite-интеграционные тесты (быстро, ~6 сек)
+pytest
+
+# Запуск только unit тестов (без базы)
+pytest -m unit
+
+# Интеграционные тесты (FastAPI + TestClient + in-memory SQLite)
+pytest -m integration
+
+# Полный прогон с pgvector (используется в CI)
+pytest -m postgres --postgres-url=postgresql://user:pass@localhost:5432/testdb
+```
+
+*Все `postgres` тесты автоматически пропускаются при локальном запуске без явной передачи `--postgres-url`.*
 
 ---
 

@@ -8,8 +8,12 @@ from app.services.gemini_client import gemini_client
 logger = logging.getLogger(__name__)
 
 LANG_NAMES = {
-    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
-    "en": "English", "ru": "Russian", "other": "Other",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "en": "English",
+    "ru": "Russian",
+    "other": "Other",
 }
 
 
@@ -89,9 +93,7 @@ Create a brief summary (2-3 sentences) of the key events in this chapter.
 </chapter>"""
 
     def create_project_summary(
-        self,
-        chapters: List[Dict[str, Any]],
-        window_size: int = 3
+        self, chapters: List[Dict[str, Any]], window_size: int = 3
     ) -> str:
         """
         Create hierarchical project summary:
@@ -116,16 +118,22 @@ Create a brief summary (2-3 sentences) of the key events in this chapter.
         summary_parts = []
 
         if old_chapters:
-            old_summary_text = "\n".join([ch.get('summary', '') for ch in old_chapters if ch.get('summary')])
+            old_summary_text = "\n".join(
+                [ch.get("summary", "") for ch in old_chapters if ch.get("summary")]
+            )
             if old_summary_text:
-                summary_parts.append(f"PREVIOUSLY (Chapters 1-{len(old_chapters)}):\n{old_summary_text[:2000]}...")
+                summary_parts.append(
+                    f"PREVIOUSLY (Chapters 1-{len(old_chapters)}):\n{old_summary_text[:2000]}..."
+                )
 
         if recent_chapters:
-            recent_text = "\n\n".join([
-                f"Chapter {ch.get('title')}: {ch.get('summary')}"
-                for ch in recent_chapters
-                if ch.get('summary')
-            ])
+            recent_text = "\n\n".join(
+                [
+                    f"Chapter {ch.get('title')}: {ch.get('summary')}"
+                    for ch in recent_chapters
+                    if ch.get("summary")
+                ]
+            )
             summary_parts.append(f"RECENT EVENTS:\n{recent_text}")
 
         return "\n\n".join(summary_parts)

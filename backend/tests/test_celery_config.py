@@ -1,7 +1,7 @@
 import pytest
 
 try:
-    from celery import Celery
+    import celery  # noqa: F401
     HAS_CELERY = True
 except ImportError:
     HAS_CELERY = False

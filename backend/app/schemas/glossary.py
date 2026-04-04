@@ -28,7 +28,7 @@ class GlossaryTermUpdate(BaseModel):
 
 class GlossaryTermRead(GlossaryTermBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     project_id: int
     status: str
@@ -38,17 +38,18 @@ class GlossaryTermRead(GlossaryTermBase):
     first_chapter_id: Optional[int] = None
     last_chapter_id: Optional[int] = None
     first_chapter_order: Optional[int] = None  # Новое поле: порядковый номер
-    last_chapter_order: Optional[int] = None   # Новое поле: порядковый номер
-    
+    last_chapter_order: Optional[int] = None  # Новое поле: порядковый номер
+
     # Visualization metrics
-    occurrences_data: Optional[List[Dict[str, int]]] = None  # [{chapter_id: 1, freq: 5}, ...]
+    occurrences_data: Optional[List[Dict[str, int]]] = (
+        None  # [{chapter_id: 1, freq: 5}, ...]
+    )
     centrality_score: Optional[int] = 0
 
     # We could add nested chapter info here if we define a schema for it
-    # first_chapter: Optional[ChapterInfo] = None 
+    # first_chapter: Optional[ChapterInfo] = None
     # But for now, let's stick to IDs or let frontend handle it if it has the map.
     # actually, let's include a minimal string representation or similar if feasible.
-
 
 
 class TermRelationshipBase(BaseModel):
@@ -65,7 +66,7 @@ class TermRelationshipCreate(TermRelationshipBase):
 
 class TermRelationshipRead(TermRelationshipBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     project_id: int
     created_at: datetime
@@ -83,7 +84,7 @@ class GlossaryVersionCreate(GlossaryVersionBase):
 
 class GlossaryVersionRead(GlossaryVersionBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     project_id: int
     version_name: str
@@ -109,7 +110,7 @@ class BatchJobCreate(BatchJobBase):
 
 class BatchJobRead(BatchJobBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     project_id: int
     status: str
@@ -145,7 +146,7 @@ class BatchJobItemCreate(BatchJobItemBase):
 
 class BatchJobItemRead(BatchJobItemBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     batch_job_id: int
     status: str

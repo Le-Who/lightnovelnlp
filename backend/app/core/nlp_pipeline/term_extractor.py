@@ -17,8 +17,12 @@ from collections import Counter
 
 # ─── Language display names ─────────────────────────────────────────────────
 LANG_NAMES = {
-    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
-    "en": "English", "ru": "Russian", "other": "Other",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "en": "English",
+    "ru": "Russian",
+    "other": "Other",
 }
 
 
@@ -38,7 +42,9 @@ class TermExtractor:
                     logger.info("Loading spaCy model: en_core_web_sm")
                     self.nlp_models[lang] = spacy.load("en_core_web_sm")
             except OSError:
-                logger.error(f"spaCy model for {lang} not found. Please run download_models.py")
+                logger.error(
+                    f"spaCy model for {lang} not found. Please run download_models.py"
+                )
                 if lang != "en":
                     return self._get_nlp("en")
                 raise
@@ -50,7 +56,7 @@ class TermExtractor:
         project_genre: ProjectGenre = ProjectGenre.OTHER,
         source_language: str = "en",
         target_language: str = "ru",
-        custom_instructions: str | None = None
+        custom_instructions: str | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Extract key terms from text via Gemini API.
@@ -71,11 +77,11 @@ class TermExtractor:
 
         try:
             response = self.client.complete(
-                prompt,
-                task_type="extraction",
-                response_schema=TermExtractionResponse
+                prompt, task_type="extraction", response_schema=TermExtractionResponse
             )
-            logger.info(f"Received response from Gemini, type: {type(response).__name__}")
+            logger.info(
+                f"Received response from Gemini, type: {type(response).__name__}"
+            )
             terms = self._parse_response(response)
             logger.info(f"Extracted {len(terms)} terms from chapter")
             return terms
@@ -83,7 +89,9 @@ class TermExtractor:
             logger.error(f"Error extracting terms: {e}", exc_info=True)
             return []
 
-    def count_term_frequency(self, text: str, terms: List[str], source_language: str = "en") -> Dict[str, int]:
+    def count_term_frequency(
+        self, text: str, terms: List[str], source_language: str = "en"
+    ) -> Dict[str, int]:
         """
         Count term frequency using spaCy PhraseMatcher for supported languages (en, ru)
         to handle lemmatization. Falls back to regex for other languages.
@@ -125,9 +133,12 @@ class TermExtractor:
                 return {term: counts.get(term, 0) for term in terms}
 
             except Exception as e:
-                logger.warning(f"spaCy frequency count failed for {source_language}: {e}. Fallback to regex.")
+                logger.warning(
+                    f"spaCy frequency count failed for {source_language}: {e}. Fallback to regex."
+                )
 
         import re
+
         text_lower = text.lower()
         frequency = {}
 
@@ -136,7 +147,7 @@ class TermExtractor:
             if not term_lower:
                 continue
             try:
-                pattern = r'\b' + re.escape(term_lower) + r'\b'
+                pattern = r"\b" + re.escape(term_lower) + r"\b"
                 frequency[term] = len(re.findall(pattern, text_lower))
             except Exception:
                 frequency[term] = text_lower.count(term_lower)
@@ -149,7 +160,7 @@ class TermExtractor:
         project_genre: ProjectGenre = ProjectGenre.OTHER,
         source_language: str = "en",
         target_language: str = "ru",
-        custom_instructions: str | None = None
+        custom_instructions: str | None = None,
     ) -> List[Dict[str, Any]]:
         """Extract terms and count their frequency in the text."""
         terms = self.extract_terms(
@@ -170,7 +181,7 @@ class TermExtractor:
         project_genre: ProjectGenre,
         source_language: str = "en",
         target_language: str = "ru",
-        custom_instructions: str | None = None
+        custom_instructions: str | None = None,
     ) -> str:
         """Build XML-delimited extraction prompt with dynamic language support."""
 
@@ -188,7 +199,9 @@ class TermExtractor:
         else:
             genre_section = f"<genre_context>\n{self._get_genre_instructions(project_genre)}\n</genre_context>"
 
-        language_section = self._get_language_instructions(source_language, target_language)
+        language_section = self._get_language_instructions(
+            source_language, target_language
+        )
 
         return f"""<system>
 You are an expert light novel terminology extractor for {genre_label.upper()} genre.
@@ -221,7 +234,9 @@ character | location | skill | artifact | organization | cultivation_rank | tech
 
 Extract only significant, recurring terms. Return JSON:"""
 
-    def _get_language_instructions(self, source_language: str, target_language: str = "ru") -> str:
+    def _get_language_instructions(
+        self, source_language: str, target_language: str = "ru"
+    ) -> str:
         """Return language-specific extraction instructions."""
         target_name = LANG_NAMES.get(target_language, target_language)
 
@@ -230,17 +245,14 @@ Extract only significant, recurring terms. Return JSON:"""
 - Transliterate names via pinyin → {target_name} script (e.g., 王小明 → Wang Xiaoming)
 - Preserve original cultivation rank names alongside translations
 - Translate chengyu (成语) preserving meaning""",
-
-            "ja": f"""SOURCE: Japanese
+            "ja": """SOURCE: Japanese
 - Use standard name transliteration (e.g., 田中 → Tanaka)
 - Preserve honorifics: -san, -kun, -sama, -sensei
 - Translate kanji directly where possible""",
-
-            "ko": f"""SOURCE: Korean
+            "ko": """SOURCE: Korean
 - Transliterate names (e.g., 김영수 → Kim Yeongsu)
 - Preserve polite forms where contextually appropriate
 - Translate hangul directly""",
-
             "en": f"""SOURCE: English
 - Transliterate names to {target_name} script
 - Translate descriptive names and titles""",
@@ -283,9 +295,14 @@ Extract only significant, recurring terms. Return JSON:"""
             extracted = []
 
             # SDK-parsed response
-            if hasattr(response, 'terms'):
-                logger.info(f"Response has 'terms' attribute, extracting {len(response.terms)} terms")
-                extracted = [term.model_dump() if hasattr(term, 'model_dump') else term.dict() for term in response.terms]
+            if hasattr(response, "terms"):
+                logger.info(
+                    f"Response has 'terms' attribute, extracting {len(response.terms)} terms"
+                )
+                extracted = [
+                    term.model_dump() if hasattr(term, "model_dump") else term.dict()
+                    for term in response.terms
+                ]
 
             # String fallback
             elif isinstance(response, str):
@@ -307,24 +324,30 @@ Extract only significant, recurring terms. Return JSON:"""
                         payload = data
                     validated = TermExtractionResponse.model_validate(payload)
                     extracted = [term.model_dump() for term in validated.terms]
-                    logger.info(f"Extracted {len(extracted)} terms from string response")
+                    logger.info(
+                        f"Extracted {len(extracted)} terms from string response"
+                    )
                 except json.JSONDecodeError as je:
                     logger.error(f"JSON decode error: {je}")
-                    logger.error(f"Failed to parse cleaned response: {clean_response[:200]}...")
+                    logger.error(
+                        f"Failed to parse cleaned response: {clean_response[:200]}..."
+                    )
                 except Exception as e:
                     logger.error(f"Error validating string response: {e}")
 
             # Dict response
             elif isinstance(response, dict):
-                if 'terms' in response:
+                if "terms" in response:
                     validated = TermExtractionResponse.model_validate(response)
                     extracted = [term.model_dump() for term in validated.terms]
                     logger.info(f"Extracted {len(extracted)} terms from dict response")
                 else:
-                    extracted = response.get('terms', [])
+                    extracted = response.get("terms", [])
 
             else:
-                logger.warning(f"Unexpected response type: {type(response)}, value: {str(response)[:200]}")
+                logger.warning(
+                    f"Unexpected response type: {type(response)}, value: {str(response)[:200]}"
+                )
 
             if not extracted:
                 logger.warning("No terms extracted from response.")
@@ -347,12 +370,11 @@ Extract only significant, recurring terms. Return JSON:"""
 
         except (json.JSONDecodeError, ValueError, Exception) as e:
             logger.error(f"Error parsing/validating response: {e}")
-            if hasattr(response, 'text'):
+            if hasattr(response, "text"):
                 logger.error(f"Raw response text: {response.text}")
             elif isinstance(response, str):
                 logger.error(f"Raw response string: {response}")
             return []
-
 
 
 term_extractor = TermExtractor()

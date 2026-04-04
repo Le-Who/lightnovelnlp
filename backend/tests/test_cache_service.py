@@ -2,18 +2,19 @@ import unittest
 from unittest.mock import MagicMock, patch
 from app.services.cache_service import CacheService
 
+
 class TestCacheService(unittest.TestCase):
     def setUp(self):
         # Patch settings
-        self.settings_patcher = patch('app.services.cache_service.settings')
+        self.settings_patcher = patch("app.services.cache_service.settings")
         self.mock_settings = self.settings_patcher.start()
 
         # Patch UpstashRedis
-        self.upstash_patcher = patch('app.services.cache_service.UpstashRedis')
+        self.upstash_patcher = patch("app.services.cache_service.UpstashRedis")
         self.mock_upstash_cls = self.upstash_patcher.start()
 
         # Patch redis (TCP)
-        self.redis_patcher = patch('app.services.cache_service.redis')
+        self.redis_patcher = patch("app.services.cache_service.redis")
         self.mock_redis_module = self.redis_patcher.start()
         self.mock_tcp_client = MagicMock()
         self.mock_redis_module.from_url.return_value = self.mock_tcp_client
@@ -48,7 +49,7 @@ class TestCacheService(unittest.TestCase):
         mock_rest_client.get.side_effect = Exception("REST error")
 
         # TCP fails once then succeeds
-        self.mock_tcp_client.get.side_effect = [Exception("TCP error"), b'123']
+        self.mock_tcp_client.get.side_effect = [Exception("TCP error"), b"123"]
         # TCP ping succeeds (simplifying to avoid side_effect exhaustion issues)
         self.mock_tcp_client.ping.return_value = True
 
@@ -118,10 +119,10 @@ class TestCacheService(unittest.TestCase):
 
     def test_get_tcp_retry(self):
         """Test get retry logic when TCP fails initially."""
-        service = CacheService() # Only TCP
+        service = CacheService()  # Only TCP
 
         # First call fails, second call succeeds
-        self.mock_tcp_client.get.side_effect = [Exception("Connection error"), b'123']
+        self.mock_tcp_client.get.side_effect = [Exception("Connection error"), b"123"]
         # Ping must fail to trigger reconnection
         self.mock_tcp_client.ping.side_effect = [Exception("Ping failed"), True]
 
@@ -137,7 +138,7 @@ class TestCacheService(unittest.TestCase):
         service = CacheService()
 
         # Int
-        self.mock_tcp_client.get.return_value = b'42'
+        self.mock_tcp_client.get.return_value = b"42"
         self.assertEqual(service.get("key"), 42)
 
         # JSON
@@ -145,7 +146,7 @@ class TestCacheService(unittest.TestCase):
         self.assertEqual(service.get("key"), {"a": 1})
 
         # String (if not valid json or int)
-        self.mock_tcp_client.get.return_value = b'some string'
+        self.mock_tcp_client.get.return_value = b"some string"
         self.assertEqual(service.get("key"), "some string")
 
         # None
@@ -181,7 +182,7 @@ class TestCacheService(unittest.TestCase):
         result = service.set("key", 123)
 
         self.assertTrue(result)
-        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123") # Default TTL
+        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123")  # Default TTL
 
     def test_delete_rest_success(self):
         """Test delete using REST client."""
@@ -212,7 +213,7 @@ class TestCacheService(unittest.TestCase):
             socket_timeout=5,
             socket_connect_timeout=5,
             retry_on_timeout=True,
-            health_check_interval=30
+            health_check_interval=30,
         )
 
     def test_increment_counter_rest_success(self):
@@ -291,7 +292,7 @@ class TestCacheService(unittest.TestCase):
     def test_translation_cache(self):
         """Test translation caching methods."""
         service = CacheService()
-        self.mock_tcp_client.get.return_value = b'translation'
+        self.mock_tcp_client.get.return_value = b"translation"
         self.mock_tcp_client.setex.return_value = True
         self.mock_tcp_client.keys.return_value = ["key"]
         self.mock_tcp_client.delete.return_value = 1
@@ -302,7 +303,9 @@ class TestCacheService(unittest.TestCase):
 
         # Test cache
         service.cache_translation(1, "hash", "translation")
-        self.mock_tcp_client.setex.assert_called_with("lightnovel:translation:1:hash", 86400, '"translation"')
+        self.mock_tcp_client.setex.assert_called_with(
+            "lightnovel:translation:1:hash", 86400, '"translation"'
+        )
 
         # Test invalidate
         service.invalidate_translation_cache(1)
@@ -322,7 +325,9 @@ class TestCacheService(unittest.TestCase):
 
         # Test cache
         service.cache_glossary(1, [{"term": "a"}])
-        self.mock_tcp_client.setex.assert_called_with("lightnovel:glossary:1", 3600, '[{"term": "a"}]')
+        self.mock_tcp_client.setex.assert_called_with(
+            "lightnovel:glossary:1", 3600, '[{"term": "a"}]'
+        )
 
         # Test invalidate
         service.invalidate_glossary_cache(1)
@@ -331,7 +336,7 @@ class TestCacheService(unittest.TestCase):
     def test_summary_cache(self):
         """Test summary caching methods."""
         service = CacheService()
-        self.mock_tcp_client.get.return_value = b'summary'
+        self.mock_tcp_client.get.return_value = b"summary"
         self.mock_tcp_client.setex.return_value = True
         self.mock_tcp_client.delete.return_value = 1
 
@@ -341,7 +346,9 @@ class TestCacheService(unittest.TestCase):
 
         # Test cache
         service.cache_summary(1, "summary")
-        self.mock_tcp_client.setex.assert_called_with("lightnovel:summary:1", 7200, '"summary"')
+        self.mock_tcp_client.setex.assert_called_with(
+            "lightnovel:summary:1", 7200, '"summary"'
+        )
 
         # Test invalidate
         service.invalidate_summary_cache(1)
@@ -360,7 +367,9 @@ class TestCacheService(unittest.TestCase):
 
         # Test cache
         service.cache_relationships(1, [{"rel": "a"}])
-        self.mock_tcp_client.setex.assert_called_with("lightnovel:relationships:1", 3600, '[{"rel": "a"}]')
+        self.mock_tcp_client.setex.assert_called_with(
+            "lightnovel:relationships:1", 3600, '[{"rel": "a"}]'
+        )
 
         # Test invalidate
         service.invalidate_relationships_cache(1)
@@ -370,8 +379,14 @@ class TestCacheService(unittest.TestCase):
         """Test glossary hash generation."""
         service = CacheService()
 
-        terms1 = [{"source_term": "a", "target_term": "b"}, {"source_term": "c", "target_term": "d"}]
-        terms2 = [{"source_term": "c", "target_term": "d"}, {"source_term": "a", "target_term": "b"}]
+        terms1 = [
+            {"source_term": "a", "target_term": "b"},
+            {"source_term": "c", "target_term": "d"},
+        ]
+        terms2 = [
+            {"source_term": "c", "target_term": "d"},
+            {"source_term": "a", "target_term": "b"},
+        ]
 
         # Order shouldn't matter
         hash1 = service.generate_glossary_hash(terms1)
@@ -389,7 +404,7 @@ class TestCacheService(unittest.TestCase):
             "connected_clients": 10,
             "total_commands_processed": 100,
             "keyspace_hits": 50,
-            "keyspace_misses": 50
+            "keyspace_misses": 50,
         }
 
         stats = service.get_cache_stats()
@@ -424,8 +439,7 @@ class TestCacheService(unittest.TestCase):
 
         self.assertEqual(service.rest_client, mock_rest_client)
         self.mock_upstash_cls.assert_called_with(
-            url="https://example.upstash.io",
-            token="token"
+            url="https://example.upstash.io", token="token"
         )
         mock_rest_client.ping.assert_called_once()
 
@@ -464,7 +478,7 @@ class TestCacheService(unittest.TestCase):
 
     def test_set_full_failure(self):
         """Test set returns False when all attempts fail."""
-        service = CacheService() # Only TCP
+        service = CacheService()  # Only TCP
 
         # All calls fail
         self.mock_tcp_client.setex.side_effect = Exception("Connection error")

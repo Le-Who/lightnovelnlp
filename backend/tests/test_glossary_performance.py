@@ -1,17 +1,17 @@
-
 import pytest
 import time
 from sqlalchemy import event
-from sqlalchemy.orm import attributes
 from app.models.project import Project, Chapter
 from app.models.glossary import GlossaryTerm, TermRelationship, TermOccurrence
 from app.api.glossary import get_glossary_terms
+
 
 @pytest.fixture
 def query_counter(db):
     class QueryCounter:
         def __init__(self):
             self.count = 0
+
         def __call__(self, conn, cursor, statement, parameters, context, executemany):
             self.count += 1
 
@@ -19,6 +19,7 @@ def query_counter(db):
     event.listen(db.bind, "before_cursor_execute", counter)
     yield counter
     event.remove(db.bind, "before_cursor_execute", counter)
+
 
 def test_glossary_terms_deferred_loading(db):
     """
@@ -36,7 +37,7 @@ def test_glossary_terms_deferred_loading(db):
         project_id=project.id,
         title="Chapter 1",
         original_text="Very long text " * 100,
-        order=1
+        order=1,
     )
     db.add(chapter)
     db.commit()
@@ -49,7 +50,7 @@ def test_glossary_terms_deferred_loading(db):
         translated_term="Test Trans",
         category="other",
         first_chapter_id=chapter.id,
-        last_chapter_id=chapter.id
+        last_chapter_id=chapter.id,
     )
     db.add(term)
     db.commit()
@@ -65,7 +66,7 @@ def test_glossary_terms_deferred_loading(db):
         offset=0,
         search=None,
         sort_by="id",
-        order="asc"
+        order="asc",
     )
 
     assert len(terms) == 1
@@ -77,15 +78,20 @@ def test_glossary_terms_deferred_loading(db):
     assert first_chapter.id == chapter.id
 
     # Check that 'order' is loaded
-    assert 'order' in first_chapter.__dict__
+    assert "order" in first_chapter.__dict__
 
     # Check that 'original_text' is NOT loaded
-    assert 'original_text' not in first_chapter.__dict__, "original_text should be deferred"
+    assert "original_text" not in first_chapter.__dict__, (
+        "original_text should be deferred"
+    )
 
     # 7. Accessing original_text should load it
     text = first_chapter.original_text
     assert text == "Very long text " * 100
-    assert 'original_text' in first_chapter.__dict__, "original_text should be loaded after access"
+    assert "original_text" in first_chapter.__dict__, (
+        "original_text should be loaded after access"
+    )
+
 
 def test_glossary_terms_query_count(db, query_counter):
     # Setup
@@ -108,7 +114,7 @@ def test_glossary_terms_query_count(db, query_counter):
             category="other",
             frequency=10,
             first_chapter_id=chapter.id,
-            last_chapter_id=chapter.id
+            last_chapter_id=chapter.id,
         )
         db.add(term)
         terms.append(term)
@@ -120,20 +126,17 @@ def test_glossary_terms_query_count(db, query_counter):
         term = terms[i]
         # 5 outgoing relationships
         for j in range(5):
-             rel = TermRelationship(
-                 project_id=project.id,
-                 source_term_id=term.id,
-                 target_term_id=terms[(i+j+1)%50].id,
-                 relation_type="related"
-             )
-             db.add(rel)
+            rel = TermRelationship(
+                project_id=project.id,
+                source_term_id=term.id,
+                target_term_id=terms[(i + j + 1) % 50].id,
+                relation_type="related",
+            )
+            db.add(rel)
 
         # Add occurrence
         occ = TermOccurrence(
-            project_id=project.id,
-            term_id=term.id,
-            chapter_id=chapter.id,
-            frequency=5
+            project_id=project.id, term_id=term.id, chapter_id=chapter.id, frequency=5
         )
         db.add(occ)
 
@@ -154,7 +157,7 @@ def test_glossary_terms_query_count(db, query_counter):
         offset=0,
         search=None,
         sort_by="id",
-        order="asc"
+        order="asc",
     )
     end_time = time.time()
 

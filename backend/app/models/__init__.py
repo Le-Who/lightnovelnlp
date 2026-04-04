@@ -7,20 +7,20 @@ Base = declarative_base()
 # Импортируем все модели для регистрации
 from .project import Project, Chapter
 from .glossary import (
-    GlossaryTerm, 
-    TermRelationship, 
-    GlossaryVersion, 
-    BatchJob, 
-    BatchJobItem
+    GlossaryTerm,
+    TermRelationship,
+    GlossaryVersion,
+    BatchJob,
+    BatchJobItem,
 )
 
 __all__ = [
-    'Base',
-    'Project',
-    'Chapter', 
-    'GlossaryTerm',
-    'TermRelationship',
-    'GlossaryVersion',
-    'BatchJob',
-    'BatchJobItem'
+    "Base",
+    "Project",
+    "Chapter",
+    "GlossaryTerm",
+    "TermRelationship",
+    "GlossaryVersion",
+    "BatchJob",
+    "BatchJobItem",
 ]

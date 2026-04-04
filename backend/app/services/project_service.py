@@ -5,20 +5,27 @@ from fastapi import HTTPException
 
 from app.models.project import Project, Chapter
 from app.models.glossary import (
-    GlossaryTerm, TermRelationship, GlossaryVersion, 
-    BatchJob, BatchJobItem
+    GlossaryTerm,
+    TermRelationship,
+    GlossaryVersion,
+    BatchJob,
+    BatchJobItem,
 )
-from app.schemas.project import ProjectCreate, ProjectGenre
+from app.schemas.project import ProjectCreate
+
 
 class ProjectService:
     @staticmethod
     def get_projects(db: Session) -> List[Project]:
         # Query projects with chapter counts
-        results = db.query(
-            Project, 
-            func.count(Chapter.id).label('chapters_count')
-        ).outerjoin(Chapter).group_by(Project.id).order_by(Project.created_at.desc()).all()
-        
+        results = (
+            db.query(Project, func.count(Chapter.id).label("chapters_count"))
+            .outerjoin(Chapter)
+            .group_by(Project.id)
+            .order_by(Project.created_at.desc())
+            .all()
+        )
+
         # Manually attach count directly to model attributes or map to schema
         # SQLAlchemy models don't auto-map aggregated fields to attributes easily without explicit mapping
         projects = []
@@ -31,11 +38,13 @@ class ProjectService:
     def create_project(db: Session, payload: ProjectCreate) -> Project:
         exists = db.query(Project).filter(Project.name == payload.name).first()
         if exists:
-            raise HTTPException(status_code=400, detail="Project with this name already exists")
-        
+            raise HTTPException(
+                status_code=400, detail="Project with this name already exists"
+            )
+
         genre_value = getattr(payload.genre, "value", payload.genre)
         project = Project(
-            name=payload.name, 
+            name=payload.name,
             genre=genre_value,
             custom_genre_instructions=payload.custom_genre_instructions,
             source_language=getattr(payload, "source_language", "en"),
@@ -57,12 +66,24 @@ class ProjectService:
             raise HTTPException(status_code=404, detail="Project not found")
 
         # Delete dependencies
-        db.query(TermRelationship).filter(TermRelationship.project_id == project_id).delete(synchronize_session=False)
-        db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).delete(synchronize_session=False)
-        db.query(GlossaryVersion).filter(GlossaryVersion.project_id == project_id).delete(synchronize_session=False)
-        db.query(BatchJobItem).filter(BatchJobItem.project_id == project_id).delete(synchronize_session=False)
-        db.query(BatchJob).filter(BatchJob.project_id == project_id).delete(synchronize_session=False)
-        db.query(Chapter).filter(Chapter.project_id == project_id).delete(synchronize_session=False)
-        
+        db.query(TermRelationship).filter(
+            TermRelationship.project_id == project_id
+        ).delete(synchronize_session=False)
+        db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).delete(
+            synchronize_session=False
+        )
+        db.query(GlossaryVersion).filter(
+            GlossaryVersion.project_id == project_id
+        ).delete(synchronize_session=False)
+        db.query(BatchJobItem).filter(BatchJobItem.project_id == project_id).delete(
+            synchronize_session=False
+        )
+        db.query(BatchJob).filter(BatchJob.project_id == project_id).delete(
+            synchronize_session=False
+        )
+        db.query(Chapter).filter(Chapter.project_id == project_id).delete(
+            synchronize_session=False
+        )
+
         db.delete(project)
         db.commit()

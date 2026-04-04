@@ -1,0 +1,9 @@
+{
+  "include": ["app", "tests"],
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Linux",
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportMissingModuleSource": "none",
+  "reportMissingImports": "none"
+}

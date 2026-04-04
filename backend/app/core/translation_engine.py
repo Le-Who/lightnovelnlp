@@ -10,8 +10,12 @@ logger = logging.getLogger(__name__)
 
 # ─── Language display names ──────────────────────────────────────────────────
 LANG_NAMES = {
-    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
-    "en": "English", "ru": "Russian", "other": "Other",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "en": "English",
+    "ru": "Russian",
+    "other": "Other",
 }
 
 # ─── Genre-specific style instructions ───────────────────────────────────────
@@ -67,9 +71,16 @@ class TranslationEngine:
             str: Translated text
         """
         prompt = self._build_translation_prompt(
-            text, glossary_terms, context_summary, project_summary,
-            relationships, genre, source_language, target_language,
-            custom_genre_instructions, previous_context,
+            text,
+            glossary_terms,
+            context_summary,
+            project_summary,
+            relationships,
+            genre,
+            source_language,
+            target_language,
+            custom_genre_instructions,
+            previous_context,
         )
 
         try:
@@ -117,7 +128,11 @@ class TranslationEngine:
         source_name = LANG_NAMES.get(source_language, source_language)
         target_name = LANG_NAMES.get(target_language, target_language)
 
-        glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(no approved terms)"
+        glossary_text = (
+            self._format_glossary_for_prompt(glossary_terms)
+            if glossary_terms
+            else "(no approved terms)"
+        )
 
         # ── Style section ─────────────────────────────────────────────────
         style_lines: list[str] = []
@@ -135,25 +150,37 @@ class TranslationEngine:
         # ── Relationships section ─────────────────────────────────────────
         rels_section = ""
         if relationships:
-            rels_text = "\n".join([
-                f"- {r.get('source_term', r.get('source', '?'))} ↔ {r.get('target_term', r.get('target', '?'))}: "
-                f"{r.get('relation_type', r.get('type', '?'))} ({r.get('context', r.get('description', ''))})"
-                for r in relationships
-            ])
+            rels_text = "\n".join(
+                [
+                    f"- {r.get('source_term', r.get('source', '?'))} ↔ {r.get('target_term', r.get('target', '?'))}: "
+                    f"{r.get('relation_type', r.get('type', '?'))} ({r.get('context', r.get('description', ''))})"
+                    for r in relationships
+                ]
+            )
             rels_section = f"\n<character_relationships>\n{rels_text}\n</character_relationships>\n"
 
         # ── Context sections ──────────────────────────────────────────────
         context_parts: list[str] = []
         if project_summary:
-            context_parts.append(f"<project_context>\n{project_summary}\n</project_context>")
+            context_parts.append(
+                f"<project_context>\n{project_summary}\n</project_context>"
+            )
         if context_summary:
-            context_parts.append(f"<chapter_context>\n{context_summary}\n</chapter_context>")
+            context_parts.append(
+                f"<chapter_context>\n{context_summary}\n</chapter_context>"
+            )
         if previous_context:
-            context_parts.append(f"<previous_chapter>\n...\n{previous_context}\n...\n</previous_chapter>")
+            context_parts.append(
+                f"<previous_chapter>\n...\n{previous_context}\n...\n</previous_chapter>"
+            )
 
         context_section = ""
         if context_parts:
-            context_section = "\n<narrative_context>\n" + "\n".join(context_parts) + "\n</narrative_context>\n"
+            context_section = (
+                "\n<narrative_context>\n"
+                + "\n".join(context_parts)
+                + "\n</narrative_context>\n"
+            )
 
         return f"""<system>
 You are a professional literary translator specializing in light novels.
