@@ -12,6 +12,8 @@ export default function DashboardPage() {
   // Neon Form State
   const [localName, setLocalName] = useState('');
   const [localGenre, setLocalGenre] = useState('');
+  const [localSourceLang, setLocalSourceLang] = useState('zh');
+  const [localTargetLang, setLocalTargetLang] = useState('ru');
 
   const load = async () => {
     setLoading(true)
@@ -48,10 +50,13 @@ export default function DashboardPage() {
       await api.post('/projects/', {
         name: localName,
         genre: localGenre || 'other',
-        // Note: custom_genre_instructions not supported in this UI design yet
+        source_language: localSourceLang,
+        target_language: localTargetLang,
       })
       setLocalName('')
       setLocalGenre('')
+      setLocalSourceLang('zh')
+      setLocalTargetLang('ru')
       load()
     } catch (e) {
       console.error(e)
@@ -136,6 +141,36 @@ export default function DashboardPage() {
                 <option value="romance">Romance_Protocol</option>
                 <option value="system">System_Protocol</option>
               </datalist>
+            </div>
+          </div>
+
+          <div className="w-full md:w-36 space-y-2">
+            <label className="text-[10px] text-accent/70 uppercase tracking-widest">Source_Lang</label>
+            <div className="flex items-center border-b border-accent/30 bg-bg/50 px-3 py-1 focus-within:border-accent transition-colors">
+              <select
+                className="bg-transparent border-none focus:outline-none w-full py-2 text-text font-mono text-base"
+                value={localSourceLang}
+                onChange={(e) => setLocalSourceLang(e.target.value)}
+              >
+                <option value="zh">Chinese</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="w-full md:w-36 space-y-2">
+            <label className="text-[10px] text-accent/70 uppercase tracking-widest">Target_Lang</label>
+            <div className="flex items-center border-b border-accent/30 bg-bg/50 px-3 py-1 focus-within:border-accent transition-colors">
+              <select
+                className="bg-transparent border-none focus:outline-none w-full py-2 text-text font-mono text-base"
+                value={localTargetLang}
+                onChange={(e) => setLocalTargetLang(e.target.value)}
+              >
+                <option value="ru">Russian</option>
+                <option value="en">English</option>
+              </select>
             </div>
           </div>
 

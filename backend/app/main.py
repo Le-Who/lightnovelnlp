@@ -63,6 +63,8 @@ def run_migrations():
             )
         if 'custom_genre_instructions' not in project_columns:
             migrations.append("ALTER TABLE projects ADD COLUMN custom_genre_instructions TEXT")
+        if 'embedding_threshold' not in project_columns:
+            migrations.append("ALTER TABLE projects ADD COLUMN embedding_threshold FLOAT")
         
         if migrations:
             with engine.connect() as conn:

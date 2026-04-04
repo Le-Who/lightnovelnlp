@@ -8,7 +8,6 @@ from app.models.project import Chapter, Project, ProjectGenre, AnalysisStatus
 from app.core.nlp_pipeline.term_extractor import term_extractor
 from app.core.nlp_pipeline.relationship_analyzer import relationship_analyzer
 from app.core.nlp_pipeline.context_summarizer import context_summarizer
-from app.core.nlp_pipeline.context_summarizer import context_summarizer
 from app.models.glossary import GlossaryTerm, TermStatus, TermCategory, TermRelationship, TermOccurrence
 from app.services.cache_service import cache_service
 
@@ -51,6 +50,7 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             text=chapter.original_text, 
             project_genre=project_genre,
             source_language=project.source_language,
+            target_language=project.target_language,
             custom_instructions=project.custom_genre_instructions
         )
         logger.info(f"[STEP 2 DONE] Extracted {len(extracted_terms)} terms")
@@ -166,7 +166,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 relationships = relationship_analyzer.analyze_relationships(
                     chapter.original_text, 
                     saved_terms,  # Pass GlossaryTerm objects, not strings
-                    project_genre=getattr(project_genre, "value", project_genre)
+                    project_genre=getattr(project_genre, "value", project_genre),
+                    target_language=project.target_language,
                 )
                 logger.info(f"[STEP 4 DONE] Found {len(relationships)} relationships")
             except Exception as rel_error:
@@ -231,7 +232,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
             compact_text = "\n".join([ln for ln in lines if ln != ""])  # убираем пустые строки
             chapter_summary = context_summarizer.summarize_context(
                 compact_text,
-                chapter.title
+                chapter.title,
+                target_language=project.target_language,
             )
             logger.info(f"[STEP 5 DONE] Summary created, length: {len(chapter_summary) if chapter_summary else 0}")
         except Exception as sum_error:

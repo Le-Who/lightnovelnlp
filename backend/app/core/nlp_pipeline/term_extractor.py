@@ -11,10 +11,16 @@ from app.schemas.nlp import TermExtractionResponse
 logger = logging.getLogger(__name__)
 
 
-
 import spacy
 from spacy.matcher import PhraseMatcher
 from collections import Counter
+
+# ─── Language display names ─────────────────────────────────────────────────
+LANG_NAMES = {
+    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
+    "en": "English", "ru": "Russian", "other": "Other",
+}
+
 
 class TermExtractor:
     def __init__(self):
@@ -29,48 +35,43 @@ class TermExtractor:
                     logger.info("Loading spaCy model: ru_core_news_sm")
                     self.nlp_models[lang] = spacy.load("ru_core_news_sm")
                 else:
-                    # Default to English for everything else for now, or add specific models
                     logger.info("Loading spaCy model: en_core_web_sm")
                     self.nlp_models[lang] = spacy.load("en_core_web_sm")
             except OSError:
                 logger.error(f"spaCy model for {lang} not found. Please run download_models.py")
-                # Fallback to English or blank
                 if lang != "en":
-                     return self._get_nlp("en")
+                    return self._get_nlp("en")
                 raise
         return self.nlp_models[lang]
 
     def extract_terms(
-        self, 
-        text: str, 
+        self,
+        text: str,
         project_genre: ProjectGenre = ProjectGenre.OTHER,
         source_language: str = "en",
+        target_language: str = "ru",
         custom_instructions: str | None = None
     ) -> List[Dict[str, Any]]:
         """
-        Извлекает ключевые термины из текста с помощью Gemini API.
-        
+        Extract key terms from text via Gemini API.
+
         Args:
-            text: Текст для анализа
-            project_genre: Жанр проекта для оптимизации промптов
-            source_language: Язык оригинала (zh, ja, ko, en)
-            custom_instructions: Кастомные инструкции для жанра
-            
+            text: Text to analyze
+            project_genre: Project genre for prompt optimization
+            source_language: Source language code (zh, ja, ko, en)
+            target_language: Target language code (ru, en, etc.)
+            custom_instructions: Custom genre instructions
+
         Returns:
-            List[Dict]: Список терминов с полями:
-                - source_term: оригинальный термин
-                - translated_term: предложенный перевод
-                - category: категория (character, location, skill, artifact, other)
-                - context: контекст извлечения
-                - auto_approve: флаг автоматического утверждения
+            List[Dict]: Terms with source_term, translated_term, category, context, auto_approve
         """
-        # JSON Mode configuration with response_schema
-        prompt = self._build_extraction_prompt(text, project_genre, source_language, custom_instructions)
-        
+        prompt = self._build_extraction_prompt(
+            text, project_genre, source_language, target_language, custom_instructions
+        )
+
         try:
-            # Используем новую поддержку response_schema в GeminiClient
             response = self.client.complete(
-                prompt, 
+                prompt,
                 task_type="extraction",
                 response_schema=TermExtractionResponse
             )
@@ -85,65 +86,46 @@ class TermExtractor:
     def count_term_frequency(self, text: str, terms: List[str], source_language: str = "en") -> Dict[str, int]:
         """
         Count term frequency using spaCy PhraseMatcher for supported languages (en, ru)
-        to handle lemmatization (e.g., "cats" -> "cat", "Кошки" -> "Кошка").
-        Falls back to regex for other languages or if spaCy fails.
-        
+        to handle lemmatization. Falls back to regex for other languages.
         Uses PhraseMatcher (3-5x faster than Matcher for large terminology lists).
-        
-        Args:
-            text: Text to analyze
-            terms: List of terms to count
-            source_language: Language code (ru, en, etc.)
-            
-        Returns:
-            Dict[str, int]: Dictionary {term: frequency}
         """
         if not terms or not text:
             return {}
-        
+
         # For CJK languages, use simple substring count as they don't use spaces
         if source_language in ["zh", "ja", "ko"]:
-             return {term: text.count(term) for term in terms}
+            return {term: text.count(term) for term in terms}
 
         # Try to use spaCy PhraseMatcher for lemmatization if supported language
         if source_language in ["en", "ru"]:
             try:
                 nlp = self._get_nlp(source_language)
-                
-                # PhraseMatcher with LEMMA attr — matches on lemmas, 3-5x faster than Matcher
+
                 matcher = PhraseMatcher(nlp.vocab, attr="LEMMA")
-                
-                # Create Doc patterns for each term (disable heavy components for speed)
+
                 term_patterns = {}
                 for term in terms:
                     term_doc = nlp.make_doc(term)
-                    # Run only lemmatizer pipeline on term
                     for name, proc in nlp.pipeline:
                         if name in ("lemmatizer", "tagger", "attribute_ruler"):
                             term_doc = proc(term_doc)
                     term_patterns[term] = [term_doc]
-                
-                # Add each term as a separate rule for per-term counting
+
                 for term, patterns in term_patterns.items():
                     matcher.add(term, patterns)
 
-                # Process the text (disable parser/ner — only need lemmas)
                 doc = nlp(text, disable=["ner", "textcat", "parser"])
-
                 matches = matcher(doc)
 
-                # Count matches per term
                 counts = Counter()
                 for match_id, start, end in matches:
                     term_name = nlp.vocab.strings[match_id]
                     counts[term_name] += 1
 
-                # Ensure all terms are in result (even with 0 count)
                 return {term: counts.get(term, 0) for term in terms}
 
             except Exception as e:
                 logger.warning(f"spaCy frequency count failed for {source_language}: {e}. Fallback to regex.")
-                # Fallthrough to regex
 
         import re
         text_lower = text.lower()
@@ -153,207 +135,172 @@ class TermExtractor:
             term_lower = term.lower()
             if not term_lower:
                 continue
-                
             try:
-                # Use word boundaries for Latin/Cyrillic
                 pattern = r'\b' + re.escape(term_lower) + r'\b'
                 frequency[term] = len(re.findall(pattern, text_lower))
             except Exception:
-                 # Fallback to simple count on regex error
-                 frequency[term] = text_lower.count(term_lower)
+                frequency[term] = text_lower.count(term_lower)
 
         return frequency
 
     def extract_terms_with_frequency(
-        self, 
-        text: str, 
+        self,
+        text: str,
         project_genre: ProjectGenre = ProjectGenre.OTHER,
         source_language: str = "en",
+        target_language: str = "ru",
         custom_instructions: str | None = None
     ) -> List[Dict[str, Any]]:
-        """
-        Извлекает термины и подсчитывает их частоту встречаемости.
-        
-        Args:
-            text: Текст для анализа
-            project_genre: Жанр проекта для оптимизации промптов
-            source_language: Язык оригинала
-            
-        Returns:
-            List[Dict]: Список терминов с дополнительным полем frequency
-        """
-        # Извлекаем термины
-        terms = self.extract_terms(text, project_genre, source_language, custom_instructions)
-        
-        # Подсчитываем частоту для каждого термина
+        """Extract terms and count their frequency in the text."""
+        terms = self.extract_terms(
+            text, project_genre, source_language, target_language, custom_instructions
+        )
+
         term_texts = [term["source_term"] for term in terms]
         frequencies = self.count_term_frequency(text, term_texts, source_language)
-        
-        # Добавляем частоту к каждому термину
+
         for term in terms:
             term["frequency"] = frequencies.get(term["source_term"], 1)
-        
+
         return terms
 
     def _build_extraction_prompt(
-        self, 
-        text: str, 
+        self,
+        text: str,
         project_genre: ProjectGenre,
         source_language: str = "en",
+        target_language: str = "ru",
         custom_instructions: str | None = None
     ) -> str:
-        """Строит оптимизированный промпт для извлечения терминов."""
-        
-        # Жанр-специфичные инструкции (или кастомные)
-        if custom_instructions:
-            genre_instructions = f"КАСТОМНЫЕ ИНСТРУКЦИИ:\n{custom_instructions}"
-        else:
-            genre_instructions = self._get_genre_instructions(project_genre)
-        
-        # Язык-специфичные инструкции
-        language_instructions = self._get_language_instructions(source_language)
-        
-        # Получаем строковое представление жанра
+        """Build XML-delimited extraction prompt with dynamic language support."""
+
+        source_name = LANG_NAMES.get(source_language, source_language)
+        target_name = LANG_NAMES.get(target_language, target_language)
+
         genre_label = "OTHER"
         if isinstance(project_genre, ProjectGenre):
             genre_label = project_genre.value
         elif isinstance(project_genre, str):
             genre_label = project_genre
-        
-        # Оптимизированный промпт с few-shot примером
-        return f"""Извлеки термины из текста ранобэ ({str(genre_label).upper()}).
 
-{language_instructions}
-{genre_instructions}
+        if custom_instructions:
+            genre_section = f"<genre_context>\nCUSTOM INSTRUCTIONS:\n{custom_instructions}\n</genre_context>"
+        else:
+            genre_section = f"<genre_context>\n{self._get_genre_instructions(project_genre)}\n</genre_context>"
 
-ПРИМЕР ВЫВОДА:
-{{"terms": [{{"source_term": "Lin Feng", "translated_term": "Линь Фэн", "category": "character", "context": "Главный герой произведения", "auto_approve": true, "confidence": 95}}]}}
+        language_section = self._get_language_instructions(source_language, target_language)
 
-ТЕКСТ:
+        return f"""<system>
+You are an expert light novel terminology extractor for {genre_label.upper()} genre.
+Extract and translate key terms from {source_name} to {target_name}.
+</system>
+
+<language_rules>
+{language_section}
+</language_rules>
+
+{genre_section}
+
+<categories>
+character | location | skill | artifact | organization | cultivation_rank | technique | other
+</categories>
+
+<auto_approve_rules>
+- character: ALWAYS auto_approve=true
+- location/skill/artifact with confidence >= 80: auto_approve=true
+- other/organization: auto_approve=false (requires manual review)
+</auto_approve_rules>
+
+<example>
+{{"terms": [{{"source_term": "Lin Feng", "translated_term": "Линь Фэн", "category": "character", "context": "Main protagonist of the novel", "auto_approve": true, "confidence": 95}}]}}
+</example>
+
+<input>
 {text}
+</input>
 
-КАТЕГОРИИ: character (персонажи), location (локации), skill (умения), artifact (артефакты), organization (организации), cultivation_rank (ранги культивации), technique (техники), other.
+Extract only significant, recurring terms. Return JSON:"""
 
-ПРАВИЛА auto_approve:
-- character: ВСЕГДА true
-- location/skill/artifact с confidence >= 80: true
-- other/organization: false (ручная проверка)
+    def _get_language_instructions(self, source_language: str, target_language: str = "ru") -> str:
+        """Return language-specific extraction instructions."""
+        target_name = LANG_NAMES.get(target_language, target_language)
 
-Извлекай только значимые термины. JSON output:"""
+        base_instructions = {
+            "zh": f"""SOURCE: Chinese
+- Transliterate names via pinyin → {target_name} script (e.g., 王小明 → Wang Xiaoming)
+- Preserve original cultivation rank names alongside translations
+- Translate chengyu (成语) preserving meaning""",
 
-    def _get_language_instructions(self, source_language: str) -> str:
-        """Возвращает язык-специфичные инструкции."""
-        instructions = {
-            "zh": """ЯЗЫК: КИТАЙСКИЙ
-- Транслитерируй имена пиньинем → кириллицей (王小明 → Ван Сяомин)
-- Сохраняй оригинальные названия рангов культивации
-- Переводи чэнъюй (成语) с сохранением смысла""",
-            
-            "ja": """ЯЗЫК: ЯПОНСКИЙ
-- Используй стандартную транслитерацию имён (田中 → Танака)
-- Сохраняй honorfics: -сан, -кун, -сама, -сенсей
-- Переводи кандзи напрямую где возможно""",
-            
-            "ko": """ЯЗЫК: КОРЕЙСКИЙ
-- Транслитерируй имена (김영수 → Ким Ёнсу)
-- Сохраняй вежливые формы где уместно
-- Переводи хангыль напрямую""",
-            
-            "en": """ЯЗЫК: АНГЛИЙСКИЙ
-- Транскрибируй имена кириллицей
-- Переводи описательные названия"""
+            "ja": f"""SOURCE: Japanese
+- Use standard name transliteration (e.g., 田中 → Tanaka)
+- Preserve honorifics: -san, -kun, -sama, -sensei
+- Translate kanji directly where possible""",
+
+            "ko": f"""SOURCE: Korean
+- Transliterate names (e.g., 김영수 → Kim Yeongsu)
+- Preserve polite forms where contextually appropriate
+- Translate hangul directly""",
+
+            "en": f"""SOURCE: English
+- Transliterate names to {target_name} script
+- Translate descriptive names and titles""",
         }
-        return instructions.get(source_language, instructions["en"])
+        return base_instructions.get(source_language, base_instructions["en"])
 
     def _get_genre_instructions(self, genre: ProjectGenre) -> str:
-        """Возвращает жанр-специфичные инструкции для промпта."""
-        
+        """Return genre-specific prompt instructions."""
+
         instructions = {
-            ProjectGenre.FANTASY: """ЖАНР: ФЭНТЕЗИ
-Фокус: имена, магия, расы, миры, титулы""",
-            
-            ProjectGenre.SCIFI: """ЖАНР: SCI-FI
-Фокус: технологии, планеты, корабли, корпорации""",
-            
-            ProjectGenre.ROMANCE: """ЖАНР: РОМАНТИКА
-Фокус: имена героев, места свиданий, семейные отношения""",
-            
-            ProjectGenre.ACTION: """ЖАНР: БОЕВИК
-Фокус: бойцы, техники, оружие, группировки""",
-            
-            ProjectGenre.MYSTERY: """ЖАНР: ДЕТЕКТИВ
-Фокус: персонажи, улики, места преступлений""",
-            
-            ProjectGenre.HORROR: """ЖАНР: УЖАСЫ
-Фокус: монстры, проклятые места, ритуалы""",
-            
-            ProjectGenre.SLICE_OF_LIFE: """ЖАНР: ПОВСЕДНЕВНОСТЬ
-Фокус: семьи, школы, кафе, праздники""",
-            
-            ProjectGenre.ADVENTURE: """ЖАНР: ПРИКЛЮЧЕНИЯ
-Фокус: путешественники, земли, сокровища""",
-            
-            ProjectGenre.WUXIA: """ЖАНР: УСЯ (武侠)
-Фокус: мастера боевых искусств, секты (门派), внутренняя энергия (内功), техники меча/кулака, звания в сектах, легендарное оружие""",
-            
-            ProjectGenre.XIANXIA: """ЖАНР: СЯНЬСИЯ (仙侠) — КУЛЬТИВАЦИЯ БЕССМЕРТИЯ
-Фокус: ранги культивации (炼气/筑基/金丹/元婴/化神), духовные корни (灵根), техники культивации, артефакты (法宝), секты и кланы, небесные законы (天道), даосские концепции""",
-            
-            ProjectGenre.LITRPG: """ЖАНР: ЛИТРПГ
-Фокус: классы персонажей, навыки и умения, характеристики (STR/DEX/INT), уровни и опыт, предметы и экипировка, квесты, системные сообщения""",
-            
-            ProjectGenre.ISEKAI: """ЖАНР: ИСЕКАЙ (ПОПАДАНЦЫ)
-Фокус: два мира (старый и новый), уникальные способности протагониста, местные расы и фракции, системы магии, ранги авантюристов""",
-            
-            ProjectGenre.OTHER: """ЖАНР: ДРУГОЙ
-Фокус: имена, локации, уникальные термины, артефакты, организации"""
+            ProjectGenre.FANTASY: "GENRE: FANTASY\nFocus: names, magic systems, races, worlds, titles, enchanted items",
+            ProjectGenre.SCIFI: "GENRE: SCI-FI\nFocus: technologies, planets, ships, corporations, AI entities",
+            ProjectGenre.ROMANCE: "GENRE: ROMANCE\nFocus: character names, date locations, family relationships, emotional terms",
+            ProjectGenre.ACTION: "GENRE: ACTION\nFocus: fighters, combat techniques, weapons, factions, battle formations",
+            ProjectGenre.MYSTERY: "GENRE: MYSTERY\nFocus: characters, clues, crime scenes, suspects, investigation terms",
+            ProjectGenre.HORROR: "GENRE: HORROR\nFocus: monsters, cursed locations, rituals, supernatural entities",
+            ProjectGenre.SLICE_OF_LIFE: "GENRE: SLICE OF LIFE\nFocus: families, schools, cafes, festivals, daily-life terms",
+            ProjectGenre.ADVENTURE: "GENRE: ADVENTURE\nFocus: travelers, lands, treasures, exploration terms",
+            ProjectGenre.WUXIA: "GENRE: WUXIA (武侠)\nFocus: martial arts masters, sects (门派), internal energy (内功), sword/fist techniques, sect ranks, legendary weapons",
+            ProjectGenre.XIANXIA: "GENRE: XIANXIA (仙侠) — Immortal Cultivation\nFocus: cultivation ranks (炼气/筑基/金丹/元婴/化神), spiritual roots (灵根), cultivation techniques, artifacts (法宝), sects and clans, heavenly laws (天道), Daoist concepts",
+            ProjectGenre.LITRPG: "GENRE: LITRPG\nFocus: character classes, skills and abilities, stats (STR/DEX/INT), levels and XP, items and equipment, quests, system messages",
+            ProjectGenre.ISEKAI: "GENRE: ISEKAI (Reincarnation/Transportation)\nFocus: two worlds (old and new), protagonist's unique abilities, local races and factions, magic systems, adventurer ranks",
+            ProjectGenre.OTHER: "GENRE: OTHER\nFocus: names, locations, unique terminology, artifacts, organizations",
         }
-        
-        # Нормализация жанра (case-insensitive)
+
         try:
             if hasattr(genre, "value"):
                 val = str(genre.value).lower()
             else:
                 val = str(genre).lower() if genre else "other"
-
-            # Пробуем найти соответствующий Enum
             key = ProjectGenre(val)
         except ValueError:
             key = ProjectGenre.OTHER
-            
+
         return instructions.get(key, instructions[ProjectGenre.OTHER])
 
     def _parse_response(self, response: Any) -> List[Dict[str, Any]]:
-        """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""
+        """Parse response from Gemini API (Native JSON Mode or Response Schema)."""
         try:
-            results = []
             extracted = []
-            
-            # Debug: log response type and content preview
-            logger.info(f"Parsing response of type: {type(response).__name__}")
-            
-            # Если ответ уже спарсен SDK
+
+            # SDK-parsed response
             if hasattr(response, 'terms'):
                 logger.info(f"Response has 'terms' attribute, extracting {len(response.terms)} terms")
                 extracted = [term.model_dump() if hasattr(term, 'model_dump') else term.dict() for term in response.terms]
-            
-            # Если это строка (fallback)
+
+            # String fallback
             elif isinstance(response, str):
                 logger.info(f"Response is string, length: {len(response)}")
-                
-                # CLEANUP: Remove Markdown code blocks if present
                 clean_response = response.strip()
                 if clean_response.startswith("```json"):
                     clean_response = clean_response[7:]
                 if clean_response.startswith("```"):
-                     clean_response = clean_response[3:]
+                    clean_response = clean_response[3:]
                 if clean_response.endswith("```"):
                     clean_response = clean_response[:-3]
                 clean_response = clean_response.strip()
-                
+
                 try:
                     data = json.loads(clean_response)
-                    logger.info(f"JSON parsed successfully, type: {type(data).__name__}")
                     if isinstance(data, list):
                         payload = {"terms": data}
                     else:
@@ -366,53 +313,44 @@ class TermExtractor:
                     logger.error(f"Failed to parse cleaned response: {clean_response[:200]}...")
                 except Exception as e:
                     logger.error(f"Error validating string response: {e}")
-            
-            # Если это словарь
+
+            # Dict response
             elif isinstance(response, dict):
-                logger.info(f"Response is dict with keys: {list(response.keys())}")
                 if 'terms' in response:
                     validated = TermExtractionResponse.model_validate(response)
                     extracted = [term.model_dump() for term in validated.terms]
                     logger.info(f"Extracted {len(extracted)} terms from dict response")
                 else:
                     extracted = response.get('terms', [])
-                    logger.warning(f"Dict has no 'terms' key, got empty list")
-            
+
             else:
                 logger.warning(f"Unexpected response type: {type(response)}, value: {str(response)[:200]}")
-            
+
             if not extracted:
                 logger.warning("No terms extracted from response.")
-                if hasattr(response, 'text'):
-                     logger.warning(f"Raw response text: {response.text}")
-                elif isinstance(response, str):
-                     logger.warning(f"Raw response (first 500 chars): {response[:500]}")
             else:
                 logger.info(f"Successfully extracted {len(extracted)} terms")
-            
+
             # Post-validation: enforce auto_approve rules
             for term in extracted:
                 category = term.get("category", "other")
                 confidence = term.get("confidence", 0)
-                
-                # Characters are ALWAYS auto-approved
+
                 if category == "character":
                     term["auto_approve"] = True
-                # High confidence (>= 80) terms in key categories get auto-approved
                 elif confidence >= 80 and category in ("location", "skill", "artifact"):
                     term["auto_approve"] = True
-                # Low confidence or 'other' category requires manual review
                 elif confidence < 80 or category == "other":
                     term["auto_approve"] = False
-            
+
             return extracted
 
         except (json.JSONDecodeError, ValueError, Exception) as e:
             logger.error(f"Error parsing/validating response: {e}")
             if hasattr(response, 'text'):
-                 logger.error(f"Raw response text: {response.text}")
+                logger.error(f"Raw response text: {response.text}")
             elif isinstance(response, str):
-                 logger.error(f"Raw response string: {response}")
+                logger.error(f"Raw response string: {response}")
             return []
 
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useId } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database, Edit2, Activity, ShieldCheck, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Book, Share2, Languages, History, Layers, FileText, Cpu, Database, Edit2, Activity, ShieldCheck, AlertCircle, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -13,6 +13,7 @@ import GlossaryEditor from '@/components/GlossaryEditor.jsx'
 import RelationshipsViewer from '@/components/RelationshipsViewer.jsx'
 import BatchProcessor from '@/components/BatchProcessor.jsx'
 import GlossaryVersionManager from '@/components/GlossaryVersionManager.jsx'
+import ProjectAISettings from '@/components/ProjectAISettings.jsx'
 
 export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
   const [activeModule, setActiveModule] = useState('chapters')
@@ -58,6 +59,7 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
     { id: 'translations', label: 'TRANSLATION_VIEW', icon: Languages },
     { id: 'versions', label: 'BACKUP_VERSIONS', icon: History },
     { id: 'batch', label: 'BATCH_PROCESS', icon: Layers },
+    { id: 'settings', label: 'AI_CONFIG', icon: Settings },
   ]
 
   return (
@@ -141,6 +143,7 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
           {activeModule === 'translations' && <ChapterViewer projectId={projectId} />}
           {activeModule === 'versions' && <NeonWrapper><GlossaryVersionManager projectId={projectId} /></NeonWrapper>}
           {activeModule === 'batch' && <NeonWrapper><BatchProcessor projectId={projectId} /></NeonWrapper>}
+          {activeModule === 'settings' && <NeonWrapper><ProjectAISettings projectId={projectId} /></NeonWrapper>}
         </div>
       </main>
 

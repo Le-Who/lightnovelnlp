@@ -7,30 +7,39 @@ from app.services.gemini_client import gemini_client
 
 logger = logging.getLogger(__name__)
 
+LANG_NAMES = {
+    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
+    "en": "English", "ru": "Russian", "other": "Other",
+}
+
 
 class ContextSummarizer:
     def __init__(self):
         self.client = gemini_client
 
     def summarize_context(
-        self, 
+        self,
         text: str,
         chapter_title: str | None = None,
-        previous_summary: str | None = None
+        previous_summary: str | None = None,
+        target_language: str = "ru",
     ) -> str:
         """
-        Создает краткое саммари контекста главы.
-        
+        Create a concise context summary for a chapter.
+
         Args:
-            text: Текст главы
-            chapter_title: Название главы (опционально)
-            previous_summary: Саммари предыдущих глав (опционально)
-            
+            text: Chapter text
+            chapter_title: Chapter title (optional)
+            previous_summary: Summary of previous chapters (optional)
+            target_language: Language for the summary output
+
         Returns:
-            str: Краткое саммари контекста
+            str: Concise context summary
         """
-        prompt = self._build_summary_prompt(text, chapter_title, previous_summary)
-        
+        prompt = self._build_summary_prompt(
+            text, chapter_title, previous_summary, target_language
+        )
+
         try:
             response = self.client.complete(prompt, task_type="summarization")
             return response.strip()
@@ -39,88 +48,86 @@ class ContextSummarizer:
             return ""
 
     def _build_summary_prompt(
-        self, 
-        text: str, 
+        self,
+        text: str,
         chapter_title: str | None = None,
-        previous_summary: str | None = None
+        previous_summary: str | None = None,
+        target_language: str = "ru",
     ) -> str:
-        """Строит промпт для создания саммари."""
-        
-        prompt = f"""
-Ты - эксперт по анализу текстов ранобэ. Создай краткое саммари ключевых событий и контекста.
+        """Build XML-delimited summary prompt with dynamic language."""
 
-"""
-        
-        if chapter_title:
-            prompt += f"Название главы: {chapter_title}\n\n"
-            
+        target_name = LANG_NAMES.get(target_language, target_language)
+
+        previous_block = ""
         if previous_summary:
-            prompt += f"""
-КОНТЕКСТ ПРЕДЫДУЩИХ ГЛАВ:
+            previous_block = f"""
+<previous_context>
 {previous_summary}
-
+</previous_context>
 """
-        
-        prompt += f"""
-ТЕКСТ ГЛАВЫ:
+
+        title_attr = f' title="{chapter_title}"' if chapter_title else ""
+
+        return f"""<system>
+You are a concise narrative analyst for light novel chapters.
+Respond in {target_name}.
+</system>
+
+<task>
+Create a brief summary (2-3 sentences) of the key events in this chapter.
+</task>
+
+<focus>
+- Character actions and motivations
+- Important dialogue or decisions
+- New locations, artifacts, or abilities introduced
+- Plot progression and cliffhangers
+</focus>
+{previous_block}
+<chapter{title_attr}>
 {text}
-
-Создай краткое саммари (2-3 предложения) ключевых событий этой главы, включая:
-- Основные действия персонажей
-- Важные диалоги или решения
-- Новые локации или артефакты
-- Развитие сюжета
-
-Саммари должно быть информативным, но кратким. Пиши на русском языке.
-
-САММАРИ:
-"""
-        
-        return prompt
+</chapter>"""
 
     def create_project_summary(
-        self, 
+        self,
         chapters: List[Dict[str, Any]],
         window_size: int = 3
     ) -> str:
         """
-        Создает иерархическое саммари проекта:
-        1. "История ранее" (сжатое саммари старых глав)
-        2. "Последние события" (подробное саммари последних N глав)
-        
+        Create hierarchical project summary:
+        1. "Previously" (compressed summary of older chapters)
+        2. "Recent events" (detailed summary of last N chapters)
+
         Args:
-            chapters: Список всех глав с summary
-            window_size: Количество последних глав для подробного контекста
-            
+            chapters: List of all chapters with summary
+            window_size: Number of recent chapters for detailed context
+
         Returns:
-            str: Структурированное саммари для контекста перевода
+            str: Structured summary for translation context
         """
         if not chapters:
             return ""
-            
+
         total_chapters = len(chapters)
-        
-        # Разделяем на "старые" и "новые"
+
         recent_chapters = chapters[-window_size:]
         old_chapters = chapters[:-window_size] if total_chapters > window_size else []
-        
+
         summary_parts = []
-        
-        # 1. Глобальный контекст (если есть старые главы)
+
         if old_chapters:
             old_summary_text = "\n".join([ch.get('summary', '') for ch in old_chapters if ch.get('summary')])
             if old_summary_text:
-                summary_parts.append(f"ПРЕДЫСТОРИЯ (Главы 1-{len(old_chapters)}):\n{old_summary_text[:2000]}...") 
-        
-        # 2. Актуальный контекст (последние главы)
+                summary_parts.append(f"PREVIOUSLY (Chapters 1-{len(old_chapters)}):\n{old_summary_text[:2000]}...")
+
         if recent_chapters:
             recent_text = "\n\n".join([
-                f"Глава {ch.get('title')}: {ch.get('summary')}" 
-                for ch in recent_chapters 
+                f"Chapter {ch.get('title')}: {ch.get('summary')}"
+                for ch in recent_chapters
                 if ch.get('summary')
             ])
-            summary_parts.append(f"ПОСЛЕДНИЕ СОБЫТИЯ:\n{recent_text}")
-            
+            summary_parts.append(f"RECENT EVENTS:\n{recent_text}")
+
         return "\n\n".join(summary_parts)
 
 

@@ -2,12 +2,33 @@ from __future__ import annotations
 
 import logging
 from typing import List, Dict, Any
-from sqlalchemy.orm import Session
 
 from app.services.gemini_client import gemini_client
 from app.models.glossary import GlossaryTerm, TermStatus
 
 logger = logging.getLogger(__name__)
+
+# ─── Language display names ──────────────────────────────────────────────────
+LANG_NAMES = {
+    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
+    "en": "English", "ru": "Russian", "other": "Other",
+}
+
+# ─── Genre-specific style instructions ───────────────────────────────────────
+GENRE_STYLES: dict[str, str] = {
+    "wuxia": "Style: martial-arts genre. Elevated tone, archaic diction. Preserve technique names and sect titles.",
+    "xianxia": "Style: Daoist cultivation genre. Elevated tone, heavenly law references. Preserve cultivation ranks and technique names.",
+    "scifi": "Style: science-fiction. Precise technical language, futuristic terminology.",
+    "romance": "Style: romance. Emphasis on emotional nuance, character feelings and inner monologues.",
+    "litrpg": "Style: LitRPG. Preserve game terminology (stats, skills, levels) and system-message formatting.",
+    "isekai": "Style: isekai/reincarnation. Contrast between worlds, highlight protagonist's unique abilities.",
+    "horror": "Style: horror. Tense, atmospheric prose. Preserve unsettling descriptors.",
+    "mystery": "Style: mystery. Maintain suspense and clue placement. Preserve investigative terminology.",
+    "action": "Style: action. Dynamic pacing, impactful fight descriptions.",
+    "adventure": "Style: adventure. Vivid world descriptions, sense of exploration.",
+    "slice_of_life": "Style: slice of life. Natural, everyday dialogue. Preserve cultural references.",
+    "fantasy": "Style: fantasy. Rich world-building terminology. Preserve magic system terms.",
+}
 
 
 class TranslationEngine:
@@ -15,40 +36,42 @@ class TranslationEngine:
         self.client = gemini_client
 
     def translate_with_glossary(
-        self, 
-        text: str, 
+        self,
+        text: str,
         glossary_terms: List[GlossaryTerm],
         context_summary: str | None = None,
         project_summary: str | None = None,
         relationships: List[Dict[str, Any]] | None = None,
         genre: str | None = None,
         source_language: str = "en",
+        target_language: str = "ru",
         custom_genre_instructions: str | None = None,
-        previous_context: str | None = None
+        previous_context: str | None = None,
     ) -> str:
         """
-        Переводит текст с использованием утвержденного глоссария, контекста и текста предыдущей главы.
-        
+        Translate text using glossary, context, and genre settings.
+
         Args:
-            text: Оригинальный текст для перевода
-            glossary_terms: Список утвержденных терминов глоссария
-            context_summary: Саммари текущей главы (опционально)
-            project_summary: Общее саммари проекта (опционально)
-            relationships: Список связей между терминами (опционально)
-            genre: Жанр проекта для настройки стиля
-            source_language: Язык оригинала (zh, ja, ko, en)
-            custom_genre_instructions: Кастомные инструкции для жанра/стиля
-            previous_context: Текст концовки предыдущей главы (опционально)
-            
+            text: Original text to translate
+            glossary_terms: List of approved glossary terms
+            context_summary: Current chapter summary (optional)
+            project_summary: Overall project summary (optional)
+            relationships: Character relationships (optional)
+            genre: Project genre for style adaptation
+            source_language: Source language code (zh, ja, ko, en)
+            target_language: Target language code (ru, en, etc.)
+            custom_genre_instructions: Custom style instructions
+            previous_context: End of previous chapter for continuity
+
         Returns:
-            str: Переведенный текст
+            str: Translated text
         """
         prompt = self._build_translation_prompt(
-            text, glossary_terms, context_summary, project_summary, 
-            relationships, genre, source_language, custom_genre_instructions,
-            previous_context
+            text, glossary_terms, context_summary, project_summary,
+            relationships, genre, source_language, target_language,
+            custom_genre_instructions, previous_context,
         )
-        
+
         try:
             response = self.client.complete(prompt, task_type="translation")
             return response.strip()
@@ -57,13 +80,11 @@ class TranslationEngine:
             raise
 
     def normalize_text(self, text: str) -> str:
-        """Нормализует текст: унифицирует переносы строк и убирает лишние пробелы."""
-        # Унификация переносов строк
+        """Normalize text: unify line endings and collapse excessive blank lines."""
         normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-        
-        # Удаление лишних пустых строк (максимум одна пустая строка подряд)
+
         lines = [ln.rstrip() for ln in normalized.split("\n")]
-        compact_lines = []
+        compact_lines: list[str] = []
         prev_empty = False
         for ln in lines:
             if not ln:
@@ -73,155 +94,129 @@ class TranslationEngine:
             else:
                 compact_lines.append(ln)
                 prev_empty = False
-                
+
         return "\n".join(compact_lines).strip()
 
     def _build_translation_prompt(
-        self, 
-        text: str, 
+        self,
+        text: str,
         glossary_terms: List[GlossaryTerm],
         context_summary: str | None = None,
         project_summary: str | None = None,
         relationships: List[Dict[str, Any]] | None = None,
         genre: str | None = None,
         source_language: str = "en",
+        target_language: str = "ru",
         custom_genre_instructions: str | None = None,
-        previous_context: str | None = None
+        previous_context: str | None = None,
     ) -> str:
-        """Строит промпт для перевода с учетом глоссария и контекста."""
-        # Нормализуем текст
+        """Build XML-delimited translation prompt with dynamic language support."""
+
         normalized_text = self.normalize_text(text)
 
-        # Формируем глоссарий для промпта
-        glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(нет утвержденных терминов)"
-        
-        # Определение языка
-        lang_names = {"zh": "китайского", "ja": "японского", "ko": "корейского", "en": "английского"}
-        source_lang_name = lang_names.get(source_language, "английского")
-        
-        genre_instruction = ""
-        if custom_genre_instructions:
-            genre_instruction = f"Стиль: {custom_genre_instructions}"
-        elif genre:
-            genre = str(genre).lower()
-            if "wuxia" in genre:
-                genre_instruction = "Стиль: Используй терминологию ушу, возвышенный тон, архаизмы. Сохраняй названия техник."
-            elif "xianxia" in genre:
-                genre_instruction = "Стиль: Даосская терминология культивации, возвышенный тон, небесные законы."
-            elif "scifi" in genre or "sci-fi" in genre:
-                genre_instruction = "Стиль: Технически точный язык, футуристическая терминология."
-            elif "romance" in genre:
-                genre_instruction = "Стиль: Акцент на эмоциональные оттенки и чувства персонажей."
-            elif "litrpg" in genre:
-                genre_instruction = "Стиль: Игровая терминология, четкие описания навыков и статов."
-            elif "isekai" in genre:
-                genre_instruction = "Стиль: Контраст миров, уникальные способности протагониста."
-        
-        # Базовый промпт
-        prompt = f"""Ты - профессиональный переводчик ранобэ с {source_lang_name} на русский. 
-Цель: Литературный перевод, сохраняющий стиль оригинала.
-{genre_instruction}
+        source_name = LANG_NAMES.get(source_language, source_language)
+        target_name = LANG_NAMES.get(target_language, target_language)
 
-ГЛОССАРИЙ (ОБЯЗАТЕЛЬНО использовать эти переводы):
-{glossary_text}
-"""
-        # Добавляем связи между терминами
+        glossary_text = self._format_glossary_for_prompt(glossary_terms) if glossary_terms else "(no approved terms)"
+
+        # ── Style section ─────────────────────────────────────────────────
+        style_lines: list[str] = []
+        if custom_genre_instructions:
+            style_lines.append(custom_genre_instructions)
+        elif genre:
+            genre_key = str(genre).lower()
+            if genre_key in GENRE_STYLES:
+                style_lines.append(GENRE_STYLES[genre_key])
+
+        style_section = ""
+        if style_lines:
+            style_section = f"\n<style>\n{chr(10).join(style_lines)}\n</style>\n"
+
+        # ── Relationships section ─────────────────────────────────────────
+        rels_section = ""
         if relationships:
             rels_text = "\n".join([
-                f"- {r.get('source_term', r.get('source', '?'))} и {r.get('target_term', r.get('target', '?'))}: {r.get('relation_type', r.get('type', '?'))} ({r.get('context', r.get('description', ''))})"
+                f"- {r.get('source_term', r.get('source', '?'))} ↔ {r.get('target_term', r.get('target', '?'))}: "
+                f"{r.get('relation_type', r.get('type', '?'))} ({r.get('context', r.get('description', ''))})"
                 for r in relationships
             ])
-            prompt += f"""
-СВЯЗИ МЕЖДУ ПЕРСОНАЖАМИ (учитывать при выборе тона диалогов):
-{rels_text}
+            rels_section = f"\n<character_relationships>\n{rels_text}\n</character_relationships>\n"
 
-"""
-        
-        # Добавляем общее саммари проекта, если есть
+        # ── Context sections ──────────────────────────────────────────────
+        context_parts: list[str] = []
         if project_summary:
-            prompt += f"""
-ОБЩИЙ КОНТЕКСТ ПРОИЗВЕДЕНИЯ:
-{project_summary}
-
-"""
-        
-        # Добавляем контекст текущей главы, если есть
+            context_parts.append(f"<project_context>\n{project_summary}\n</project_context>")
         if context_summary:
-            prompt += f"""
-КОНТЕКСТ ТЕКУЩЕЙ ГЛАВЫ:
-{context_summary}
-
-"""
-
-        # Добавляем контекст предыдущей главы, если есть
+            context_parts.append(f"<chapter_context>\n{context_summary}\n</chapter_context>")
         if previous_context:
-            prompt += f"""
-КОНТЕКСТ ПРЕДЫДУЩЕЙ ГЛАВЫ (последние события, для связности):
-...
-{previous_context}
-...
+            context_parts.append(f"<previous_chapter>\n...\n{previous_context}\n...\n</previous_chapter>")
 
-"""
-        
-        prompt += f"""
-ТЕКСТ ДЛЯ ПЕРЕВОДА:
+        context_section = ""
+        if context_parts:
+            context_section = "\n<narrative_context>\n" + "\n".join(context_parts) + "\n</narrative_context>\n"
+
+        return f"""<system>
+You are a professional literary translator specializing in light novels.
+Translate from {source_name} to {target_name}.
+Produce natural, publication-quality prose that reads as if originally written in {target_name}.
+</system>
+
+<glossary mandatory="true">
+{glossary_text}
+</glossary>
+{rels_section}{context_section}{style_section}
+<constraints>
+- Use EXACT glossary translations for all matched terms — no synonyms, no alternatives
+- Preserve paragraph structure and dialogue formatting
+- Maintain emotional tone, narrative voice, and pacing
+- Do NOT add translator notes, commentary, or explanations
+- Preserve honorifics and cultural markers per language conventions
+</constraints>
+
+<input>
 {normalized_text}
+</input>
 
-ИНСТРУКЦИИ:
-1. Переведи текст на русский язык, сохраняя стиль и атмосферу
-2. ОБЯЗАТЕЛЬНО используй точные переводы из глоссария для всех терминов
-3. Если в тексте встречается термин из глоссария, используй ТОЛЬКО указанный перевод
-4. Сохраняй структуру предложений и абзацев
-5. Переводи естественно, как будто это оригинальный русский текст
-6. Учитывай контекст произведения и главы для более точного перевода
-7. Не добавляй комментарии или пояснения в перевод
-8. Сохраняй эмоциональную окраску и тон повествования
-
-ПЕРЕВОД:
-"""
-        
-        return prompt
+Translation:"""
 
     def _format_glossary_for_prompt(self, glossary_terms: List[GlossaryTerm]) -> str:
-        """Форматирует глоссарий для включения в промпт."""
+        """Format glossary terms grouped by category for the prompt."""
         if not glossary_terms:
-            return "Глоссарий пуст - переводи как обычно."
-        
-        # Группируем по категориям для лучшей читаемости
-        categories = {}
+            return "No glossary terms."
+
+        categories: dict[str, list[GlossaryTerm]] = {}
         for term in glossary_terms:
             if term.status != TermStatus.APPROVED:
-                continue  # Используем только утвержденные термины
-                
+                continue
             cat = getattr(term, "category", None)
             cat = getattr(cat, "value", cat)
             if cat not in categories:
                 categories[cat] = []
             categories[cat].append(term)
-        
-        # Формируем текст глоссария
-        glossary_lines = []
+
+        lines: list[str] = []
         for category, terms in categories.items():
-            category_label = self._get_category_label(category)
-            glossary_lines.append(f"{category_label}:")
-            
+            label = self._get_category_label(category)
+            lines.append(f"{label}:")
             for term in terms:
-                glossary_lines.append(f"  {term.source_term} → {term.translated_term}")
-            
-            glossary_lines.append("")  # Пустая строка между категориями
-        
-        return "\n".join(glossary_lines)
+                lines.append(f"  {term.source_term} → {term.translated_term}")
+            lines.append("")
+
+        return "\n".join(lines)
 
     def _get_category_label(self, category: str) -> str:
-        """Возвращает русское название категории."""
+        """Return human-readable category labels."""
         labels = {
-            "character": "Персонажи",
-            "location": "Локации", 
-            "skill": "Умения",
-            "artifact": "Артефакты",
-            "other": "Другие термины"
+            "character": "Characters",
+            "location": "Locations",
+            "skill": "Skills",
+            "artifact": "Artifacts",
+            "organization": "Organizations",
+            "cultivation_rank": "Cultivation Ranks",
+            "technique": "Techniques",
+            "other": "Other Terms",
         }
-        return labels.get(category, category)
+        return labels.get(category, category or "Other Terms")
 
 
 translation_engine = TranslationEngine()

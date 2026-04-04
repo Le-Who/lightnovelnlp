@@ -37,7 +37,9 @@ class ProjectService:
         project = Project(
             name=payload.name, 
             genre=genre_value,
-            custom_genre_instructions=payload.custom_genre_instructions
+            custom_genre_instructions=payload.custom_genre_instructions,
+            source_language=getattr(payload, "source_language", "en"),
+            target_language=getattr(payload, "target_language", "ru"),
         )
         db.add(project)
         db.commit()

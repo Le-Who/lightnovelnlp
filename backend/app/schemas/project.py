@@ -13,18 +13,26 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     custom_genre_instructions: Optional[str] = Field(None, max_length=5000)
+    source_language: str = Field("en", max_length=10)
+    target_language: str = Field("ru", max_length=10)
 
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     genre: Optional[str] = Field(None, max_length=50)
     custom_genre_instructions: Optional[str] = Field(None, max_length=5000)
+    source_language: Optional[str] = Field(None, max_length=10)
+    target_language: Optional[str] = Field(None, max_length=10)
 
 
 class ProjectRead(ProjectBase):
     id: int
     created_at: datetime
     chapters_count: int = 0
+    source_language: str = "en"
+    target_language: str = "ru"
+    custom_genre_instructions: Optional[str] = None
+    embedding_threshold: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 

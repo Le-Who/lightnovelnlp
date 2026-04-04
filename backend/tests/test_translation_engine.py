@@ -5,7 +5,6 @@ from app.models.project import ProjectGenre
 
 def test_build_prompt_wuxia_genre():
     engine = translation_engine 
-    # Mocking client is not strictly needed as we call _build_translation_prompt directly
     
     prompt = engine._build_translation_prompt(
         text="Hello",
@@ -13,9 +12,9 @@ def test_build_prompt_wuxia_genre():
         genre="WUXIA"
     )
     
-    # Wuxia now uses 'ушу' terminology instead of 'культивации'
-    assert "терминологию ушу" in prompt
-    assert "возвышенный тон" in prompt
+    # Wuxia style now in English: martial-arts genre
+    assert "martial-arts genre" in prompt
+    assert "Elevated tone" in prompt
 
 def test_build_prompt_scifi_genre():
     engine = translation_engine
@@ -26,7 +25,7 @@ def test_build_prompt_scifi_genre():
         genre="scifi" 
     )
     
-    assert "Технически точный язык" in prompt
+    assert "science-fiction" in prompt
 
 def test_build_prompt_no_genre():
     engine = translation_engine
@@ -37,7 +36,7 @@ def test_build_prompt_no_genre():
         genre=None
     )
     
-    assert "Стиль:" not in prompt
+    assert "<style>" not in prompt
 
 def test_build_prompt_with_relationships():
     engine = translation_engine
@@ -49,5 +48,7 @@ def test_build_prompt_with_relationships():
         relationships=rels
     )
     
-    assert "СВЯЗИ МЕЖДУ ПЕРСОНАЖАМИ" in prompt
-    assert "A и B: enemy" in prompt
+    assert "<character_relationships>" in prompt
+    assert "A" in prompt
+    assert "B" in prompt
+    assert "enemy" in prompt

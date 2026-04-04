@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import List
 from enum import Enum
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float, Index
 from sqlalchemy.orm import relationship
 
 from . import Base
@@ -67,6 +67,9 @@ class Project(Base):
     source_language = Column(String(10), default=SourceLanguage.ENGLISH.value, nullable=False)
     target_language = Column(String(10), default="ru", nullable=False)  # Целевой язык перевода
     custom_genre_instructions = Column(Text, nullable=True)  # Кастомные инструкции для жанра
+    
+    # Per-project embedding similarity threshold (NULL = use global default 0.75)
+    embedding_threshold = Column(Float, nullable=True)
     
     # Per-project Gemini model overrides (NULL = inherit from ENV/config defaults)
     model_extraction = Column(String(100), nullable=True)     # e.g. "gemini-3.1-flash-lite-preview"

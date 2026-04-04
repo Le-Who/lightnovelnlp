@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Backend-FastAPI-blue)
 ![React](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-cyan)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini%203.x-orange)
-![Architecture](https://img.shields.io/badge/Architecture-v2.0-purple)
+![Architecture](https://img.shields.io/badge/Architecture-v2.2-purple)
 
 ---
 
@@ -48,7 +48,9 @@
 ### 1. Управление Проектами
 *   Создание проектов с указанием жанра (Xianxia, LitRPG, Romance и т.д.) для настройки промптов нейросети.
 *   **Пакетная загрузка**: Импорт книг из `.txt` и `.epub` файлов с автоматической разбивкой на главы (по регулярным выражениям для txt, по структуре spine для epub).
-*   **Per-project Gemini настройки**: Каждый проект может переопределить модель и уровень thinking для extraction/translation/summarization.
+*   **Per-project Gemini настройки**: Каждый проект может переопределить модель, уровень thinking, язык и порог эмбеддинга для extraction/translation/summarization.
+*   **Динамический выбор языков**: Настраиваемая пара `source_language` / `target_language` на уровне проекта (zh/ja/ko/en → ru/en).
+*   **Автокалибровка порога эмбеддинга**: `POST /projects/{id}/calibrate-threshold` вычисляет оптимальный порог cosine similarity по распределению попарных расстояний.
 
 ### 2. Интеллектуальный Анализ (NLP)
 *   **Entity Extraction**: Автоматический поиск неизвестных терминов в новых главах (task_type="extraction").
@@ -143,9 +145,10 @@ docker-compose up --build -d
 | `GET` | `/api/v1/projects/{id}` | Получить детали проекта |
 | `DELETE` | `/api/v1/projects/{id}` | Удалить проект |
 | `POST` | `/api/v1/projects/{id}/upload_chapters` | Пакетная загрузка глав из файла |
-| `GET` | `/api/v1/projects/{id}/settings` | Настройки модели/thinking для проекта |
+| `GET` | `/api/v1/projects/{id}/settings` | Настройки модели/thinking/языков для проекта |
 | `PATCH` | `/api/v1/projects/{id}/settings` | Обновить настройки проекта |
-| `GET` | `/api/v1/projects/models/available` | Список доступных моделей для UI |
+| `POST` | `/api/v1/projects/{id}/calibrate-threshold` | Автокалибровка порога эмбеддинга |
+| `GET` | `/api/v1/projects/models/available` | Список доступных моделей и языков для UI |
 
 ### 📖 Chapters (Главы)
 | Метод | Путь | Описание |

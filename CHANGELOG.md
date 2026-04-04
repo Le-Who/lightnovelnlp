@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.2.0] - 2026-04-04
+
+### 🚨 Breaking Changes
+- All AI prompts rewritten from Russian to **English system instructions** with XML-delimited structure. This improves Gemini compliance while output language remains dynamic (based on `target_language`).
+- `create_project_summary()` output changed from Russian section headers (ПРЕДЫСТОРИЯ/ПОСЛЕДНИЕ СОБЫТИЯ) to English (PREVIOUSLY/RECENT EVENTS).
+
+### ✨ Added
+- **Per-project Language Selection**: Projects now have configurable `source_language` (zh/ja/ko/en) and `target_language` (ru/en) fields. All NLP pipeline calls (extraction, summarization, relationships, translation) now receive and use these dynamically.
+- **Per-project Embedding Threshold**: New `embedding_threshold` column on `projects` table. Overrides the global `EMBEDDING_SIMILARITY_THRESHOLD` (0.75) for fine-grained term matching.
+- **Auto-Calibration Endpoint**: `POST /projects/{id}/calibrate-threshold` — computes optimal cosine similarity threshold from pairwise distances between approved terms with embeddings (requires ≥5 terms). Returns distribution stats (min/max/mean/median/p25/p75).
+- **AI_CONFIG UI Tab**: New `ProjectAISettings.jsx` component added to `NeonProjectPage` as the "AI_CONFIG" module tab. Features:
+  - Language Matrix: Source/Target language selectors
+  - Model Routing: Per-task model selection from whitelist with "inherit default" toggle
+  - Thinking Level: Visual segmented control for extraction/translation thinking levels
+  - Embedding Calibration: One-click threshold calibration with stats report
+- **Dashboard Language Selectors**: Project creation form now includes source/target language dropdowns.
+- **Config**: Added `EMBEDDING_SIMILARITY_THRESHOLD` as explicit Pydantic field in `config.py` (was previously via `getattr` fallback).
+- **Models API**: `GET /projects/models/available` now returns `languages` object with source/target language options and `embedding_threshold` in defaults.
+- **Settings API**: `GET/PATCH /projects/{id}/settings` now includes `source_language`, `target_language`, and `embedding_threshold`.
+
+### 🔧 Fixed
+- **CRITICAL: Method Shadowing Bug**: `translation_service.py` had `translate_chapter`, `preview_translation`, `review_translation`, `_get_relevant_relationships`, and `_get_project_summary` each defined **TWICE** (lines 37-473 and 476-727). The v1 copies (unstructured review prompt, no feedback loop) shadowed the v2 implementations. Deleted 253 lines of duplicate code.
+- **Duplicate Import**: Removed duplicate `from app.core.nlp_pipeline.context_summarizer import context_summarizer` in `processing.py`.
+- Translation calls now pass `source_language`, `target_language`, and `custom_genre_instructions` to `translate_with_glossary()` — previously these were ignored.
+
+### 📝 Changed
+- **Prompt Engineering Audit**: All 5 AI prompt templates rewritten using XML-delimited structured patterns (`<system>`, `<glossary>`, `<constraints>`, `<input>`, etc.):
+  - `term_extractor.py`: XML-delimited extraction prompt with dynamic language instructions, `<auto_approve_rules>`, `<categories>`, `<example>` tags
+  - `context_summarizer.py`: XML-delimited summary prompt with `<task>`, `<focus>`, `<chapter>` tags
+  - `relationship_analyzer.py`: XML-delimited relationship prompt with `<constraints>` confidence thresholds, `<relationship_types>`, `<output_schema>`
+  - `translation_engine.py`: XML-delimited translation prompt with `<glossary mandatory="true">`, `<character_relationships>`, `<narrative_context>`, `<style>`, `<constraints>` sections and categorized glossary formatting
+  - `translation_service.py` review prompt: XML-delimited with `<source>`, `<translation>`, `<required_glossary>`, `<output_schema>` tags
+- **DB Migration**: Added idempotent `ALTER TABLE projects ADD COLUMN embedding_threshold FLOAT` in `main.py` startup migrations.
+- **Schemas**: `ProjectCreate` and `ProjectUpdate` now include `source_language`/`target_language` fields. `ProjectRead` now includes `embedding_threshold`.
+- **Tests**: Updated `test_context_summarizer.py` and `test_translation_engine.py` to match new English prompt structure.
+
+### ✅ Verified
+- Backend test suite: **65 passed, 17 skipped, 0 failures**
+- Frontend build: **✓ Clean Vite build** (0 errors, 2402 modules)
+
+---
+
 ## [2.1.0] - 2026-04-04
 
 ### ✨ Added

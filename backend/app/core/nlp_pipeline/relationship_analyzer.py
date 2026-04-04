@@ -10,37 +10,44 @@ from app.models.glossary import GlossaryTerm
 
 logger = logging.getLogger(__name__)
 
+LANG_NAMES = {
+    "zh": "Chinese", "ja": "Japanese", "ko": "Korean",
+    "en": "English", "ru": "Russian", "other": "Other",
+}
+
 
 class RelationshipAnalyzer:
     def __init__(self):
         self.client = gemini_client
 
     def analyze_relationships(
-        self, 
-        text: str, 
+        self,
+        text: str,
         terms: List[GlossaryTerm],
-        project_genre: str = "other"  # Added project_genre
+        project_genre: str = "other",
+        target_language: str = "ru",
     ) -> List[Dict[str, Any]]:
         """
-        Анализирует связи между терминами в тексте.
-        
+        Analyze relationships between terms in text.
+
         Args:
-            text: Текст для анализа
-            terms: Список терминов глоссария
-            project_genre: Жанр проекта
-            
+            text: Text to analyze
+            terms: List of glossary terms
+            project_genre: Project genre
+            target_language: Target language for context descriptions
+
         Returns:
-            List[Dict]: Список связей
+            List[Dict]: List of relationships
         """
         logger.info(f"[REL] Starting relationship analysis for {len(terms)} terms (Genre: {project_genre})")
-        
+
         if len(terms) < 2:
             logger.info("[REL] Less than 2 terms, skipping")
             return []
-            
-        prompt = self._build_relationship_prompt(text, terms, project_genre)
+
+        prompt = self._build_relationship_prompt(text, terms, project_genre, target_language)
         logger.info(f"[REL] Built prompt, length: {len(prompt)} chars")
-        
+
         try:
             logger.info("[REL] Calling Gemini API...")
             response = self.client.complete(
@@ -48,109 +55,126 @@ class RelationshipAnalyzer:
                 task_type="relationships",
                 response_schema=RelationshipResponse
             )
-            # logger.info(f"[REL] Gemini returned response of type: {type(response).__name__}")
             result = self._parse_relationship_response(response)
-            
+
             # Filter low confidence results
             filtered_result = [r for r in result if r.get('confidence', 0) >= 70]
-            
+
             logger.info(f"[REL] Parsed {len(result)} relationships, kept {len(filtered_result)} after filtering")
             return filtered_result
         except Exception as e:
             logger.error(f"[REL] Error analyzing relationships: {e}", exc_info=True)
             return []
 
-    def _build_relationship_prompt(self, text: str, terms: List[GlossaryTerm], project_genre: str = "other") -> str:
-        """Строит промпт для анализа связей с учетом жанра."""
-        
-        # Формируем список терминов для анализа
+    def _build_relationship_prompt(
+        self,
+        text: str,
+        terms: List[GlossaryTerm],
+        project_genre: str = "other",
+        target_language: str = "ru",
+    ) -> str:
+        """Build XML-delimited relationship analysis prompt."""
+
+        target_name = LANG_NAMES.get(target_language, target_language)
+
         def cat_label(term):
             cat = getattr(term, "category", None)
             return getattr(cat, "value", cat)
+
         terms_text = "\n".join([
             f"- {term.source_term} ({cat_label(term)})"
             for term in terms
         ])
-        
-        genre_instructions = ""
-        if project_genre == "xianxia" or project_genre == "wuxia":
-             genre_instructions = "В этом жанре важны связи: учитель-ученик (shifu-disciple), соученики, члены одной секты, вражда между кланами."
-        elif project_genre == "romance":
-             genre_instructions = "Фокусируйся на эмоциональных связях, романтических интересах, семейных узах."
-        
-        return f"""
-Ты - эксперт по анализу текстов ранобэ (Жанр: {project_genre.upper()}). 
-Твоя задача: найти ВАЖНЫЕ сюжетные связи между указанными терминами в тексте.
 
-{genre_instructions}
+        genre_block = ""
+        genre_lower = project_genre.lower() if project_genre else "other"
+        if genre_lower in ("xianxia", "wuxia"):
+            genre_block = "<genre_notes>\nImportant relationship types for this genre: master-disciple (shifu), fellow disciples, sect membership, clan rivalries.\n</genre_notes>\n"
+        elif genre_lower == "romance":
+            genre_block = "<genre_notes>\nFocus on emotional connections, romantic interests, family bonds, love triangles.\n</genre_notes>\n"
 
-Текст для анализа:
-{text}
+        return f"""<system>
+You are a narrative relationship analyst specializing in {project_genre.upper()} light novels.
+Write context descriptions in {target_name}. Output JSON.
+</system>
 
-Термины:
+<task>
+Identify SIGNIFICANT plot relationships between the listed terms.
+Only report relationships with explicit textual evidence — not mere co-occurrence.
+</task>
+
+<constraints>
+- Simple mention in the same paragraph is NOT a relationship
+- confidence 90-100: direct interaction, dialogue, explicit description
+- confidence 70-89: indirect interaction, strong contextual implication
+- Below 70: do not include
+</constraints>
+
+{genre_block}<terms>
 {terms_text}
+</terms>
 
-Инструкции:
-1. Ищи только ЯВНЫЕ взаимодействия в тексте. Простое упоминание в одном предложении НЕ является связью.
-2. Игнорируй тривиальные связи (например, "видели друг друга").
-3. Указывай уровень уверенности (confidence) от 0 до 100.
-   - 90-100: Прямое взаимодействие, диалог, явное описание отношений.
-   - 70-89: Косвенное взаимодействие, сильный контекстный намек.
-   - <70: Слабая связь (такие будут отфильтрованы).
-4. Типы связей:
-   - friend/ally (друзья, союзники)
-   - enemy/rival (враги, соперники)
-   - family (семья, родственники)
-   - master_student (учитель-ученик, наставник)
-   - superior_subordinate (начальник-подчиненный)
-   - lovers (возлюбленные)
-   - member_of (член организации/секты)
-   - other (другое)
+<text>
+{text}
+</text>
 
-Пример вывода (JSON):
+<relationship_types>
+friend/ally | enemy/rival | family | master_student | superior_subordinate | lovers | member_of | other
+</relationship_types>
+
+<output_schema>
 {{
     "relationships": [
         {{
-            "source_term": "Линь Фэн",
-            "target_term": "Ван Линь", 
-            "relation_type": "rival",
-            "confidence": 95,
-            "context": "Линь Фэн открыто бросил вызов Ван Линю на арене."
+            "source_term": "<term A>",
+            "target_term": "<term B>",
+            "relation_type": "<type from list above>",
+            "confidence": <integer 70-100>,
+            "context": "<brief description of the relationship>"
         }}
     ]
 }}
+</output_schema>
 
-Выведи JSON с найденными связями:"""
+Return JSON with found relationships:"""
 
     def _parse_relationship_response(self, response: Any) -> List[Dict[str, Any]]:
-        """Парсит ответ от Gemini API (Native JSON Mode или Response Schema)."""
+        """Parse response from Gemini API (Native JSON Mode or Response Schema)."""
         try:
-            # Если ответ уже спарсен SDK
+            # SDK-parsed response
             if hasattr(response, 'relationships'):
-                return [rel.model_dump() if hasattr(rel, 'model_dump') else rel.dict() 
+                return [rel.model_dump() if hasattr(rel, 'model_dump') else rel.dict()
                         for rel in response.relationships]
-            
-            # Если это строка (fallback)
+
+            # String fallback
             if isinstance(response, str):
-                data = json.loads(response)
+                clean = response.strip()
+                if clean.startswith("```json"):
+                    clean = clean[7:]
+                if clean.startswith("```"):
+                    clean = clean[3:]
+                if clean.endswith("```"):
+                    clean = clean[:-3]
+                clean = clean.strip()
+
+                data = json.loads(clean)
                 if isinstance(data, list):
                     payload = {"relationships": data}
                 else:
                     payload = data
                 validated = RelationshipResponse.model_validate(payload)
                 return [rel.model_dump() for rel in validated.relationships]
-            
-            # Если это словарь
+
+            # Dict response
             if isinstance(response, dict):
                 if 'relationships' in response:
                     validated = RelationshipResponse.model_validate(response)
                     return [rel.model_dump() for rel in validated.relationships]
                 return response.get('relationships', [])
 
-            error_msg = f"Unexpected response type: {type(response)}"
-            logger.error(error_msg)
+            logger.error(f"Unexpected response type: {type(response)}")
             return []
-            
+
         except (json.JSONDecodeError, ValueError, Exception) as e:
             logger.error(f"Error parsing/validating response: {e}")
             logger.debug(f"Raw response type: {type(response)}")

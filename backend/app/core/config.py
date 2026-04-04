@@ -75,6 +75,14 @@ class Settings(BaseSettings):
     GEMINI_MAX_TOKENS_RELATIONSHIPS: int = Field(default=4096, description="Max output tokens for relationship analysis")
     GEMINI_MAX_TOKENS_DEFAULT: int = Field(default=8192, description="Max output tokens fallback")
 
+    # ──────────────────────────────────────────────
+    # Embedding Settings
+    # ──────────────────────────────────────────────
+    EMBEDDING_SIMILARITY_THRESHOLD: float = Field(
+        default=0.75,
+        description="Global default embedding similarity threshold (overridable per-project)"
+    )
+
     # Environment
     ENVIRONMENT: str = Field(default="development", description="Environment (development/production)")
 

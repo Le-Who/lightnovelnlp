@@ -552,6 +552,9 @@ def get_project_settings(project_id: int, db: Session = Depends(get_db)) -> dict
             "model_summarization": project.model_summarization,
             "thinking_extraction": project.thinking_extraction,
             "thinking_translation": project.thinking_translation,
+            "source_language": project.source_language,
+            "target_language": project.target_language,
+            "embedding_threshold": project.embedding_threshold,
         },
         "effective": {
             "model_extraction": project.model_extraction or app_settings.GEMINI_MODEL_EXTRACTION,
@@ -559,6 +562,9 @@ def get_project_settings(project_id: int, db: Session = Depends(get_db)) -> dict
             "model_summarization": project.model_summarization or app_settings.GEMINI_MODEL_SUMMARIZATION,
             "thinking_extraction": project.thinking_extraction or app_settings.GEMINI_THINKING_EXTRACTION,
             "thinking_translation": project.thinking_translation or app_settings.GEMINI_THINKING_TRANSLATION,
+            "source_language": project.source_language or "en",
+            "target_language": project.target_language or "ru",
+            "embedding_threshold": project.embedding_threshold or app_settings.EMBEDDING_SIMILARITY_THRESHOLD,
         },
     }
 
@@ -577,6 +583,7 @@ def update_project_settings(
     allowed_fields = {
         "model_extraction", "model_translation", "model_summarization",
         "thinking_extraction", "thinking_translation",
+        "source_language", "target_language", "embedding_threshold",
     }
     valid_thinking = {"minimal", "low", "medium", "high", None}
 
@@ -609,11 +616,116 @@ def get_available_models() -> dict:
             {"id": "gemini-embedding-2-preview", "name": "Gemini Embedding 2 Preview", "dimensions": 768},
         ],
         "thinking_levels": ["minimal", "low", "medium", "high"],
+        "languages": {
+            "source": [
+                {"code": "zh", "name": "Chinese"},
+                {"code": "ja", "name": "Japanese"},
+                {"code": "ko", "name": "Korean"},
+                {"code": "en", "name": "English"},
+                {"code": "other", "name": "Other"},
+            ],
+            "target": [
+                {"code": "ru", "name": "Russian"},
+                {"code": "en", "name": "English"},
+                {"code": "other", "name": "Other"},
+            ],
+        },
         "defaults": {
             "extraction": app_settings.GEMINI_MODEL_EXTRACTION,
             "translation": app_settings.GEMINI_MODEL_TRANSLATION,
             "summarization": app_settings.GEMINI_MODEL_SUMMARIZATION,
             "relationships": app_settings.GEMINI_MODEL_RELATIONSHIPS,
+            "embedding_threshold": app_settings.EMBEDDING_SIMILARITY_THRESHOLD,
+        },
+    }
+
+
+@router.post("/{project_id}/calibrate-threshold")
+def calibrate_embedding_threshold(
+    project_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Automatically calibrate embedding similarity threshold for a project.
+    Computes pairwise cosine distances between approved terms with embeddings
+    and sets the threshold at a percentile that separates related from unrelated terms.
+    Requires at least 5 approved terms with embeddings.
+    """
+    import numpy as np
+
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Fetch approved terms with embeddings
+    terms_with_embeddings = db.query(GlossaryTerm).filter(
+        GlossaryTerm.project_id == project_id,
+        GlossaryTerm.status == "approved",
+        GlossaryTerm.embedding_vec.isnot(None),
+    ).all()
+
+    if len(terms_with_embeddings) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need at least 5 approved terms with embeddings for calibration. Found: {len(terms_with_embeddings)}",
+        )
+
+    # Compute pairwise cosine similarities
+    vectors = []
+    for term in terms_with_embeddings:
+        vec = term.embedding_vec
+        if hasattr(vec, 'tolist'):
+            vectors.append(vec)
+        elif isinstance(vec, (list, tuple)):
+            vectors.append(np.array(vec, dtype=np.float32))
+        else:
+            continue
+
+    if len(vectors) < 5:
+        raise HTTPException(status_code=400, detail="Not enough valid embedding vectors")
+
+    matrix = np.array(vectors, dtype=np.float32)
+    # Normalize rows
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    matrix = matrix / norms
+
+    # Cosine similarity matrix
+    sim_matrix = matrix @ matrix.T
+
+    # Extract upper triangle (exclude diagonal)
+    n = sim_matrix.shape[0]
+    upper_tri = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            upper_tri.append(float(sim_matrix[i, j]))
+
+    if not upper_tri:
+        raise HTTPException(status_code=400, detail="Could not compute pairwise similarities")
+
+    similarities = np.array(upper_tri)
+
+    # Calculate threshold: 25th percentile of pairwise similarities
+    threshold = float(np.percentile(similarities, 25))
+    threshold = round(max(0.3, min(0.95, threshold)), 4)
+
+    # Save to project
+    project.embedding_threshold = threshold
+    db.commit()
+    db.refresh(project)
+
+    return {
+        "project_id": project_id,
+        "calibrated_threshold": threshold,
+        "terms_analyzed": len(vectors),
+        "pairs_computed": len(upper_tri),
+        "stats": {
+            "min_similarity": round(float(similarities.min()), 4),
+            "max_similarity": round(float(similarities.max()), 4),
+            "mean_similarity": round(float(similarities.mean()), 4),
+            "median_similarity": round(float(np.median(similarities)), 4),
+            "p25_similarity": round(float(np.percentile(similarities, 25)), 4),
+            "p75_similarity": round(float(np.percentile(similarities, 75)), 4),
         },
     }
 
