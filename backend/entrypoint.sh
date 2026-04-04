@@ -9,7 +9,7 @@ for model in en_core_web_sm ru_core_news_sm; do
         echo "[spaCy] Model '$model' already available — skipping download"
     else
         echo "[spaCy] Downloading model: $model"
-        python -m spacy download "$model" --direct
+        python -m spacy download "$model"
     fi
 done
 
