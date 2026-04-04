@@ -274,11 +274,11 @@ export default function GlossaryEditor({ projectId }) {
                           </Badge>
                         </TableCell>
 
-                        <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
+                        <TableCell className="hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
                           {term.first_chapter_order || '-'}
                         </TableCell>
 
-                        <TableCell className="text-card-foreground hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
+                        <TableCell className="hidden md:table-cell align-top text-center p-3 text-xs text-muted-foreground">
                           {term.last_chapter_order || '-'}
                         </TableCell>
 
