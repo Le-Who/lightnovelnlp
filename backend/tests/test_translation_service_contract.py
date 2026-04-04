@@ -75,9 +75,7 @@ class TestTranslateChapterContract:
         assert chapter.translated_text == STUB_TRANSLATED
 
     @patch("app.services.translation_service.cache_service")
-    def test_returns_cached_translation_without_calling_engine(
-        self, mock_cache, db
-    ):
+    def test_returns_cached_translation_without_calling_engine(self, mock_cache, db):
         # Arrange
         project = make_project(db)
         chapter = make_chapter(db, project.id, original_text="Text for caching.")

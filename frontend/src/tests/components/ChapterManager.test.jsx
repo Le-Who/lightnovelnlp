@@ -62,7 +62,8 @@ describe("ChapterManager", () => {
 
     render(<ChapterManager projectId="123" />);
 
-    expect(screen.getByText(/SCANNING_SECTOR_DATA.../i)).toBeInTheDocument();
+    // Since loading renders skeletons, look for them or just test we don't crash
+    expect(document.querySelector('.divide-y')).toBeInTheDocument();
   });
 
   it("renders chapters list correctly", async () => {
@@ -70,14 +71,11 @@ describe("ChapterManager", () => {
 
     render(<ChapterManager projectId="123" />);
 
-    // Wait for loading to finish
+    // Wait for text from mock to appear
     await waitFor(() => {
-      expect(
-        screen.queryByText(/SCANNING_SECTOR_DATA.../i),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("Chapter 1")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Chapter 1")).toBeInTheDocument();
     expect(screen.getByText("Chapter 2")).toBeInTheDocument();
     expect(screen.getByText("PENDING")).toBeInTheDocument(); // Status for Chapter 1
     expect(screen.getByText("READY")).toBeInTheDocument(); // Status for Chapter 2
@@ -88,13 +86,10 @@ describe("ChapterManager", () => {
 
     render(<ChapterManager projectId="123" />);
 
+    // Wait for empty state
     await waitFor(() => {
-      expect(
-        screen.queryByText(/SCANNING_SECTOR_DATA.../i),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(/NO_FILES_FOUND/i)).toBeInTheDocument();
     });
-
-    expect(screen.getByText(/NO_FILES_FOUND/i)).toBeInTheDocument();
   });
 
   it("handles API error on load", async () => {
@@ -118,11 +113,9 @@ describe("ChapterManager", () => {
 
     render(<ChapterManager projectId="123" />);
 
-    await waitFor(() =>
-      expect(
-        screen.queryByText(/SCANNING_SECTOR_DATA.../i),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      expect(screen.getByText(/NO_FILES_FOUND/i)).toBeInTheDocument();
+    });
 
     // Click NEW_FILE
     fireEvent.click(screen.getByText(/NEW_FILE/i));

@@ -1,4 +1,3 @@
-
 import sys
 import unittest.mock as mock
 
@@ -18,9 +17,10 @@ except ImportError:
     # Let's try to pass dummy env vars if mocks aren't enough, but mocks are cleaner.
     pass
 
+
 def run_tests():
     print("Running spaCy verification tests...")
-    
+
     failures = 0
 
     # Test 1: English Lemmatization & Counting
@@ -28,8 +28,10 @@ def run_tests():
     text_en = "The cats are running. One cat is fast."
     terms_en = ["cat"]
     # Should find 'cats' and 'cat' -> total 2
-    freq_en = term_extractor.count_term_frequency(text_en, terms_en, source_language="en")
-    
+    freq_en = term_extractor.count_term_frequency(
+        text_en, terms_en, source_language="en"
+    )
+
     if freq_en.get("cat") != 2:
         print(f"FAIL: English 'cat' expected 2, got {freq_en.get('cat')}")
         failures += 1
@@ -37,13 +39,15 @@ def run_tests():
         print("PASS: English 'cat' (lemmatization works)")
 
     # Test 2: Russian Lemmatization & Counting
-    print("Test 2: Russian 'люди' -> 'человек'") 
+    print("Test 2: Russian 'люди' -> 'человек'")
     # Note: spacy ru count usually lemmatizes people -> person
     text_ru = "Все люди братья. Этот человек мой друг."
     terms_ru = ["человек"]
-    
-    freq_ru = term_extractor.count_term_frequency(text_ru, terms_ru, source_language="ru")
-    
+
+    freq_ru = term_extractor.count_term_frequency(
+        text_ru, terms_ru, source_language="ru"
+    )
+
     if freq_ru.get("человек") != 2:
         print(f"FAIL: Russian 'человек' expected 2, got {freq_ru.get('человек')}")
         failures += 1
@@ -54,15 +58,17 @@ def run_tests():
     print("Test 3: Multi-word 'Green Apple'")
     text_multi = "I ate a green apple. Green Apples are tasty."
     terms_multi = ["Green Apple"]
-    
-    freq_multi = term_extractor.count_term_frequency(text_multi, terms_multi, source_language="en")
-    
+
+    freq_multi = term_extractor.count_term_frequency(
+        text_multi, terms_multi, source_language="en"
+    )
+
     # "Green Apples" -> lemma "green apple"
     if freq_multi.get("Green Apple") != 2:
-         print(f"FAIL: 'Green Apple' expected 2, got {freq_multi.get('Green Apple')}")
-         failures += 1
+        print(f"FAIL: 'Green Apple' expected 2, got {freq_multi.get('Green Apple')}")
+        failures += 1
     else:
-         print("PASS: 'Green Apple'")
+        print("PASS: 'Green Apple'")
 
     if failures == 0:
         print("ALL TESTS PASSED")
@@ -70,10 +76,12 @@ def run_tests():
         print(f"{failures} TESTS FAILED")
         sys.exit(1)
 
+
 if __name__ == "__main__":
     try:
         run_tests()
     except Exception as e:
         print(f"Execution Error: {e}")
         import traceback
+
         traceback.print_exc()

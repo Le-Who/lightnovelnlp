@@ -126,9 +126,7 @@ class TestCompleteFailoverOn429:
 
         # Assert — cooldown written for key 1 only
         cooldown_calls = [
-            call
-            for call in mock_cache.set.call_args_list
-            if "cooldown" in str(call)
+            call for call in mock_cache.set.call_args_list if "cooldown" in str(call)
         ]
         assert len(cooldown_calls) == 1
         assert key1_hash in str(cooldown_calls[0])

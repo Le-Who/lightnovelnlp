@@ -137,7 +137,6 @@ class TermExtractor:
                     f"spaCy frequency count failed for {source_language}: {e}. Fallback to regex."
                 )
 
-
         text_lower = text.lower()
         frequency = {}
 

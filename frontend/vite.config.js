@@ -21,6 +21,10 @@ export default defineConfig({
     setupFiles: './src/tests/setup.js',
     css: true,
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+    // Align test API base with production route prefix so MSW contracts match real calls
+    env: {
+      VITE_API_URL: '/api/v1',
+    },
   },
   build: {
     outDir: 'dist',

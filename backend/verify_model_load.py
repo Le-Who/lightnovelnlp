@@ -1,4 +1,5 @@
 import spacy
+
 try:
     nlp = spacy.load("en_core_web_sm")
     print("SUCCESS: en_core_web_sm loaded")

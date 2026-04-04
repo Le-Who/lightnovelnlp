@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, ChevronRight, Play, RefreshCw, XCircle } from 'lucide-react';
 import api from '@/services/apiClient';
-import { Button } from '@/components/ui/Button';
 
 export function AiReviewPanel({ chapterId, onCorrectionStarted }) {
   const [loading, setLoading] = useState(false);

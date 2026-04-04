@@ -309,12 +309,12 @@ export default function BatchProcessor({ projectId }) {
                 return next
               })
             }
-          } catch (e) {
-            console.error('SSE parsing error', e)
+          } catch (_err) {
+            console.error('SSE parsing error', _err)
           }
         }
 
-        sse.onerror = (err) => {
+        sse.onerror = (_err) => {
           console.error(`SSE error on job ${jobId}`)
           sse.close()
           delete ssePool.current[jobId]

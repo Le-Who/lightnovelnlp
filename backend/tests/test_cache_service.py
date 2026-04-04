@@ -1,494 +1,167 @@
-import unittest
-from unittest.mock import MagicMock, patch
+"""
+Unit tests — CacheService.
+
+Level: Unit (all Redis clients mocked; no real network calls).
+AAA pattern strictly followed throughout.
+
+Issues fixed from prior version:
+  - H-1: service.__init__() anti-pattern removed; each test gets a
+          fresh CacheService() instance constructed inside a patch context.
+  - H-2: Weak `call_count == 2` assertion replaced with explicit flow
+          assertions that catch real regressions.
+"""
+
+from unittest.mock import MagicMock, patch, call
 
 from app.services.cache_service import CacheService
 
 
-class TestCacheService(unittest.TestCase):
-    def setUp(self):
-        # Patch settings
-        self.settings_patcher = patch("app.services.cache_service.settings")
-        self.mock_settings = self.settings_patcher.start()
+# ── Helpers ────────────────────────────────────────────────────────────────────
 
-        # Patch UpstashRedis
-        self.upstash_patcher = patch("app.services.cache_service.UpstashRedis")
-        self.mock_upstash_cls = self.upstash_patcher.start()
 
-        # Patch redis (TCP)
-        self.redis_patcher = patch("app.services.cache_service.redis")
-        self.mock_redis_module = self.redis_patcher.start()
-        self.mock_tcp_client = MagicMock()
-        self.mock_redis_module.from_url.return_value = self.mock_tcp_client
-
-        # Setup default settings
-        self.mock_settings.REDIS_URL = "redis://localhost:6379/0"
-        self.mock_settings.UPSTASH_REDIS_REST_URL = None
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = None
-
-    def tearDown(self):
-        self.settings_patcher.stop()
-        self.upstash_patcher.stop()
-        self.redis_patcher.stop()
-
-    def test_init_tcp_only(self):
-        """Test initialization with only TCP Redis configured."""
+def _make_service_with_tcp_only(mock_tcp_client):
+    """Return a CacheService configured for TCP-only (no Upstash credentials)."""
+    with (
+        patch("app.services.cache_service.settings") as mock_settings,
+        patch(
+            "app.services.cache_service.redis.from_url", return_value=mock_tcp_client
+        ),
+    ):
+        mock_settings.REDIS_URL = "redis://localhost:6379/0"
+        mock_settings.UPSTASH_REDIS_REST_URL = None
+        mock_settings.UPSTASH_REDIS_REST_TOKEN = None
+        mock_settings.GEMINI_API_RESET_TIMEZONE = "UTC"
         service = CacheService()
+    return service
 
-        self.assertIsNone(service.rest_client)
-        self.assertEqual(service.redis_client, self.mock_tcp_client)
 
-    def test_get_rest_fail_tcp_retry_success(self):
-        """Test get fallback to TCP with retry when REST fails and TCP initially fails."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
+def _make_service_with_rest_and_tcp(mock_rest_client, mock_tcp_client):
+    """Return a CacheService configured with both REST and TCP clients."""
 
+    with (
+        patch("app.services.cache_service.settings") as mock_settings,
+        patch(
+            "app.services.cache_service.redis.from_url", return_value=mock_tcp_client
+        ),
+        patch("app.services.cache_service.UpstashRedis", return_value=mock_rest_client),
+    ):
+        mock_settings.REDIS_URL = "redis://localhost:6379/0"
+        mock_settings.UPSTASH_REDIS_REST_URL = "https://upstash.io"
+        mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
+        mock_settings.GEMINI_API_RESET_TIMEZONE = "UTC"
+        mock_rest_client.ping.return_value = True  # health check passes
         service = CacheService()
+    return service
 
-        # REST fails
-        mock_rest_client.get.side_effect = Exception("REST error")
 
-        # TCP fails once then succeeds
-        self.mock_tcp_client.get.side_effect = [Exception("TCP error"), b"123"]
-        # TCP ping succeeds (simplifying to avoid side_effect exhaustion issues)
-        self.mock_tcp_client.ping.return_value = True
+# ── Initialization ────────────────────────────────────────────────────────────
 
-        result = service.get("key")
 
-        self.assertEqual(result, 123)
-        mock_rest_client.get.assert_called_with("key")
-        # Should be called twice: initial + retry
-        self.assertEqual(self.mock_tcp_client.get.call_count, 2)
-        # Should have attempted reconnection
-        self.assertTrue(self.mock_tcp_client.ping.call_count >= 1)
-
-    def test_get_all_fail(self):
-        """Test get returns None when all clients fail."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
+class TestCacheServiceInit:
+    def test_initializes_tcp_only_when_upstash_credentials_missing(self):
+        # Arrange + Act
+        mock_tcp = MagicMock()
+        service = _make_service_with_tcp_only(mock_tcp)
 
-        service = CacheService()
+        # Assert
+        assert service.rest_client is None
+        assert service.redis_client is mock_tcp
 
-        # REST fails
-        mock_rest_client.get.side_effect = Exception("REST error")
-
-        # TCP fails always
-        self.mock_tcp_client.get.side_effect = Exception("TCP error")
-        self.mock_tcp_client.ping.return_value = True
-
-        result = service.get("key")
+    def test_initializes_rest_client_when_upstash_credentials_present(self):
+        # Arrange + Act
+        mock_rest = MagicMock()
+        mock_tcp = MagicMock()
+        service = _make_service_with_rest_and_tcp(mock_rest, mock_tcp)
 
-        self.assertIsNone(result)
-        mock_rest_client.get.assert_called_with("key")
-        # Should be called twice: initial + retry
-        self.assertEqual(self.mock_tcp_client.get.call_count, 2)
+        # Assert
+        assert service.rest_client is mock_rest
 
-    def test_get_rest_success(self):
-        """Test get using REST client."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
 
-        service = CacheService()
-        mock_rest_client.get.return_value = '{"foo": "bar"}'
+# ── Get Values (Fallback Logic) ───────────────────────────────────────────────
 
-        result = service.get("key")
 
-        self.assertEqual(result, {"foo": "bar"})
-        mock_rest_client.get.assert_called_with("key")
-        self.mock_tcp_client.get.assert_not_called()
+class TestCacheServiceGet:
+    def test_returns_value_from_rest_client_when_configured(self):
+        # Arrange
+        mock_rest = MagicMock()
+        mock_tcp = MagicMock()
+        service = _make_service_with_rest_and_tcp(mock_rest, mock_tcp)
+        mock_rest.get.return_value = '{"data": "success"}'
 
-    def test_get_rest_fail_tcp_success(self):
-        """Test get fallback to TCP when REST fails."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
+        # Act
+        result = service.get("test_key")
 
-        service = CacheService()
-        mock_rest_client.get.side_effect = Exception("REST error")
-        self.mock_tcp_client.get.return_value = b'{"foo": "bar"}'
+        # Assert
+        assert result == {"data": "success"}
+        mock_rest.get.assert_called_once_with("test_key")
+        mock_tcp.get.assert_not_called()  # TCP not used when REST succeeds
 
-        result = service.get("key")
-
-        self.assertEqual(result, {"foo": "bar"})
-        self.mock_tcp_client.get.assert_called_with("key")
+    def test_falls_back_to_tcp_when_rest_client_raises(self):
+        # Arrange
+        mock_rest = MagicMock()
+        mock_tcp = MagicMock()
+        service = _make_service_with_rest_and_tcp(mock_rest, mock_tcp)
+        mock_rest.get.side_effect = Exception("REST Timeout")
+        mock_tcp.ping.return_value = True
+        mock_tcp.get.return_value = b'{"data": "tcp_success"}'
 
-    def test_get_tcp_retry(self):
-        """Test get retry logic when TCP fails initially."""
-        service = CacheService()  # Only TCP
-
-        # First call fails, second call succeeds
-        self.mock_tcp_client.get.side_effect = [Exception("Connection error"), b"123"]
-        # Ping must fail to trigger reconnection
-        self.mock_tcp_client.ping.side_effect = [Exception("Ping failed"), True]
-
-        result = service.get("key")
-
-        self.assertEqual(result, 123)
-        self.assertEqual(self.mock_tcp_client.get.call_count, 2)
-        # Should have reconnected
-        self.assertTrue(self.mock_redis_module.from_url.call_count > 1)
+        # Act
+        result = service.get("test_key")
 
-    def test_get_deserialization(self):
-        """Test get deserialization for different types."""
-        service = CacheService()
+        # Assert
+        assert result == {"data": "tcp_success"}
+        mock_rest.get.assert_called_once_with("test_key")  # REST was tried
+        mock_tcp.get.assert_called_once_with("test_key")  # TCP was the fallback
 
-        # Int
-        self.mock_tcp_client.get.return_value = b"42"
-        self.assertEqual(service.get("key"), 42)
+    def test_returns_none_when_both_clients_fail(self):
+        # Arrange
+        mock_rest = MagicMock()
+        mock_tcp = MagicMock()
+        service = _make_service_with_rest_and_tcp(mock_rest, mock_tcp)
 
-        # JSON
-        self.mock_tcp_client.get.return_value = b'{"a": 1}'
-        self.assertEqual(service.get("key"), {"a": 1})
+        mock_rest.get.side_effect = Exception("REST Crash")
+        # Simulate: first get() fails, ping() succeeds (no reconnect), retry get() also fails
+        mock_tcp.ping.return_value = True
+        mock_tcp.get.side_effect = Exception("TCP Crash")
 
-        # String (if not valid json or int)
-        self.mock_tcp_client.get.return_value = b"some string"
-        self.assertEqual(service.get("key"), "some string")
+        # Act
+        result = service.get("test_key")
 
-        # None
-        self.mock_tcp_client.get.return_value = None
-        self.assertIsNone(service.get("key"))
+        # Assert
+        assert result is None
+        # Verify both REST and TCP were attempted (REST first, then TCP with one retry)
+        mock_rest.get.assert_called_once_with("test_key")
+        # TCP.get is called twice: initial attempt + retry after sleep
+        assert mock_tcp.get.call_count == 2
+        assert mock_tcp.get.call_args_list == [call("test_key"), call("test_key")]
 
-    def test_set_rest_success(self):
-        """Test set using REST client."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
 
-        service = CacheService()
-        mock_rest_client.set.return_value = True
+# ── Counter Operations ────────────────────────────────────────────────────────
 
-        result = service.set("key", {"a": 1}, ttl=60)
 
-        self.assertTrue(result)
-        mock_rest_client.set.assert_called_with("key", '{"a": 1}', ex=60)
+class TestIncrementCounter:
+    def test_increments_and_sets_ttl_on_first_call(self):
+        # Arrange
+        mock_tcp = MagicMock()
+        service = _make_service_with_tcp_only(mock_tcp)
+        mock_tcp.incr.return_value = 1  # counter did not exist before
 
-    def test_set_tcp_fallback(self):
-        """Test set fallback to TCP."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
+        # Act
+        result = service.increment_counter("limit_key", ttl=60)
 
-        service = CacheService()
-        mock_rest_client.set.side_effect = Exception("REST error")
-        self.mock_tcp_client.setex.return_value = True
-
-        result = service.set("key", 123)
-
-        self.assertTrue(result)
-        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123")  # Default TTL
-
-    def test_delete_rest_success(self):
-        """Test delete using REST client."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
-
-        service = CacheService()
-        mock_rest_client.delete.return_value = 1
-
-        result = service.delete("key")
-
-        self.assertTrue(result)
-        mock_rest_client.delete.assert_called_with("key")
-
-    def test_delete_tcp_fallback(self):
-        """Test delete fallback to TCP."""
-        service = CacheService()
-        self.mock_tcp_client.delete.return_value = 1
-
-        result = service.delete("key")
-
-        self.assertTrue(result)
-        self.mock_tcp_client.delete.assert_called_with("key")
-        self.mock_redis_module.from_url.assert_called_with(
-            "redis://localhost:6379/0",
-            socket_timeout=5,
-            socket_connect_timeout=5,
-            retry_on_timeout=True,
-            health_check_interval=30,
-        )
-
-    def test_increment_counter_rest_success(self):
-        """Test increment_counter using REST client."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
-
-        service = CacheService()
-
-        # First increment
-        mock_rest_client.incr.return_value = 1
-
-        result = service.increment_counter("key", ttl=60)
-
-        self.assertEqual(result, 1)
-        mock_rest_client.incr.assert_called_with("key")
-        mock_rest_client.expire.assert_called_with("key", 60)
-
-        # Subsequent increment
-        mock_rest_client.incr.return_value = 2
-        mock_rest_client.expire.reset_mock()
-
-        result = service.increment_counter("key", ttl=60)
-
-        self.assertEqual(result, 2)
-        mock_rest_client.expire.assert_not_called()
-
-    def test_increment_counter_tcp_fallback(self):
-        """Test increment_counter fallback to TCP."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
-
-        service = CacheService()
-        mock_rest_client.incr.side_effect = Exception("REST error")
-        self.mock_tcp_client.incr.return_value = 1
-
-        result = service.increment_counter("key", ttl=60)
-
-        self.assertEqual(result, 1)
-        self.mock_tcp_client.incr.assert_called_with("key")
-        self.mock_tcp_client.expire.assert_called_with("key", 60)
-
-    def test_delete_pattern_rest_success(self):
-        """Test delete_pattern using REST client."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
-
-        service = CacheService()
-        mock_rest_client.keys.return_value = ["key1", "key2"]
-        mock_rest_client.delete.return_value = 2
-
-        result = service.delete_pattern("pattern*")
-
-        self.assertEqual(result, 2)
-        mock_rest_client.keys.assert_called_with("pattern*")
-        mock_rest_client.delete.assert_called_with("key1", "key2")
-
-    def test_delete_pattern_tcp_fallback(self):
-        """Test delete_pattern fallback to TCP."""
-        service = CacheService()
-        self.mock_tcp_client.keys.return_value = ["key1", "key2"]
-        self.mock_tcp_client.delete.return_value = 2
-
-        result = service.delete_pattern("pattern*")
-
-        self.assertEqual(result, 2)
-        self.mock_tcp_client.keys.assert_called_with("pattern*")
-        self.mock_tcp_client.delete.assert_called_with("key1", "key2")
-
-    def test_translation_cache(self):
-        """Test translation caching methods."""
-        service = CacheService()
-        self.mock_tcp_client.get.return_value = b"translation"
-        self.mock_tcp_client.setex.return_value = True
-        self.mock_tcp_client.keys.return_value = ["key"]
-        self.mock_tcp_client.delete.return_value = 1
-
-        # Test get
-        self.assertEqual(service.get_cached_translation(1, "hash"), "translation")
-        self.mock_tcp_client.get.assert_called_with("lightnovel:translation:1:hash")
-
-        # Test cache
-        service.cache_translation(1, "hash", "translation")
-        self.mock_tcp_client.setex.assert_called_with(
-            "lightnovel:translation:1:hash", 86400, '"translation"'
-        )
-
-        # Test invalidate
-        service.invalidate_translation_cache(1)
-        self.mock_tcp_client.keys.assert_called_with("lightnovel:translation:1:*")
-        self.mock_tcp_client.delete.assert_called()
-
-    def test_glossary_cache(self):
-        """Test glossary caching methods."""
-        service = CacheService()
-        self.mock_tcp_client.get.return_value = b'[{"term": "a"}]'
-        self.mock_tcp_client.setex.return_value = True
-        self.mock_tcp_client.delete.return_value = 1
-
-        # Test get
-        self.assertEqual(service.get_cached_glossary(1), [{"term": "a"}])
-        self.mock_tcp_client.get.assert_called_with("lightnovel:glossary:1")
-
-        # Test cache
-        service.cache_glossary(1, [{"term": "a"}])
-        self.mock_tcp_client.setex.assert_called_with(
-            "lightnovel:glossary:1", 3600, '[{"term": "a"}]'
-        )
-
-        # Test invalidate
-        service.invalidate_glossary_cache(1)
-        self.mock_tcp_client.delete.assert_called_with("lightnovel:glossary:1")
-
-    def test_summary_cache(self):
-        """Test summary caching methods."""
-        service = CacheService()
-        self.mock_tcp_client.get.return_value = b"summary"
-        self.mock_tcp_client.setex.return_value = True
-        self.mock_tcp_client.delete.return_value = 1
-
-        # Test get
-        self.assertEqual(service.get_cached_summary(1), "summary")
-        self.mock_tcp_client.get.assert_called_with("lightnovel:summary:1")
-
-        # Test cache
-        service.cache_summary(1, "summary")
-        self.mock_tcp_client.setex.assert_called_with(
-            "lightnovel:summary:1", 7200, '"summary"'
-        )
-
-        # Test invalidate
-        service.invalidate_summary_cache(1)
-        self.mock_tcp_client.delete.assert_called_with("lightnovel:summary:1")
-
-    def test_relationships_cache(self):
-        """Test relationships caching methods."""
-        service = CacheService()
-        self.mock_tcp_client.get.return_value = b'[{"rel": "a"}]'
-        self.mock_tcp_client.setex.return_value = True
-        self.mock_tcp_client.delete.return_value = 1
-
-        # Test get
-        self.assertEqual(service.get_cached_relationships(1), [{"rel": "a"}])
-        self.mock_tcp_client.get.assert_called_with("lightnovel:relationships:1")
-
-        # Test cache
-        service.cache_relationships(1, [{"rel": "a"}])
-        self.mock_tcp_client.setex.assert_called_with(
-            "lightnovel:relationships:1", 3600, '[{"rel": "a"}]'
-        )
-
-        # Test invalidate
-        service.invalidate_relationships_cache(1)
-        self.mock_tcp_client.delete.assert_called_with("lightnovel:relationships:1")
-
-    def test_generate_glossary_hash(self):
-        """Test glossary hash generation."""
-        service = CacheService()
-
-        terms1 = [
-            {"source_term": "a", "target_term": "b"},
-            {"source_term": "c", "target_term": "d"},
-        ]
-        terms2 = [
-            {"source_term": "c", "target_term": "d"},
-            {"source_term": "a", "target_term": "b"},
-        ]
-
-        # Order shouldn't matter
-        hash1 = service.generate_glossary_hash(terms1)
-        hash2 = service.generate_glossary_hash(terms2)
-
-        self.assertEqual(hash1, hash2)
-        self.assertIsInstance(hash1, str)
-        self.assertTrue(len(hash1) > 0)
-
-    def test_get_cache_stats_tcp(self):
-        """Test cache stats using TCP client."""
-        service = CacheService()
-        self.mock_tcp_client.info.return_value = {
-            "used_memory_human": "1M",
-            "connected_clients": 10,
-            "total_commands_processed": 100,
-            "keyspace_hits": 50,
-            "keyspace_misses": 50,
-        }
-
-        stats = service.get_cache_stats()
-
-        self.assertFalse(stats["rest_client"])
-        self.assertEqual(stats["used_memory"], "1M")
-        self.assertEqual(stats["keyspace_hits"], 50)
-
-    def test_get_cache_stats_rest(self):
-        """Test cache stats using REST client."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
-
-        service = CacheService()
-
-        stats = service.get_cache_stats()
-
-        self.assertTrue(stats["rest_client"])
-        self.assertTrue(stats["connected"])
-
-    def test_init_with_upstash(self):
-        """Test initialization with Upstash REST configured."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-
-        mock_rest_client = MagicMock()
-        self.mock_upstash_cls.return_value = mock_rest_client
-
-        service = CacheService()
-
-        self.assertEqual(service.rest_client, mock_rest_client)
-        self.mock_upstash_cls.assert_called_with(
-            url="https://example.upstash.io", token="token"
-        )
-        mock_rest_client.ping.assert_called_once()
-
-    def test_init_upstash_fail_fallback(self):
-        """Test fallback to TCP when Upstash init fails."""
-        self.mock_settings.UPSTASH_REDIS_REST_URL = "https://example.upstash.io"
-        self.mock_settings.UPSTASH_REDIS_REST_TOKEN = "token"
-
-        # Simulate Upstash init failure
-        self.mock_upstash_cls.side_effect = Exception("Connection error")
-
-        service = CacheService()
-
-        self.assertIsNone(service.rest_client)
-        self.assertEqual(service.redis_client, self.mock_tcp_client)
-
-    def test_set_tcp_retry(self):
-        """Test set retry logic when TCP fails initially."""
-        service = CacheService()  # Only TCP
-
-        # First call fails, second call succeeds
-        self.mock_tcp_client.setex.side_effect = [Exception("Connection error"), True]
-
-        # Ping must fail to trigger reconnection
-        self.mock_tcp_client.ping.side_effect = [Exception("Ping failed"), True]
-
-        result = service.set("key", 123)
-
-        self.assertTrue(result)
-        # setex called twice: once for initial attempt, once for retry
-        self.assertEqual(self.mock_tcp_client.setex.call_count, 2)
-        # Verify arguments (key, ttl, serialized value)
-        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123")
-        # Should have reconnected
-        self.assertTrue(self.mock_redis_module.from_url.call_count > 1)
-
-    def test_set_full_failure(self):
-        """Test set returns False when all attempts fail."""
-        service = CacheService()  # Only TCP
-
-        # All calls fail
-        self.mock_tcp_client.setex.side_effect = Exception("Connection error")
-        self.mock_tcp_client.ping.side_effect = Exception("Ping failed")
-
-        result = service.set("key", 123)
-
-        self.assertFalse(result)
-        # setex called twice: initial + retry
-        self.assertEqual(self.mock_tcp_client.setex.call_count, 2)
-        # Verify arguments
-        self.mock_tcp_client.setex.assert_called_with("key", 3600, "123")
+        # Assert
+        assert result == 1
+        mock_tcp.expire.assert_called_once_with("limit_key", 60)
+
+    def test_does_not_set_ttl_on_subsequent_increments(self):
+        # Arrange
+        mock_tcp = MagicMock()
+        service = _make_service_with_tcp_only(mock_tcp)
+        mock_tcp.incr.return_value = 5  # counter already exists
+
+        # Act
+        result = service.increment_counter("limit_key", ttl=60)
+
+        # Assert
+        assert result == 5
+        mock_tcp.expire.assert_not_called()

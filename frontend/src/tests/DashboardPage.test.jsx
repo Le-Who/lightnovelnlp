@@ -1,80 +1,102 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
-import DashboardPage from '../pages/DashboardPage'
-import api from '../services/apiClient'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { describe, it, expect, vi } from 'vitest';
+import DashboardPage from '../pages/DashboardPage';
+import { server } from './mocks/server';
+import { http, HttpResponse } from 'msw';
 
-// Mock apiClient
-vi.mock('../services/apiClient', () => ({
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    delete: vi.fn()
-  }
-}))
+describe('DashboardPage - UI Component Tests (MSW)', () => {
 
-describe('DashboardPage', () => {
-  const mockProjects = [
-    {
-      id: 1,
-      name: 'Project Alpha',
-      genre: 'scifi',
-      chapters_count: 5,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: 2,
-      name: 'Project Beta',
-      genre: 'fantasy',
-      chapters_count: 2,
-      created_at: new Date().toISOString()
-    }
-  ]
+  // MSW handlers reset is done in setup.js, but we can override locally if needed
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    api.get.mockResolvedValue({ data: mockProjects })
-  })
+  it('renders a list of available projects sequentially', async () => {
+    // Relying on default happy path in handlers.js
+    render(
+      <BrowserRouter>
+         <DashboardPage />
+      </BrowserRouter>
+    );
 
-  it('renders project list', async () => {
+    await waitFor(() => {
+       expect(screen.getByText('Project Alpha')).toBeInTheDocument();
+       expect(screen.getByText('Project Beta')).toBeInTheDocument();
+    });
+  });
+
+  it('creates a new project', async () => {
+    let internalProjects = [
+      { id: 1, name: 'Project Alpha' }
+    ];
+    let postBody = {};
+
+    server.use(
+      http.post('*/api/v1/projects/', async ({ request }) => {
+        postBody = await request.json();
+        const newProj = {
+          id: 3,
+          name: postBody.name,
+          genre: postBody.genre,
+          chapters_count: 0
+        };
+        internalProjects.push(newProj);
+        return HttpResponse.json(newProj);
+      }),
+      http.get('*/api/v1/projects/', () => {
+        return HttpResponse.json(internalProjects);
+      })
+    );
+
     render(
       <BrowserRouter>
         <DashboardPage />
       </BrowserRouter>
-    )
+    );
+
+    const nameInput = await screen.findByPlaceholderText(/ENTER_DESIGNATION/i);
+    const genreInput = await screen.findByPlaceholderText(/SELECT_PROTOCOL/i);
+    const submitBtn = screen.getByRole('button', { name: /EXECUTE/i });
+
+    // Explicitly update input states
+    fireEvent.change(nameInput, { target: { value: 'New Test Project' } });
+    fireEvent.change(genreInput, { target: { value: 'system' } });
+    
+    // Check if state updated (value reflects)
+    expect(nameInput.value).toBe('New Test Project');
+
+    // Click submit and also trigger submit explicitly just in case
+    fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Project Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Project Beta')).toBeInTheDocument()
-    })
-  })
+      expect(postBody.name).toBe('New Test Project');
+      expect(screen.getByText('New Test Project')).toBeInTheDocument();
+    });
+  });
 
-  // This test will fail initially because we haven't implemented the Link yet
-  // But we want to ensure the structure is correct once implemented
-  it('renders project name as a link', async () => {
+  it('deletes a selected project when confirmation clicked', async () => {
+    let deletedIds = [];
+    server.use(
+      http.delete('*/api/v1/projects/:id', ({ params }) => {
+        deletedIds.push(params.id);
+        return new HttpResponse(null, { status: 204 });
+      })
+    );
+    
     render(
       <BrowserRouter>
-        <DashboardPage />
+         <DashboardPage />
       </BrowserRouter>
-    )
+    );
+
+    const deleteBtn = await screen.findByLabelText('Delete project Project Alpha');
+    
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true);
+
+    fireEvent.click(deleteBtn);
 
     await waitFor(() => {
-      const link = screen.getByRole('link', { name: 'Project Alpha' })
-      expect(link).toHaveAttribute('href', '/projects/1')
-    })
-  })
-
-  it('renders delete button with aria-label', async () => {
-    render(
-      <BrowserRouter>
-        <DashboardPage />
-      </BrowserRouter>
-    )
-
-    await waitFor(() => {
-      // Initially, it might only find by title or role button
-      const deleteButton = screen.getByLabelText('Delete project Project Alpha')
-      expect(deleteButton).toBeInTheDocument()
-    })
-  })
-})
+       expect(deletedIds).toContain('1');
+    });
+    
+    confirmSpy.mockRestore();
+  });
+});

@@ -33,9 +33,9 @@ warnings.filterwarnings(
 
 logger = logging.getLogger(__name__)
 
-from app.core.config import settings
-from app.core.exceptions import APIKeyExhausted
-from app.services.cache_service import cache_service
+from app.core.config import settings  # noqa: E402
+from app.core.exceptions import APIKeyExhausted  # noqa: E402
+from app.services.cache_service import cache_service  # noqa: E402
 
 
 def _key_hash(api_key: str) -> str:

@@ -9,12 +9,13 @@ vi.mock('@/services/apiClient', () => ({
 }))
 
 // Mock child components to avoid deep rendering
-vi.mock('@/components/ChapterManager.jsx', () => ({ default: () => <div data-testid="chapter-manager">Chapter Manager</div> }))
+vi.mock('@/components/themes/neon/NeonChapterManager.jsx', () => ({ NeonChapterManager: () => <div data-testid="chapter-manager">Chapter Manager</div> }))
 vi.mock('@/components/ChapterViewer.jsx', () => ({ default: () => <div data-testid="chapter-viewer">Chapter Viewer</div> }))
 vi.mock('@/components/GlossaryEditor.jsx', () => ({ default: () => <div data-testid="glossary-editor">Glossary Editor</div> }))
 vi.mock('@/components/RelationshipsViewer.jsx', () => ({ default: () => <div data-testid="relationships-viewer">Relationships Viewer</div> }))
 vi.mock('@/components/BatchProcessor.jsx', () => ({ default: () => <div data-testid="batch-processor">Batch Processor</div> }))
 vi.mock('@/components/GlossaryVersionManager.jsx', () => ({ default: () => <div data-testid="glossary-version-manager">Glossary Version Manager</div> }))
+vi.mock('@/components/ProjectAISettings.jsx', () => ({ default: () => <div data-testid="project-ai-settings">Project AI Settings</div> }))
 
 describe('NeonProjectPage', () => {
   const mockProject = {

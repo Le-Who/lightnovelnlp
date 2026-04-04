@@ -1,4 +1,5 @@
 """Quick diagnostic: verifies google-genai SDK is installed and functional."""
+
 from google import genai
 from google.genai import types
 
@@ -15,4 +16,3 @@ try:
     print("ThinkingConfig(thinking_budget=1024): OK")
 except Exception as e:
     print(f"ThinkingConfig error: {e}")
-

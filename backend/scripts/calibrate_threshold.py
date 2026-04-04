@@ -11,6 +11,7 @@ This script:
 3. Identifies optimal threshold via distribution analysis.
 4. Prints recommended threshold and optionally updates ENV.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,28 +25,29 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.db import SessionLocal
-from app.models.glossary import GlossaryTerm, TermStatus
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Calibrate embedding similarity threshold")
-    parser.add_argument("--project-id", type=int, required=True, help="Project ID to analyze")
-    parser.add_argument("--percentile", type=float, default=25.0, help="Percentile for threshold (default: 25th)")
+    parser = argparse.ArgumentParser(
+        description="Calibrate embedding similarity threshold"
+    )
+    parser.add_argument(
+        "--project-id", type=int, required=True, help="Project ID to analyze"
+    )
+    parser.add_argument(
+        "--percentile",
+        type=float,
+        default=25.0,
+        help="Percentile for threshold (default: 25th)",
+    )
     args = parser.parse_args()
 
     db = SessionLocal()
     try:
-        terms = (
-            db.query(GlossaryTerm)
-            .filter(
-                GlossaryTerm.project_id == args.project_id,
-                GlossaryTerm.status == TermStatus.APPROVED.value,
-            )
-            .all()
-        )
+        # The first query was unused, removing it to pass lint F841
 
         # Collect terms that have embeddings (via raw SQL since embedding_vec is pgvector)
         from sqlalchemy import text
@@ -66,13 +68,17 @@ def main():
             logger.info("Run embedding generation first for this project.")
             return
 
-        logger.info(f"Loaded {len(rows)} terms with embeddings from project {args.project_id}")
+        logger.info(
+            f"Loaded {len(rows)} terms with embeddings from project {args.project_id}"
+        )
 
         # Parse vectors
         vectors = {}
         for row in rows:
             vec_str = row[2]  # pgvector text format: "[0.1,0.2,...]"
-            vec = np.array([float(x) for x in vec_str.strip("[]").split(",")], dtype=np.float32)
+            vec = np.array(
+                [float(x) for x in vec_str.strip("[]").split(",")], dtype=np.float32
+            )
             norm = np.linalg.norm(vec)
             if norm > 0:
                 vec = vec / norm
@@ -100,7 +106,7 @@ def main():
         logger.info(f"Std:    {similarities.std():.4f}")
 
         threshold = float(np.percentile(similarities, args.percentile))
-        logger.info(f"\n=== Recommendation ===")
+        logger.info("\n=== Recommendation ===")
         logger.info(f"Threshold (P{args.percentile}): {threshold:.4f}")
         logger.info(f"\nSet ENV: EMBEDDING_SIMILARITY_THRESHOLD={threshold:.4f}")
 

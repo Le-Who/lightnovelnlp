@@ -17,6 +17,7 @@ from app.models.glossary import (
 )
 from app.models.project import AnalysisStatus, Chapter, Project, ProjectGenre
 from app.services.cache_service import cache_service
+from app.tasks.nlp_tasks import analyze_chapter_task
 
 router = APIRouter()
 
@@ -380,7 +381,7 @@ def analyze_chapter(
 def analyze_chapter_async(
     chapter_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
 ) -> dict:
-    """Запустить анализ главы в фоновом режиме."""
+    """Запустить анализ главы в фоновом режиме через Celery."""
     # Проверяем, что глава существует
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
@@ -391,8 +392,8 @@ def analyze_chapter_async(
     chapter.analysis_error = None
     db.commit()
 
-    # Добавляем задачу в фоновые задачи FastAPI
-    background_tasks.add_task(process_chapter_sync, chapter_id)
+    # Dispatch via Celery so retry/max_retries logic is active
+    analyze_chapter_task.delay(chapter_id)
 
     return {
         "message": "Analysis started in background",

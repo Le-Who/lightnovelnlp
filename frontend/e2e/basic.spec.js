@@ -1,22 +1,30 @@
 import { test, expect } from '@playwright/test';
 
-test('has title', async ({ page }) => {
-  await page.goto('http://localhost:3000');
+test.describe('E2E: Translation Workflow (RAG loop)', () => {
 
-  // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/Ranobe Translator/);
-});
+  test('Creates a project and interacts with glossary terminology constraints', async ({ page }) => {
+    // 1. Arrange: Go to dashboard
+    await page.goto('http://localhost:3000');
+    await expect(page).toHaveTitle(/Ranobe Translator/i);
 
-test('can create project', async ({ page }) => {
-  await page.goto('http://localhost:3000');
+    // 2. Act: Create project
+    await page.getByPlaceholder(/Например/i).fill('E2E Sword God');
+    await page.getByPlaceholder(/Выберите/i).fill('xianxia');
+    await page.getByRole('button', { name: /Создать/i }).click();
 
-  await page.getByPlaceholder('Например: Overlord').fill('E2E Test Project');
-  await page.getByPlaceholder('Выберите или введите...').fill('fantasy');
-  await page.getByRole('button', { name: 'Создать' }).click();
+    // Verify Project Created
+    await expect(page.getByText('E2E Sword God')).toBeVisible();
 
-  // We expect the new project to appear in the list (mocked or real)
-  // Since we are mocking the backend in tests usually, for E2E against a real dev server,
-  // we assume the backend is reachable or we just check the UI state.
-  // Here we just check if the button click works without error.
-  await expect(page.getByRole('button', { name: 'Создать' })).toBeVisible();
+    // 3. Navigate into Project Details
+    await page.getByRole('link', { name: /E2E Sword God/i }).click();
+    await expect(page).toHaveURL(/\/projects\/\d+/);
+
+    // Expecting to see the Chapter form empty at first
+    await expect(page.getByText(/Глоссарий/i)).toBeVisible();
+    await expect(page.getByText(/Главы/i)).toBeVisible();
+    
+    // Note: E2E tests against real backend instances will need to assert 
+    // real upload / processing results. This structure proves out the test shell
+    // required for Playwright verification under the AAA pattern mapping.
+  });
 });

@@ -10,11 +10,12 @@ from app.services.translation_service import TranslationService
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task
-def analyze_chapter_task(chapter_id: int):
+@celery_app.task(bind=True, max_retries=3)
+def analyze_chapter_task(self, chapter_id: int):
     """
     Sync task for chapter analysis (term extraction).
     Called via BackgroundTasks. Delegates to process_chapter_sync.
+    Includes auto-retry on network/processing failures.
     """
     logger.info(f"Starting analysis for chapter {chapter_id}")
     db = SessionLocal()
@@ -29,16 +30,18 @@ def analyze_chapter_task(chapter_id: int):
         return {"status": "completed", "chapter_id": chapter_id, **result}
     except Exception as e:
         logger.error(f"Error analyzing chapter {chapter_id}: {e}")
-        return {"status": "error", "chapter_id": chapter_id, "error": str(e)}
+        # Automatically retry the task after a delay (e.g., 60 seconds)
+        raise self.retry(exc=e, countdown=60)
     finally:
         db.close()
 
 
-@celery_app.task
-def translate_chapter_task(chapter_id: int):
+@celery_app.task(bind=True, max_retries=3)
+def translate_chapter_task(self, chapter_id: int):
     """
     Синхронная задача для перевода главы.
     Вызывается через BackgroundTasks.
+    Includes auto-retry on network/processing failures.
     """
     logger.info(f"Starting translation for chapter {chapter_id}")
     db = SessionLocal()
@@ -48,7 +51,8 @@ def translate_chapter_task(chapter_id: int):
         return result
     except Exception as e:
         logger.error(f"Error translating chapter {chapter_id}: {e}")
-        return {"status": "error", "chapter_id": chapter_id, "error": str(e)}
+        # Automatically retry the task after a delay (60 seconds)
+        raise self.retry(exc=e, countdown=60)
     finally:
         db.close()
 

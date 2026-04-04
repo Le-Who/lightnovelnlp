@@ -22,13 +22,14 @@ Columns added:
     - custom_genre_instructions TEXT
     - embedding_threshold       FLOAT
 """
+
 from alembic import op
 import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '016'
-down_revision = '015'
+revision = "016"
+down_revision = "015"
 branch_labels = None
 depends_on = None
 
@@ -36,70 +37,70 @@ depends_on = None
 def upgrade() -> None:
     # ── chapters ─────────────────────────────────────────────────────────────
     op.add_column(
-        'chapters',
+        "chapters",
         sa.Column(
-            'analysis_status',
+            "analysis_status",
             sa.String(20),
             nullable=False,
-            server_default='idle',
+            server_default="idle",
         ),
     )
     op.add_column(
-        'chapters',
-        sa.Column('analysis_error', sa.Text(), nullable=True),
+        "chapters",
+        sa.Column("analysis_error", sa.Text(), nullable=True),
     )
     op.add_column(
-        'chapters',
+        "chapters",
         sa.Column(
-            'translation_status',
+            "translation_status",
             sa.String(20),
             nullable=False,
-            server_default='idle',
+            server_default="idle",
         ),
     )
     op.add_column(
-        'chapters',
-        sa.Column('translation_error', sa.Text(), nullable=True),
+        "chapters",
+        sa.Column("translation_error", sa.Text(), nullable=True),
     )
 
     # ── projects ──────────────────────────────────────────────────────────────
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'source_language',
+            "source_language",
             sa.String(10),
             nullable=False,
-            server_default='en',
+            server_default="en",
         ),
     )
     op.add_column(
-        'projects',
+        "projects",
         sa.Column(
-            'target_language',
+            "target_language",
             sa.String(10),
             nullable=False,
-            server_default='ru',
+            server_default="ru",
         ),
     )
     op.add_column(
-        'projects',
-        sa.Column('custom_genre_instructions', sa.Text(), nullable=True),
+        "projects",
+        sa.Column("custom_genre_instructions", sa.Text(), nullable=True),
     )
     op.add_column(
-        'projects',
-        sa.Column('embedding_threshold', sa.Float(), nullable=True),
+        "projects",
+        sa.Column("embedding_threshold", sa.Float(), nullable=True),
     )
 
 
 def downgrade() -> None:
     # ── projects ──────────────────────────────────────────────────────────────
-    op.drop_column('projects', 'embedding_threshold')
-    op.drop_column('projects', 'custom_genre_instructions')
-    op.drop_column('projects', 'target_language')
-    op.drop_column('projects', 'source_language')
+    op.drop_column("projects", "embedding_threshold")
+    op.drop_column("projects", "custom_genre_instructions")
+    op.drop_column("projects", "target_language")
+    op.drop_column("projects", "source_language")
 
     # ── chapters ─────────────────────────────────────────────────────────────
-    op.drop_column('chapters', 'translation_error')
-    op.drop_column('chapters', 'translation_status')
-    op.drop_column('chapters', 'analysis_error')
-    op.drop_column('chapters', 'analysis_status')
+    op.drop_column("chapters", "translation_error")
+    op.drop_column("chapters", "translation_status")
+    op.drop_column("chapters", "analysis_error")
+    op.drop_column("chapters", "analysis_status")

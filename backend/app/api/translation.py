@@ -6,6 +6,7 @@ from app.deps import get_db
 from app.models.project import Chapter, TranslationStatus
 from app.services.cache_service import cache_service
 from app.services.translation_service import TranslationService
+from app.tasks.nlp_tasks import translate_chapter_task
 
 router = APIRouter()
 
@@ -127,7 +128,7 @@ def translate_chapter_with_review(
 def translate_chapter_async(
     chapter_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
 ) -> dict:
-    """Запустить перевод главы в фоновом режиме."""
+    """Запустить перевод главы в фоновом режиме через Celery."""
     chapter = db.get(Chapter, chapter_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
@@ -137,8 +138,8 @@ def translate_chapter_async(
     chapter.translation_error = None
     db.commit()
 
-    # Добавляем задачу в фоновые задачи FastAPI
-    background_tasks.add_task(translate_chapter_background, chapter_id)
+    # Dispatch via Celery so retry/max_retries logic is active
+    translate_chapter_task.delay(chapter_id)
 
     return {
         "message": "Translation started in background",

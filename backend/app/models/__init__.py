@@ -4,15 +4,15 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 
-# Импортируем все модели для регистрации
-from .glossary import (
+# Импортируем все модели для регистрации (после установки Base)
+from .glossary import (  # noqa: E402
     BatchJob,
     BatchJobItem,
     GlossaryTerm,
     GlossaryVersion,
     TermRelationship,
 )
-from .project import Chapter, Project
+from .project import Chapter, Project  # noqa: E402
 
 __all__ = [
     "Base",
