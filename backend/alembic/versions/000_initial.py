@@ -7,6 +7,7 @@ Create Date: 2024-01-01 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 
 
 # revision identifiers, used by Alembic.
@@ -16,110 +17,139 @@ branch_labels = None
 depends_on = None
 
 
+def _table_exists(conn, table_name: str) -> bool:
+    inspector = Inspector.from_engine(conn)
+    return table_name in inspector.get_table_names()
+
+
 def upgrade() -> None:
-    # Create projects table
-    op.create_table(
-        'projects',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('name', sa.String(255), unique=True, index=True, nullable=False),
-        sa.Column('genre', sa.String(50), nullable=False, server_default='other'),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-    )
+    conn = op.get_bind()
 
-    # Create chapters table
-    op.create_table(
-        'chapters',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('project_id', sa.Integer(), sa.ForeignKey('projects.id'), nullable=False),
-        sa.Column('title', sa.String(255), nullable=False),
-        sa.Column('original_text', sa.Text(), nullable=False),
-        sa.Column('translated_text', sa.Text(), nullable=True),
-        sa.Column('summary', sa.Text(), nullable=True),
-        sa.Column('order', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('processed_at', sa.DateTime(), nullable=True),
-    )
-    op.create_index('ix_chapters_project_id', 'chapters', ['project_id'])
-    op.create_index('ix_chapters_order', 'chapters', ['project_id', 'order'])
+    # Use raw SQL with IF NOT EXISTS for every table so this migration is
+    # fully idempotent against databases that were created before Alembic
+    # tracking was introduced.
 
-    # Create glossary_terms table
-    op.create_table(
-        'glossary_terms',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('project_id', sa.Integer(), sa.ForeignKey('projects.id'), nullable=False),
-        sa.Column('source_term', sa.String(255), nullable=False),
-        sa.Column('translated_term', sa.String(255), nullable=False),
-        sa.Column('category', sa.String(50), nullable=False),
-        sa.Column('status', sa.String(20), nullable=True, server_default='pending'),
-        sa.Column('context', sa.Text(), nullable=True),
-        sa.Column('frequency', sa.Integer(), nullable=True, server_default='1'),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('approved_at', sa.DateTime(), nullable=True),
-    )
-    op.create_index('ix_glossary_terms_project_id', 'glossary_terms', ['project_id'])
-    op.create_unique_constraint('uq_glossary_term_per_project', 'glossary_terms', ['project_id', 'source_term'])
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            genre VARCHAR(50) NOT NULL DEFAULT 'other',
+            created_at TIMESTAMP WITHOUT TIME ZONE
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_projects_id ON projects (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_projects_name ON projects (name)"))
 
-    # Create term_relationships table
-    op.create_table(
-        'term_relationships',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('project_id', sa.Integer(), sa.ForeignKey('projects.id'), nullable=False),
-        sa.Column('source_term_id', sa.Integer(), sa.ForeignKey('glossary_terms.id'), nullable=False),
-        sa.Column('target_term_id', sa.Integer(), sa.ForeignKey('glossary_terms.id'), nullable=False),
-        sa.Column('relation_type', sa.String(50), nullable=False),
-        sa.Column('confidence', sa.Integer(), nullable=True),
-        sa.Column('context', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-    )
-    op.create_index('ix_term_relationships_project_id', 'term_relationships', ['project_id'])
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS chapters (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            title VARCHAR(255) NOT NULL,
+            original_text TEXT NOT NULL,
+            translated_text TEXT,
+            summary TEXT,
+            "order" INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP WITHOUT TIME ZONE,
+            processed_at TIMESTAMP WITHOUT TIME ZONE
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_chapters_id ON chapters (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_chapters_project_id ON chapters (project_id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_chapters_order ON chapters (project_id, \"order\")"))
 
-    # Create glossary_versions table
-    op.create_table(
-        'glossary_versions',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('project_id', sa.Integer(), sa.ForeignKey('projects.id'), nullable=False),
-        sa.Column('version_name', sa.String(255), nullable=False),
-        sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('terms_data', sa.JSON(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('created_by', sa.String(100), nullable=True),
-    )
-    op.create_index('ix_glossary_versions_project_id', 'glossary_versions', ['project_id'])
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS glossary_terms (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            source_term VARCHAR(255) NOT NULL,
+            translated_term VARCHAR(255) NOT NULL,
+            category VARCHAR(50) NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            context TEXT,
+            frequency INTEGER DEFAULT 1,
+            created_at TIMESTAMP WITHOUT TIME ZONE,
+            approved_at TIMESTAMP WITHOUT TIME ZONE
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_glossary_terms_id ON glossary_terms (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_glossary_terms_project_id ON glossary_terms (project_id)"))
+    conn.execute(sa.text("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_glossary_term_per_project'
+            ) THEN
+                ALTER TABLE glossary_terms
+                    ADD CONSTRAINT uq_glossary_term_per_project UNIQUE (project_id, source_term);
+            END IF;
+        END $$;
+    """))
 
-    # Create batch_jobs table
-    op.create_table(
-        'batch_jobs',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('project_id', sa.Integer(), sa.ForeignKey('projects.id'), nullable=False),
-        sa.Column('job_type', sa.String(50), nullable=False),
-        sa.Column('status', sa.String(20), nullable=True, server_default='pending'),
-        sa.Column('total_items', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('processed_items', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('failed_items', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('progress_percentage', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('error_message', sa.Text(), nullable=True),
-        sa.Column('job_data', sa.JSON(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('started_at', sa.DateTime(), nullable=True),
-        sa.Column('completed_at', sa.DateTime(), nullable=True),
-    )
-    op.create_index('ix_batch_jobs_project_id', 'batch_jobs', ['project_id'])
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS term_relationships (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            source_term_id INTEGER NOT NULL REFERENCES glossary_terms(id),
+            target_term_id INTEGER NOT NULL REFERENCES glossary_terms(id),
+            relation_type VARCHAR(50) NOT NULL,
+            confidence INTEGER,
+            context TEXT,
+            created_at TIMESTAMP WITHOUT TIME ZONE
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_term_relationships_id ON term_relationships (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_term_relationships_project_id ON term_relationships (project_id)"))
 
-    # Create batch_job_items table
-    op.create_table(
-        'batch_job_items',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
-        sa.Column('project_id', sa.Integer(), sa.ForeignKey('projects.id'), nullable=False),
-        sa.Column('batch_job_id', sa.Integer(), sa.ForeignKey('batch_jobs.id'), nullable=False),
-        sa.Column('item_type', sa.String(50), nullable=False),
-        sa.Column('item_id', sa.Integer(), nullable=False),
-        sa.Column('status', sa.String(20), nullable=True, server_default='pending'),
-        sa.Column('error_message', sa.Text(), nullable=True),
-        sa.Column('result', sa.JSON(), nullable=True),
-        sa.Column('started_at', sa.DateTime(), nullable=True),
-        sa.Column('completed_at', sa.DateTime(), nullable=True),
-    )
-    op.create_index('ix_batch_job_items_batch_job_id', 'batch_job_items', ['batch_job_id'])
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS glossary_versions (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            version_name VARCHAR(255) NOT NULL,
+            description TEXT,
+            terms_data JSON NOT NULL,
+            created_at TIMESTAMP WITHOUT TIME ZONE,
+            created_by VARCHAR(100)
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_glossary_versions_id ON glossary_versions (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_glossary_versions_project_id ON glossary_versions (project_id)"))
+
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS batch_jobs (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            job_type VARCHAR(50) NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            total_items INTEGER DEFAULT 0,
+            processed_items INTEGER DEFAULT 0,
+            failed_items INTEGER DEFAULT 0,
+            progress_percentage INTEGER DEFAULT 0,
+            error_message TEXT,
+            job_data JSON,
+            created_at TIMESTAMP WITHOUT TIME ZONE,
+            started_at TIMESTAMP WITHOUT TIME ZONE,
+            completed_at TIMESTAMP WITHOUT TIME ZONE
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_batch_jobs_id ON batch_jobs (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_batch_jobs_project_id ON batch_jobs (project_id)"))
+
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS batch_job_items (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            batch_job_id INTEGER NOT NULL REFERENCES batch_jobs(id),
+            item_type VARCHAR(50) NOT NULL,
+            item_id INTEGER NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            error_message TEXT,
+            result JSON,
+            started_at TIMESTAMP WITHOUT TIME ZONE,
+            completed_at TIMESTAMP WITHOUT TIME ZONE
+        )
+    """))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_batch_job_items_id ON batch_job_items (id)"))
+    conn.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_batch_job_items_batch_job_id ON batch_job_items (batch_job_id)"))
 
 
 def downgrade() -> None:
