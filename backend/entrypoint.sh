@@ -23,6 +23,7 @@ python - <<'PYEOF'
 import os, sys
 import sqlalchemy as sa
 
+from sqlalchemy.engine.reflection import Inspector
 url = os.environ.get("DATABASE_URL", "")
 if not url:
     print("[Alembic] No DATABASE_URL — skipping stamp check")
@@ -30,21 +31,14 @@ if not url:
 
 engine = sa.create_engine(url)
 with engine.connect() as conn:
-    # Check if alembic_version table exists and has any rows
-    try:
-        result = conn.execute(sa.text(
-            "SELECT COUNT(*) FROM alembic_version"
-        )).scalar()
-        version_rows = result
-    except Exception:
-        version_rows = 0  # table doesn't exist yet
-
-    # Check if the projects table already exists (pre-Alembic schema)
-    try:
-        conn.execute(sa.text("SELECT 1 FROM projects LIMIT 1"))
-        projects_exists = True
-    except Exception:
-        projects_exists = False
+    inspector = Inspector.from_engine(conn)
+    tables = inspector.get_table_names()
+    
+    version_rows = 0
+    if "alembic_version" in tables:
+        version_rows = conn.execute(sa.text("SELECT COUNT(*) FROM alembic_version")).scalar()
+    
+    projects_exists = "projects" in tables
 
 if version_rows == 0 and projects_exists:
     print("[Alembic] Detected pre-Alembic schema — stamping head to skip re-creation")
