@@ -9,6 +9,7 @@ from app.models.glossary import (
     BatchJobItem,
     GlossaryTerm,
     GlossaryVersion,
+    TermOccurrence,
     TermRelationship,
 )
 from app.models.project import Chapter, Project
@@ -66,25 +67,47 @@ class ProjectService:
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # Delete dependencies
+        # 1. TermOccurrence references term_id (glossary_terms) + chapter_id (chapters)
+        #    Must be deleted before both GlossaryTerm and Chapter.
+        db.query(TermOccurrence).filter(
+            TermOccurrence.project_id == project_id
+        ).delete(synchronize_session=False)
+
+        # 2. TermRelationship references source/target term_id (glossary_terms)
         db.query(TermRelationship).filter(
             TermRelationship.project_id == project_id
         ).delete(synchronize_session=False)
+
+        # 3. GlossaryTerm has first_chapter_id / last_chapter_id → chapters.
+        #    Null them out first so Chapter rows can be deleted without FK violation.
+        db.query(GlossaryTerm).filter(
+            GlossaryTerm.project_id == project_id
+        ).update(
+            {"first_chapter_id": None, "last_chapter_id": None},
+            synchronize_session=False,
+        )
         db.query(GlossaryTerm).filter(GlossaryTerm.project_id == project_id).delete(
             synchronize_session=False
         )
+
+        # 4. GlossaryVersion
         db.query(GlossaryVersion).filter(
             GlossaryVersion.project_id == project_id
         ).delete(synchronize_session=False)
+
+        # 5. BatchJobItem before BatchJob (FK batch_job_id)
         db.query(BatchJobItem).filter(BatchJobItem.project_id == project_id).delete(
             synchronize_session=False
         )
         db.query(BatchJob).filter(BatchJob.project_id == project_id).delete(
             synchronize_session=False
         )
+
+        # 6. Chapters
         db.query(Chapter).filter(Chapter.project_id == project_id).delete(
             synchronize_session=False
         )
 
+        # 7. Project itself
         db.delete(project)
         db.commit()
