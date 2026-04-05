@@ -1,9 +1,13 @@
+import logging
 from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.glossary import GlossaryTerm, TermStatus
+from app.services.embedding_service import embedding_service
+
+logger = logging.getLogger(__name__)
 
 
 class GlossaryService:
@@ -20,6 +24,7 @@ class GlossaryService:
         3. Fetching full term objects only for the matches.
 
         This avoids instantiating full SQLAlchemy models for the majority of terms that are not present in the text.
+        Additionally, injects terms from Semantic Memory (pgvector) that are contextually relevant even if not explicitly typed.
         """
         if not text:
             return []
@@ -46,15 +51,36 @@ class GlossaryService:
             if source_term and source_term.lower() in text_lower:
                 matched_ids.append(term_id)
 
-        if not matched_ids:
-            return []
+        relevant_terms = []
+        if matched_ids:
+            relevant_terms = (
+                db.query(GlossaryTerm).filter(GlossaryTerm.id.in_(matched_ids)).all()
+            )
 
-        # 3. Fetch full objects for matches
-        # We return them unsorted here, caller can sort if needed.
-        # But typically we want consistent order, e.g. by source_term length for replacement logic.
-        relevant_terms = (
-            db.query(GlossaryTerm).filter(GlossaryTerm.id.in_(matched_ids)).all()
-        )
+        # 4. Semantic Memory (LTM) Injection
+        try:
+            # Generate an embedding for the context window (first 1000 char to save cost/time)
+            context_text = text[:1000]
+            context_embedding = embedding_service.generate_embedding(context_text)
+
+            if context_embedding:
+                semantic_hits = embedding_service.find_similar_terms(
+                    db_session=db,
+                    query_embedding=context_embedding,
+                    project_id=project_id,
+                    limit=5, # Inject top 5 contextually relevant terms
+                )
+                
+                # Fetch full term models for semantic hits that aren't already matched
+                semantic_ids = [hit['term_id'] for hit in semantic_hits if hit['term_id'] not in matched_ids]
+                
+                if semantic_ids:
+                    semantic_terms = db.query(GlossaryTerm).filter(GlossaryTerm.id.in_(semantic_ids)).all()
+                    if semantic_terms:
+                        logger.info(f"Injecting {len(semantic_terms)} semantic terms from LTM")
+                        relevant_terms.extend(semantic_terms)
+        except Exception as e:
+            logger.warning(f"Failed to inject semantic memory terms: {e}", exc_info=True)
 
         return relevant_terms
 

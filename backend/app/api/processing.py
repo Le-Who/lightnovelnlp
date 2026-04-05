@@ -69,6 +69,7 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         # Сохраняем термины в БД с автоматическим утверждением
         saved_terms = []
         auto_approved_count = 0
+        auto_approved_term_ids = []
 
         # Optimization: Batch fetch existing terms to avoid N+1 queries
         # Normalize source_terms to lowercase for case-insensitive dedup (Bug 2 fix)
@@ -189,6 +190,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                 local_db.add(occurrence)
 
                 saved_terms.append(term)
+                if auto_approve:
+                    auto_approved_term_ids.append(term.id)
 
         logger.info(f"[STEP 3] Saved {len(saved_terms)} new terms to DB")
 
@@ -310,6 +313,11 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
         logger.info("[STEP 7] Committing all changes to DB")
         local_db.commit()
         logger.info("[STEP 7 DONE] Commit successful")
+
+        # Dispatch embedding tasks for auto-approved terms
+        from app.tasks.embedding_tasks import generate_term_embedding_task
+        for tid in auto_approved_term_ids:
+            generate_term_embedding_task.delay(tid)
 
         # Инвалидируем кэш глоссария для проекта
         try:

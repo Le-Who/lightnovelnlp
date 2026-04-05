@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.5.0] - 2026-04-05
+
+### 🧠 Semantic Memory Integration (pgvector LTM)
+
+#### Added
+- **Automated Embedding Generation**:
+  - `generate_term_embedding_task` (Celery background task) automatically creates 768-dim L2-normalized embeddings via `gemini-embedding-2-preview` when glossary terms are approved.
+  - Implemented triggers in `app/api/processing.py` (auto-approval) and `app/api/glossary.py` (manual approval/status edits).
+- **Semantic Translation Context**:
+  - `GlossaryService.get_relevant_terms` now computes an embedding for the active chapter context and injects the top 5 semantically-related (but unmentioned) "Hidden Lore" terms into the AI payload using `pgvector` `<=>` (cosine distance).
+- **Operations Endpoint**:
+  - `POST /api/v1/projects/{project_id}/backfill-embeddings`: Dispatches background embedding tasks for all approved terms missing an `embedding_vec` (essential for legacy project migrations).
+
+#### Fixed
+- **Testing Resilience against Partial Environments**:
+  - Localized `celery_app` imports in `processing.py` and `glossary.py` to prevent `ModuleNotFoundError` during CI testing environments lacking a global `celery` installation on Python 3.14.
+
+---
+
 ## [2.4.0] - 2026-04-05
 
 ### 🧪 Testing Hardening (Production-Grade AAA Suite)

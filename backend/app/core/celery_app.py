@@ -3,7 +3,10 @@ from celery import Celery
 from app.core.config import settings
 
 celery_app = Celery(
-    "lightnovelnlp", broker=settings.REDIS_URL, backend=settings.REDIS_URL
+    "lightnovelnlp",
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+    include=["app.tasks.nlp_tasks", "app.tasks.embedding_tasks"],
 )
 
 celery_app.conf.update(
@@ -14,5 +17,6 @@ celery_app.conf.update(
     enable_utc=True,
     task_routes={
         "app.tasks.nlp_tasks.*": {"queue": "nlp_queue"},
+        "app.tasks.embedding_tasks.*": {"queue": "nlp_queue"},
     },
 )

@@ -239,6 +239,12 @@ def update_glossary_term(
 
     db.commit()
     db.refresh(db_term)
+
+    # If status was updated to APPROVED, generate embedding
+    if updates.get("status") == TermStatus.APPROVED.value or updates.get("status") == TermStatus.APPROVED:
+        from app.tasks.embedding_tasks import generate_term_embedding_task
+        generate_term_embedding_task.delay(db_term.id)
+
     return db_term
 
 
@@ -264,6 +270,10 @@ def approve_glossary_term(term_id: int, db: Session = Depends(get_db)) -> Glossa
     db_term.approved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_term)
+
+    from app.tasks.embedding_tasks import generate_term_embedding_task
+    generate_term_embedding_task.delay(db_term.id)
+
     return db_term
 
 

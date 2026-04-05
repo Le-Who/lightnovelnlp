@@ -830,3 +830,40 @@ def calibrate_embedding_threshold(
             "p75_similarity": round(float(np.percentile(similarities, 75)), 4),
         },
     }
+
+
+@router.post("/{project_id}/backfill-embeddings")
+def backfill_project_embeddings(
+    project_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    DISPATCH embeddings generation tasks for all APPROVED glossary terms
+    that do not currently have an embedding. Useful for legacy projects.
+    """
+    from app.tasks.embedding_tasks import generate_term_embedding_task
+
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    terms_missing_embeddings = (
+        db.query(GlossaryTerm.id)
+        .filter(
+            GlossaryTerm.project_id == project_id,
+            GlossaryTerm.status == "approved",
+            GlossaryTerm.embedding_vec.is_(None)
+        )
+        .all()
+    )
+
+    term_ids = [t.id for t in terms_missing_embeddings]
+
+    for tid in term_ids:
+        generate_term_embedding_task.delay(tid)
+
+    return {
+        "project_id": project_id,
+        "message": f"Successfully dispatched {len(term_ids)} embedding generation tasks to background.",
+        "tasks_queued": len(term_ids),
+    }

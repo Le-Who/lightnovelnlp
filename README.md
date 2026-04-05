@@ -150,6 +150,7 @@ docker-compose up --build -d
 | `GET` | `/api/v1/projects/{id}/settings` | Настройки модели/thinking/языков для проекта |
 | `PATCH` | `/api/v1/projects/{id}/settings` | Обновить настройки проекта |
 | `POST` | `/api/v1/projects/{id}/calibrate-threshold` | Автокалибровка порога эмбеддинга |
+| `POST` | `/api/v1/projects/{id}/backfill-embeddings` | Генерация векторов для старых терминов |
 | `GET` | `/api/v1/projects/models/available` | Список доступных моделей и языков для UI |
 
 ### 📖 Chapters (Главы)
