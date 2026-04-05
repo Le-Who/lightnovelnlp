@@ -25,6 +25,7 @@ Columns added:
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -34,62 +35,83 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(conn, table: str, column: str) -> bool:
+    result = conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = :tbl AND column_name = :col"
+        ),
+        {"tbl": table, "col": column},
+    )
+    return result.fetchone() is not None
+
+
 def upgrade() -> None:
+    conn = op.get_bind()
+
     # ── chapters ─────────────────────────────────────────────────────────────
-    op.add_column(
-        "chapters",
-        sa.Column(
-            "analysis_status",
-            sa.String(20),
-            nullable=False,
-            server_default="idle",
-        ),
-    )
-    op.add_column(
-        "chapters",
-        sa.Column("analysis_error", sa.Text(), nullable=True),
-    )
-    op.add_column(
-        "chapters",
-        sa.Column(
-            "translation_status",
-            sa.String(20),
-            nullable=False,
-            server_default="idle",
-        ),
-    )
-    op.add_column(
-        "chapters",
-        sa.Column("translation_error", sa.Text(), nullable=True),
-    )
+    if not _column_exists(conn, "chapters", "analysis_status"):
+        op.add_column(
+            "chapters",
+            sa.Column(
+                "analysis_status",
+                sa.String(20),
+                nullable=False,
+                server_default="idle",
+            ),
+        )
+    if not _column_exists(conn, "chapters", "analysis_error"):
+        op.add_column(
+            "chapters",
+            sa.Column("analysis_error", sa.Text(), nullable=True),
+        )
+    if not _column_exists(conn, "chapters", "translation_status"):
+        op.add_column(
+            "chapters",
+            sa.Column(
+                "translation_status",
+                sa.String(20),
+                nullable=False,
+                server_default="idle",
+            ),
+        )
+    if not _column_exists(conn, "chapters", "translation_error"):
+        op.add_column(
+            "chapters",
+            sa.Column("translation_error", sa.Text(), nullable=True),
+        )
 
     # ── projects ──────────────────────────────────────────────────────────────
-    op.add_column(
-        "projects",
-        sa.Column(
-            "source_language",
-            sa.String(10),
-            nullable=False,
-            server_default="en",
-        ),
-    )
-    op.add_column(
-        "projects",
-        sa.Column(
-            "target_language",
-            sa.String(10),
-            nullable=False,
-            server_default="ru",
-        ),
-    )
-    op.add_column(
-        "projects",
-        sa.Column("custom_genre_instructions", sa.Text(), nullable=True),
-    )
-    op.add_column(
-        "projects",
-        sa.Column("embedding_threshold", sa.Float(), nullable=True),
-    )
+    if not _column_exists(conn, "projects", "source_language"):
+        op.add_column(
+            "projects",
+            sa.Column(
+                "source_language",
+                sa.String(10),
+                nullable=False,
+                server_default="en",
+            ),
+        )
+    if not _column_exists(conn, "projects", "target_language"):
+        op.add_column(
+            "projects",
+            sa.Column(
+                "target_language",
+                sa.String(10),
+                nullable=False,
+                server_default="ru",
+            ),
+        )
+    if not _column_exists(conn, "projects", "custom_genre_instructions"):
+        op.add_column(
+            "projects",
+            sa.Column("custom_genre_instructions", sa.Text(), nullable=True),
+        )
+    if not _column_exists(conn, "projects", "embedding_threshold"):
+        op.add_column(
+            "projects",
+            sa.Column("embedding_threshold", sa.Float(), nullable=True),
+        )
 
 
 def downgrade() -> None:

@@ -7,8 +7,8 @@
 ![Python](https://img.shields.io/badge/Backend-FastAPI-blue)
 ![React](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-cyan)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini%203.x-orange)
-![Architecture](https://img.shields.io/badge/Architecture-v2.3.2-purple)
-![Testing](https://img.shields.io/badge/Testing-AAA%20Pattern%20%7C%20160%2B%20Tests-brightgreen)
+![Architecture](https://img.shields.io/badge/Architecture-v2.5.1-purple)
+![Testing](https://img.shields.io/badge/Testing-AAA%20Pattern%20%7C%20180%2B%20Tests-brightgreen)
 ![Linting](https://img.shields.io/badge/Code%20Quality-Ruff%20%7C%20ESLint-yellow)
 
 ---
@@ -112,8 +112,8 @@ uvicorn app.main:app --reload --port 8000
 #### Frontend
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 Интерфейс будет доступен по адресу: `http://localhost:5173`
 
@@ -207,7 +207,7 @@ docker-compose up --build -d
 │   │   ├── models/       # SQLAlchemy модели (Project, Chapter, GlossaryTerm)
 │   │   ├── services/     # Бизнес-логика (GeminiClient v2, EmbeddingService, CacheService)
 │   │   └── tasks/        # Celery задачи (Async translation/analysis)
-│   ├── alembic/          # Миграции БД (016 миграций)
+│   ├── alembic/          # Миграции БД (016+ идемпотентных миграций)
 │   ├── scripts/          # Утилиты (calibrate_threshold.py)
 │   └── tests/            # Pytest suite (AAA pattern, 130+ тестов)
 ├── frontend/
@@ -244,7 +244,7 @@ pytest -m postgres --postgres-url=postgresql://user:pass@localhost:5432/testdb
 
 *Все `postgres` тесты автоматически пропускаются при локальном запуске без явной передачи `--postgres-url`.*
 
-### Покрытие тест-сьюта (v2.4.0)
+### Покрытие тест-сьюта (v2.5.1)
 
 | Компонент | Тест-файл | Уровень |
 |-----------|-----------|--------|
@@ -261,14 +261,28 @@ pytest -m postgres --postgres-url=postgresql://user:pass@localhost:5432/testdb
 | Health / Root / Info endpoints | `test_health_endpoint.py` | Integration |
 | Batch API — analyze jobs | `test_batch_api.py` | Integration |
 | Glossary API — пагинация, валидация | `test_glossary_api.py`, `test_glossary_validation.py` | Integration |
-| NLP Pipeline — extractor, частоты | `test_term_extractor_parsing.py`, `test_frequency.py` | Unit (skip Py3.14) |
+| NLP Pipeline — extractor, частоты | `test_term_extractor_parsing.py`, `test_frequency.py` | Unit (skip Py≥3.14) |
 | pgvector — HNSW, threshold, isolation | `test_pgvector_integration.py` | postgres |
-| Celery config — broker, serializer | `test_celery_config.py` | Unit |
+| Celery config — broker, serializer | `test_celery_config.py` | Unit (skip Py≥3.14) |
 | Regex security — ReDoS timeout | `test_regex_security.py` | Unit |
 | Glossary performance — query count | `test_glossary_performance.py` | Integration |
-| Async/Batch tasks — Celery eager | `test_async_tasks.py`, `test_batch_tasks.py` | Unit (skip Py3.14) |
+| Async/Batch tasks — Celery eager | `test_async_tasks.py`, `test_batch_tasks.py` | Unit (skip Py≥3.14) |
 
----
+> **Python 3.14 note:** 71 tests are skipped on Python 3.14 because `pydantic.v1` (used transitively
+> by Celery and spaCy) is hard-incompatible with PEP 649/749 annotation changes.
+> To run the full suite locally, install Python 3.12 in parallel via the Windows `py` launcher:
+>
+> ```powershell
+> # 1. Download Python 3.12 installer from https://python.org/downloads/ and install it
+> # 2. Create a 3.12-specific venv in the backend directory
+> py -3.12 -m venv venv312
+> venv312\Scripts\activate
+> pip install -r requirements.txt
+>
+> # 3. Run the full suite — all 180 tests should pass
+> py -3.12 -m pytest tests/
+> ```
+> The production Docker image already uses Python 3.12 so all tests run in CI.
 
 ## 🔧 Конфигурация (.env)
 

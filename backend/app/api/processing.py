@@ -17,7 +17,6 @@ from app.models.glossary import (
 )
 from app.models.project import AnalysisStatus, Chapter, Project, ProjectGenre
 from app.services.cache_service import cache_service
-from app.tasks.nlp_tasks import analyze_chapter_task
 
 router = APIRouter()
 
@@ -401,6 +400,7 @@ def analyze_chapter_async(
     db.commit()
 
     # Dispatch via Celery so retry/max_retries logic is active
+    from app.tasks.nlp_tasks import analyze_chapter_task  # lazy – avoids circular import
     analyze_chapter_task.delay(chapter_id)
 
     return {
