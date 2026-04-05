@@ -1,7 +1,8 @@
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 # Создаем единый Base для всех моделей
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 # Импортируем все модели для регистрации (после установки Base)

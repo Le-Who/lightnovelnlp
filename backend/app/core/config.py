@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
+    PROJECT_NAME: str = Field(default="Light Novel NLP API", description="Project Name")
+
     # Database
     DATABASE_URL: str = Field(..., description="PostgreSQL connection string")
 
@@ -137,7 +139,7 @@ class Settings(BaseSettings):
     # Computed Fields
     # ──────────────────────────────────────────────
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def GEMINI_API_KEYS(self) -> List[str]:
         """Парсит GEMINI_API_KEYS_RAW в список ключей."""
@@ -147,7 +149,7 @@ class Settings(BaseSettings):
             key.strip() for key in self.GEMINI_API_KEYS_RAW.split(",") if key.strip()
         ]
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def ALLOWED_ORIGINS(self) -> List[str]:
         """Парсит ALLOWED_ORIGINS_RAW в список origins."""
@@ -159,19 +161,19 @@ class Settings(BaseSettings):
             if origin.strip()
         ]
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def GEMINI_RPM_LIMITS_MAP(self) -> dict[str, int]:
         """Парсит GEMINI_RPM_LIMITS в словарь {model: rpm_limit}."""
         return self._parse_limits_string(self.GEMINI_RPM_LIMITS)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def GEMINI_RPD_LIMITS_MAP(self) -> dict[str, int]:
         """Парсит GEMINI_RPD_LIMITS в словарь {model: rpd_limit}."""
         return self._parse_limits_string(self.GEMINI_RPD_LIMITS)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def GEMINI_FALLBACK_MODELS_LIST(self) -> List[str]:
         """Парсит GEMINI_FALLBACK_MODELS в список моделей."""
@@ -235,4 +237,4 @@ class Settings(BaseSettings):
 
 
 # Создаем экземпляр настроек
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

@@ -85,7 +85,8 @@ class TestBatchTranslateTask:
         self, mock_translate, mock_session_cls, db
     ):
         # Arrange — inject real DB session so we can inspect final state
-        mock_session_cls.return_value = db
+        from conftest import TestingSessionLocal
+        mock_session_cls.return_value = TestingSessionLocal()
         mock_translate.return_value = {"status": "success", "chapter_id": 10}
 
         from conftest import make_project
@@ -109,7 +110,8 @@ class TestBatchTranslateTask:
         self, mock_translate, mock_session_cls, db
     ):
         # Arrange — first item fails, second succeeds
-        mock_session_cls.return_value = db
+        from conftest import TestingSessionLocal
+        mock_session_cls.return_value = TestingSessionLocal()
         mock_translate.side_effect = [
             RuntimeError("Gemini timeout"),
             {"status": "success", "chapter_id": 20},
@@ -134,7 +136,8 @@ class TestBatchTranslateTask:
     @patch("app.tasks.nlp_tasks.SessionLocal")
     def test_returns_early_when_batch_job_not_found(self, mock_session_cls, db):
         # Arrange
-        mock_session_cls.return_value = db
+        from conftest import TestingSessionLocal
+        mock_session_cls.return_value = TestingSessionLocal()
 
         # Act — job_id 99999 does not exist in DB, must not raise
         process_batch_translate_task(99999)
@@ -169,7 +172,8 @@ class TestBatchAnalyzeTask:
         self, mock_process, mock_session_cls, db
     ):
         # Arrange
-        mock_session_cls.return_value = db
+        from conftest import TestingSessionLocal
+        mock_session_cls.return_value = TestingSessionLocal()
         mock_process.return_value = {"terms_found": 3}
 
         from conftest import make_project

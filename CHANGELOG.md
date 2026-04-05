@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2.5.1] - 2026-04-05
 
+### ✨ Architecture & Stabilization
+
+- **Python 3.14 Official Compatibility:**
+  - Upgraded core NLP dependencies (`spaCy >= 3.8.13`, `confection >= 1.3.2`) to fix PEP 649/749 compilation failures that previously crashed Python 3.14 natively.
+  - Stripped out test-skip workarounds for Python 3.14. Native NLP tests are now stable.
+
+- **Test Suite Determinism & Celery 5.6 Compliance:**
+  - **Celery 5 Task Bindings**: Fixed `TypeError` regressions traversing bound parameters. Refactored pytest calls from `.run(mock_self)` to properly call `.run()` locally on patched references with a natively mocked `.retry()` attribute.
+  - **SQLAlchemy Transaction Leakage Fix**: Prevented `InvalidRequestError` failures in batch processing tests where Celery tasks called `.close()` on shared in-memory `.sqlite` pytest connection pools by wrapping test transactions inside a safe `TestingSessionLocal` boundary.
+
+- **Deep Typing & Mypy Strict Compliance:**
+  - Resolved >150 strict typing errors introduced by Pydantic V2 and SQLAlchemy 2.0.
+  - Refactored dynamic legacy `declarative_base()` usage to explicitly subclass from SQLAlchemy's `DeclarativeBase` for type hint propagation.
+  - Resolved namespace import masking in `app/main.py`.
+  - Suppressed Pydantic V2 internal meta-property decorators (`@computed_field`) locally for legacy AST environments missing the pydantic-mypy plugin.
+
 ### 🚑 Production Hotfixes (3 Critical Issues)
 
 #### Fixed

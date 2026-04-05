@@ -43,14 +43,12 @@ class TestTranslateChapterTask:
         mock_session.return_value = mock_db
         mock_translate.return_value = {"status": "success", "chapter_id": 1}
 
-        # Act — bypass broker, call the underlying function directly
-        mock_self = MagicMock()
-        result = translate_chapter_task.run(mock_self, 1)
+        # Act — bypass broker, call the underlying un-wrapped code via run()
+        result = translate_chapter_task.run(1)
 
         # Assert
         mock_translate.assert_called_once_with(mock_db, 1)
         assert result == {"status": "success", "chapter_id": 1}
-        mock_self.retry.assert_not_called()
 
     @patch("app.tasks.nlp_tasks.SessionLocal")
     @patch("app.tasks.nlp_tasks.TranslationService.translate_chapter")
@@ -63,8 +61,7 @@ class TestTranslateChapterTask:
         mock_translate.return_value = {"status": "success", "chapter_id": 1}
 
         # Act
-        mock_self = MagicMock()
-        translate_chapter_task.run(mock_self, 1)
+        translate_chapter_task.run(1)
 
         # Assert — session must be closed even on success to prevent connection leaks
         mock_db.close.assert_called_once()
@@ -80,17 +77,15 @@ class TestTranslateChapterTask:
         exception = RuntimeError("Gemini offline")
         mock_translate.side_effect = exception
 
-        mock_self = MagicMock()
         from celery.exceptions import Retry
 
-        mock_self.retry.side_effect = Retry("Task is being retried")
-
         # Act
-        with pytest.raises(Retry):
-            translate_chapter_task.run(mock_self, 1)
+        with patch.object(translate_chapter_task, "retry", side_effect=Retry("Task is being retried")) as mock_retry:
+            with pytest.raises(Retry):
+                translate_chapter_task.run(1)
 
-        # Assert — retry called with correct parameters
-        mock_self.retry.assert_called_once_with(exc=exception, countdown=60)
+            # Assert — retry called with correct parameters
+            mock_retry.assert_called_once_with(exc=exception, countdown=60)
         # Assert — session always closed (prevents resource leaks)
         mock_db.close.assert_called_once()
 
@@ -114,14 +109,12 @@ class TestAnalyzeChapterTask:
         }
 
         # Act
-        mock_self = MagicMock()
-        result = analyze_chapter_task.run(mock_self, 5)
+        result = analyze_chapter_task.run(5)
 
         # Assert
         mock_process.assert_called_once_with(5, mock_db)
         assert result["status"] == "completed"
         assert result["chapter_id"] == 5
-        mock_self.retry.assert_not_called()
 
     @patch("app.tasks.nlp_tasks.SessionLocal")
     @patch("app.tasks.nlp_tasks.process_chapter_sync")
@@ -134,13 +127,11 @@ class TestAnalyzeChapterTask:
         mock_process.return_value = {"error": "Chapter not found", "chapter_id": 99}
 
         # Act
-        mock_self = MagicMock()
-        result = analyze_chapter_task.run(mock_self, 99)
+        result = analyze_chapter_task.run(99)
 
         # Assert — task returns error dict without retrying (process_chapter_sync handled it)
         assert result["status"] == "error"
         assert result["error"] == "Chapter not found"
-        mock_self.retry.assert_not_called()
 
     @patch("app.tasks.nlp_tasks.SessionLocal")
     @patch("app.tasks.nlp_tasks.process_chapter_sync")
@@ -153,8 +144,7 @@ class TestAnalyzeChapterTask:
         mock_process.return_value = {"chapter_id": 5, "extracted_terms": 3}
 
         # Act
-        mock_self = MagicMock()
-        analyze_chapter_task.run(mock_self, 5)
+        analyze_chapter_task.run(5)
 
         # Assert — session closed even on success
         mock_db.close.assert_called_once()
@@ -170,16 +160,14 @@ class TestAnalyzeChapterTask:
         exception = ConnectionError("Gemini API timeout")
         mock_process.side_effect = exception
 
-        mock_self = MagicMock()
         from celery.exceptions import Retry
 
-        mock_self.retry.side_effect = Retry("Task is being retried")
-
         # Act
-        with pytest.raises(Retry):
-            analyze_chapter_task.run(mock_self, 5)
+        with patch.object(analyze_chapter_task, "retry", side_effect=Retry("Task is being retried")) as mock_retry:
+            with pytest.raises(Retry):
+                analyze_chapter_task.run(5)
 
-        # Assert — retry called with correct parameters
-        mock_self.retry.assert_called_once_with(exc=exception, countdown=60)
+            # Assert — retry called with correct parameters
+            mock_retry.assert_called_once_with(exc=exception, countdown=60)
         # Assert — session always closed (prevents resource leaks)
         mock_db.close.assert_called_once()

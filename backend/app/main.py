@@ -16,7 +16,7 @@ try:
     from app.core.exceptions import APIKeyExhausted, RateLimitExceeded
     from app.db import engine
     from app.deps import get_db
-    import app.models  # noqa: F401  # Импортируем все модели для регистрации
+    from app import models  # noqa: F401  # Импортируем все модели для регистрации
 
     logger.info("Configuration loaded successfully")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
@@ -79,8 +79,7 @@ async def lifespan(app: FastAPI):
 # Создаем таблицы
 # Base.metadata.create_all(bind=engine)  # Убрано - используем Alembic для миграций
 
-# type: ignore[has-type] - mypy confuses var 'app' with the 'app' module
-app: FastAPI = FastAPI(
+app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
     docs_url="/docs",
