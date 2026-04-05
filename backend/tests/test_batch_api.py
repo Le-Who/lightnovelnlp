@@ -1,57 +1,88 @@
+"""
+Integration tests — Batch API endpoints.
+
+Level: Integration (FastAPI TestClient + SQLite in-memory).
+Covers:
+  - POST /batch/{project_id}/analyze-chapters → creates batch job with correct counts.
+  - POST /batch/{project_id}/analyze-chapters with no unprocessed chapters → returns 0 total.
+  - Batch job is persisted to DB with correct metadata.
+  - Background task is dispatched exactly once with the batch_job_id.
+
+AAA pattern enforced throughout. Arrange uses factory helpers or direct DB inserts —
+resources are never created through the API in Arrange.
+"""
+
 from datetime import datetime, timezone
 from unittest.mock import patch
 
+import pytest
+
 from app.models.glossary import BatchJob
-from app.models.project import Chapter, Project
+from app.models.project import Chapter
+from conftest import make_project
 
 
-def test_create_batch_analyze_all_chapters(client, db):
-    # 1. Setup: Create a Project and Chapters
-    project = Project(name="Test Batch Project", genre="fantasy")
-    db.add(project)
-    db.commit()
-    db.refresh(project)
+# ── POST /batch/{project_id}/analyze-chapters ─────────────────────────────────
 
-    # Processed chapter (should be ignored)
-    processed_chapter = Chapter(
-        project_id=project.id,
-        title="Chapter 1",
-        original_text="This is processed.",
-        processed_at=datetime.now(timezone.utc),
-    )
-    # Unprocessed chapter (should be included)
-    unprocessed_chapter = Chapter(
-        project_id=project.id,
-        title="Chapter 2",
-        original_text="This needs analysis.",
-        processed_at=None,
-    )
 
-    db.add(processed_chapter)
-    db.add(unprocessed_chapter)
-    db.commit()
+@pytest.mark.integration
+class TestBatchAnalyzeChapters:
+    def test_creates_batch_job_for_unprocessed_chapters(self, client, db):
+        # Arrange
+        project = make_project(db, name="Batch API Test Project")
+        db.add(
+            Chapter(
+                project_id=project.id,
+                title="Chapter 1",
+                original_text="Already analysed text.",
+                processed_at=datetime.now(timezone.utc),  # already done
+            )
+        )
+        db.add(
+            Chapter(
+                project_id=project.id,
+                title="Chapter 2",
+                original_text="This needs analysis.",
+                processed_at=None,  # unprocessed → should be included
+            )
+        )
+        db.commit()
 
-    # 2. Mock the background task
-    # We mock where it is imported in the API module
-    with patch("app.api.batch.process_batch_analyze_task") as mock_task:
-        # 3. Action: Call the API
-        response = client.post(f"/batch/{project.id}/analyze-chapters")
+        # Act
+        with patch("app.api.batch.process_batch_analyze_task") as mock_task:
+            response = client.post(f"/batch/{project.id}/analyze-chapters")
 
-        # 4. Verify Response
+        # Assert — response contract
         assert response.status_code == 200
         data = response.json()
-
         assert data["status"] == "pending"
-        assert data["total_items"] == 1
+        assert data["total_items"] == 1  # only the unprocessed chapter
         assert "batch_job_id" in data
         assert data["message"] == "Batch analysis job created"
 
-        batch_job_id = data["batch_job_id"]
+        # Assert — background task dispatched exactly once with the correct job id
+        mock_task.assert_called_once_with(data["batch_job_id"])
 
-        # 5. Verify Background Task was called
-        mock_task.assert_called_once_with(batch_job_id)
+    def test_persists_batch_job_to_database_with_correct_metadata(self, client, db):
+        # Arrange
+        project = make_project(db, name="Batch DB Persistence Test")
+        db.add(
+            Chapter(
+                project_id=project.id,
+                title="Chapter 1",
+                original_text="Needs work.",
+                processed_at=None,
+            )
+        )
+        db.commit()
 
-        # 6. Verify Database State
+        # Act
+        with patch("app.api.batch.process_batch_analyze_task"):
+            response = client.post(f"/batch/{project.id}/analyze-chapters")
+
+        batch_job_id = response.json()["batch_job_id"]
+
+        # Assert — DB state reflects the API response
         batch_job = db.query(BatchJob).filter(BatchJob.id == batch_job_id).first()
         assert batch_job is not None
         assert batch_job.project_id == project.id
@@ -60,29 +91,26 @@ def test_create_batch_analyze_all_chapters(client, db):
         assert batch_job.processed_items == 0
         assert batch_job.failed_items == 0
 
+    def test_returns_zero_total_when_all_chapters_are_already_processed(
+        self, client, db
+    ):
+        # Arrange
+        project = make_project(db, name="All Processed Project")
+        db.add(
+            Chapter(
+                project_id=project.id,
+                title="Chapter 1",
+                original_text="Already done.",
+                processed_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
 
-def test_create_batch_analyze_no_chapters(client, db):
-    # 1. Setup: Create a Project with only processed chapters
-    project = Project(name="Test Empty Batch Project", genre="scifi")
-    db.add(project)
-    db.commit()
-    db.refresh(project)
+        # Act
+        response = client.post(f"/batch/{project.id}/analyze-chapters")
 
-    processed_chapter = Chapter(
-        project_id=project.id,
-        title="Chapter 1",
-        original_text="Already done.",
-        processed_at=datetime.now(timezone.utc),
-    )
-    db.add(processed_chapter)
-    db.commit()
-
-    # 2. Action: Call the API
-    response = client.post(f"/batch/{project.id}/analyze-chapters")
-
-    # 3. Verify Response
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["total_items"] == 0
-    assert "No unprocessed chapters found" in data["message"]
+        # Assert
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_items"] == 0
+        assert "No unprocessed chapters found" in data["message"]

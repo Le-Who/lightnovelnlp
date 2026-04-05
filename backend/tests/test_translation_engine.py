@@ -1,47 +1,72 @@
+"""
+Unit tests — TranslationEngine._build_translation_prompt.
+
+Level: Unit (pure function, no DB or network).
+Covers:
+  - Wuxia genre → prompt contains martial-arts genre cue and elevated-tone instruction.
+  - Sci-fi genre → prompt contains science-fiction cue.
+  - No genre → prompt contains no <style> tag.
+  - Character relationships supplied → prompt embeds <character_relationships> block.
+"""
+
+import pytest
+
 from app.core.translation_engine import translation_engine
 
 
-def test_build_prompt_wuxia_genre():
-    engine = translation_engine
+@pytest.mark.unit
+class TestBuildTranslationPrompt:
+    def test_wuxia_genre_injects_martial_arts_style_cues(self):
+        # Arrange
+        engine = translation_engine
 
-    prompt = engine._build_translation_prompt(
-        text="Hello", glossary_terms=[], genre="WUXIA"
-    )
+        # Act
+        prompt = engine._build_translation_prompt(
+            text="Hello", glossary_terms=[], genre="WUXIA"
+        )
 
-    # Wuxia style now in English: martial-arts genre
-    assert "martial-arts genre" in prompt
-    assert "Elevated tone" in prompt
+        # Assert
+        assert "martial-arts genre" in prompt
+        assert "Elevated tone" in prompt
 
+    def test_scifi_genre_injects_science_fiction_style_cue(self):
+        # Arrange
+        engine = translation_engine
 
-def test_build_prompt_scifi_genre():
-    engine = translation_engine
+        # Act
+        prompt = engine._build_translation_prompt(
+            text="Hello", glossary_terms=[], genre="scifi"
+        )
 
-    prompt = engine._build_translation_prompt(
-        text="Hello", glossary_terms=[], genre="scifi"
-    )
+        # Assert
+        assert "science-fiction" in prompt
 
-    assert "science-fiction" in prompt
+    def test_no_genre_omits_style_xml_tag(self):
+        # Arrange
+        engine = translation_engine
 
+        # Act
+        prompt = engine._build_translation_prompt(
+            text="Hello", glossary_terms=[], genre=None
+        )
 
-def test_build_prompt_no_genre():
-    engine = translation_engine
+        # Assert — style block must be absent when genre is not provided
+        assert "<style>" not in prompt
 
-    prompt = engine._build_translation_prompt(
-        text="Hello", glossary_terms=[], genre=None
-    )
+    def test_relationships_inject_character_relationships_block(self):
+        # Arrange
+        engine = translation_engine
+        relationships = [
+            {"source": "A", "target": "B", "type": "enemy", "description": "Hates him"}
+        ]
 
-    assert "<style>" not in prompt
+        # Act
+        prompt = engine._build_translation_prompt(
+            text="Hello", glossary_terms=[], relationships=relationships
+        )
 
-
-def test_build_prompt_with_relationships():
-    engine = translation_engine
-    rels = [{"source": "A", "target": "B", "type": "enemy", "description": "Hates him"}]
-
-    prompt = engine._build_translation_prompt(
-        text="Hello", glossary_terms=[], relationships=rels
-    )
-
-    assert "<character_relationships>" in prompt
-    assert "A" in prompt
-    assert "B" in prompt
-    assert "enemy" in prompt
+        # Assert
+        assert "<character_relationships>" in prompt
+        assert "A" in prompt
+        assert "B" in prompt
+        assert "enemy" in prompt

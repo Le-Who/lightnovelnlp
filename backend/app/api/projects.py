@@ -1,4 +1,5 @@
 import io
+import logging
 from typing import List
 from urllib.parse import quote
 
@@ -52,6 +53,7 @@ except ImportError:
 from app.core.regex_utils import safe_finditer
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class HTMLStripper(HTMLParser):
@@ -281,9 +283,9 @@ def upload_chapters_from_file(
     db: Session = Depends(get_db),
 ):
     """Загрузить главы из текстового файла."""
-    print(f"DEBUG: Receiving upload for project {project_id}")
-    print(f"DEBUG: Filename: {file.filename}, Content-Type: {file.content_type}")
-    print(f"DEBUG: Pattern: {chapter_pattern}")
+    logger.debug("Receiving upload for project %s", project_id)
+    logger.debug("Filename: %s, Content-Type: %s", file.filename, file.content_type)
+    logger.debug("Chapter pattern: %s", chapter_pattern)
 
     # Проверяем существование проекта
     project = db.get(Project, project_id)
@@ -302,7 +304,7 @@ def upload_chapters_from_file(
         created_chapters = []
 
         if filename.endswith(".epub") and epub is not None:
-            print("DEBUG: Processing EPUB file")
+            logger.debug("Processing EPUB file")
             # Save to temporary file since ebooklib expects a file path
             with open("temp.epub", "wb") as f:
                 f.write(content_bytes)
@@ -357,7 +359,7 @@ def upload_chapters_from_file(
         else:
             # Читаем содержимое txt файла
             content = content_bytes.decode("utf-8")
-        print(f"DEBUG: File content length: {len(content)}")
+        logger.debug("File content length: %d", len(content))
 
         # Разделяем текст на главы по паттерну
         pattern = re.compile(f"\\n({chapter_pattern})", re.IGNORECASE)
@@ -370,12 +372,12 @@ def upload_chapters_from_file(
                 detail="Chapter detection timed out. Please simplify your regex pattern or reduce file size.",
             )
 
-        print(f"DEBUG: Found {len(matches)} matches")
+        logger.debug("Found %d chapter matches", len(matches))
 
         if not matches:
             # Try fallback to just reading the whole file as one chapter if no pattern matches?
             # Or just error. User wants explicit error.
-            print(f"DEBUG: No matches found for pattern '{chapter_pattern}'")
+            logger.debug("No matches found for pattern '%s'", chapter_pattern)
             raise HTTPException(
                 status_code=400,
                 detail=f"No chapters found with the specified pattern: '{chapter_pattern}'",

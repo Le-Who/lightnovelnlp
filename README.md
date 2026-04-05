@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-cyan)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini%203.x-orange)
 ![Architecture](https://img.shields.io/badge/Architecture-v2.3.2-purple)
-![Testing](https://img.shields.io/badge/Testing-AAA%20Pattern%20%7C%20130%2B%20Tests-brightgreen)
+![Testing](https://img.shields.io/badge/Testing-AAA%20Pattern%20%7C%20160%2B%20Tests-brightgreen)
 ![Linting](https://img.shields.io/badge/Code%20Quality-Ruff%20%7C%20ESLint-yellow)
 
 ---
@@ -242,6 +242,30 @@ pytest -m postgres --postgres-url=postgresql://user:pass@localhost:5432/testdb
 ```
 
 *Все `postgres` тесты автоматически пропускаются при локальном запуске без явной передачи `--postgres-url`.*
+
+### Покрытие тест-сьюта (v2.4.0)
+
+| Компонент | Тест-файл | Уровень |
+|-----------|-----------|--------|
+| GeminiClient — rate limits / cooldown / failover | `test_gemini_client.py`, `test_gemini_failover.py`, `test_gemini_failover_complete.py` | Unit |
+| GlossaryService — фильтрация, сортировка, DB | `test_glossary_service_aaa.py` | Unit + Integration |
+| TranslationService — контракт, кэш, глоссарий | `test_translation_service_contract.py` | Integration |
+| TranslationEngine — промпты, жанры | `test_translation_engine.py` | Unit |
+| CacheService — REST/TCP fallback, счётчики | `test_cache_service.py` | Unit |
+| BackgroundTask — статусы, resource cleanup | `test_background_task.py` | Unit |
+| ContextSummarizer — окно, backstory | `test_context_summarizer.py` | Unit |
+| ReviewJsonParser — AAA рефакторинг | `test_review_json_parser.py` | Unit |
+| Projects API — CRUD | `test_api_projects.py` | Integration |
+| Chapters API — CRUD | `test_api_chapters.py` | Integration |
+| Health / Root / Info endpoints | `test_health_endpoint.py` | Integration |
+| Batch API — analyze jobs | `test_batch_api.py` | Integration |
+| Glossary API — пагинация, валидация | `test_glossary_api.py`, `test_glossary_validation.py` | Integration |
+| NLP Pipeline — extractor, частоты | `test_term_extractor_parsing.py`, `test_frequency.py` | Unit (skip Py3.14) |
+| pgvector — HNSW, threshold, isolation | `test_pgvector_integration.py` | postgres |
+| Celery config — broker, serializer | `test_celery_config.py` | Unit |
+| Regex security — ReDoS timeout | `test_regex_security.py` | Unit |
+| Glossary performance — query count | `test_glossary_performance.py` | Integration |
+| Async/Batch tasks — Celery eager | `test_async_tasks.py`, `test_batch_tasks.py` | Unit (skip Py3.14) |
 
 ---
 

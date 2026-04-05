@@ -163,8 +163,7 @@ def test_glossary_terms_query_count(db, query_counter):
     )
     end_time = time.time()
 
-    print(f"\nQuery count: {query_counter.count}")
-    print(f"Execution time: {end_time - start_time:.4f}s")
+    _elapsed = end_time - start_time  # measured but not asserted (benchmark only)
 
     # Validate result correctness
     assert len(results) == 50

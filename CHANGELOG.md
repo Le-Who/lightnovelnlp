@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.0] - 2026-04-05
+
+### 🧪 Testing Hardening (Production-Grade AAA Suite)
+
+#### Refactored
+- **`test_batch_api.py`**: Migrated from numbered-comment anti-pattern to strict AAA sections; replaced API-based project creation in Arrange with `make_project` factory helper; added `@pytest.mark.integration` class decorator.
+- **`test_glossary_validation.py`**: Replaced API-based Arrange with factory helpers; split inline test into four focused isolated test methods; added `@pytest.mark.integration`.
+- **`test_context_summarizer.py`**: Added `@pytest.mark.unit`; wrapped in class; added explicit AAA section comments; renamed tests to behavior-description naming convention.
+- **`test_translation_engine.py`**: Added `@pytest.mark.unit`; wrapped in class; added AAA section comments and expanded coverage with a relationship block test.
+- **`test_gemini_client.py`**: Added `@pytest.mark.unit` to all classes; added AAA labels to every method; strengthened `test_runs_api_key_exhausted_when_all_keys_are_in_cooldown` to use a future ISO timestamp instead of ambiguous `"1"` string mock.
+- **`test_glossary_performance.py`**: Removed two `print()` debug statements; timing captured in `_elapsed` variable (no CI stdout pollution).
+
+#### Added
+- **`test_api_chapters.py`** (new): 15 integration tests covering Chapter CRUD endpoints: `GET /{project_id}/chapters`, `POST /{project_id}/chapters`, `GET/DELETE/PUT /chapters/{id}`. Previously uncovered critical path.
+- **`test_health_endpoint.py`** (new): 8 integration tests covering `/`, `/health`, and `/info` endpoints including healthy, degraded (Redis down), and exception scenarios. Critical: these are Docker/Kubernetes liveness probe targets.
+
+#### Fixed (Production Code)
+- **`app/api/projects.py`**: Replaced 5 `print(f"DEBUG: ...")` statements in `upload_chapters_from_file` with `logger.debug(...)` calls using proper `%s` placeholder format. Eliminated debug stdout leakage in production and CI environments.
+- **`app/api/projects.py`**: Added `import logging` and module-level `logger = logging.getLogger(__name__)` after all import declarations.
+
+### ✅ Verified
+- Backend test suite: **109 passed, 71 skipped, 0 failures** in 3.94s
+- `ruff check .`: **All checks passed** (0 violations)
+- Python 3.14 environment: All `app.main`-dependent (TestClient) tests gracefully skip; 109 unit tests pass without network or DB dependencies
+
+---
+
 ## [2.3.2] - 2026-04-05
 
 ### 🚀 Added
