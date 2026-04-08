@@ -52,7 +52,7 @@ class TranslationService:
             )
             if glossary_terms:
                 relevant_relationships = TranslationService._get_relevant_relationships(
-                    db, glossary_terms
+                    db, glossary_terms, as_of_chapter=chapter.order
                 )
 
         # 2. Кэш
@@ -81,9 +81,9 @@ class TranslationService:
                 "cached": True,
             }
 
-        # 3. Контекст проекта
+        # 3. Контекст проекта (только главы ДО текущей, по убыванию)
         project_summary = TranslationService._get_project_summary(
-            db, chapter.project_id
+            db, chapter.project_id, current_chapter_order=chapter.order
         )
 
         # 3.1 Контекст предыдущей главы
@@ -153,10 +153,10 @@ class TranslationService:
             }
 
         relevant_relationships = TranslationService._get_relevant_relationships(
-            db, glossary_terms
+            db, glossary_terms, as_of_chapter=chapter.order
         )
         project_summary = TranslationService._get_project_summary(
-            db, chapter.project_id
+            db, chapter.project_id, current_chapter_order=chapter.order
         )
 
         previous_context = None
@@ -518,55 +518,59 @@ Fix every listed violation. Do not change anything else.
 
     @staticmethod
     def _get_relevant_relationships(
-        db: Session, glossary_terms: List[GlossaryTerm]
+        db: Session, glossary_terms: List[GlossaryTerm], as_of_chapter: int | None = None
     ) -> List[Dict[str, Any]]:
-        """Извлекает связи между переданными терминами."""
-        from app.models.glossary import (
-            TermRelationship,
-        )  # local import avoids circular dep
-
+        """Извлекает связи между переданными терминами с учетом временной шкалы."""
         if len(glossary_terms) < 2:
             return []
 
+        from app.services.graph_service import graph_service
+
         term_ids = [t.id for t in glossary_terms]
+        project_id = glossary_terms[0].project_id
 
-        relationships_db = (
-            db.query(TermRelationship)
-            .filter(
-                TermRelationship.source_term_id.in_(term_ids),
-                TermRelationship.target_term_id.in_(term_ids),
-            )
-            .all()
-        )
-
-        term_map = {t.id: t.source_term for t in glossary_terms}
-
-        return [
-            {
-                "source": term_map.get(r.source_term_id, "Unknown"),
-                "target": term_map.get(r.target_term_id, "Unknown"),
-                "type": r.relation_type,
-                "description": r.context or "",
-            }
-            for r in relationships_db
-        ]
+        return graph_service.get_active_relationships(db, project_id, term_ids, as_of_chapter)
 
     @staticmethod
-    def _get_project_summary(db: Session, project_id: int) -> Optional[str]:
-        """Вспомогательный метод для получения саммари проекта."""
-        project_chapters = (
-            db.query(Chapter)
-            .filter(Chapter.project_id == project_id, Chapter.summary.isnot(None))
-            .order_by(Chapter.id)
+    def _get_project_summary(
+        db: Session,
+        project_id: int,
+        current_chapter_order: int | None = None,
+    ) -> Optional[str]:
+        """
+        Build a project-level context from the most recent chapters preceding the
+        current one.
+
+        Previously this queried the first-5 chapters by primary-key, giving the
+        LLM the beginning-of-book context for every chapter — a critical accuracy
+        bug for long novels.
+
+        Strategy:
+          - Filter to chapters BEFORE the current one (by ``order`` field).
+          - Sort newest-first, take the 10 most recent.
+          - Reverse back to chronological order for create_project_summary().
+          - Window of 10 gives richer recent context while staying within token budget.
+        """
+        q = db.query(Chapter).filter(
+            Chapter.project_id == project_id,
+            Chapter.summary.isnot(None),
+        )
+        if current_chapter_order is not None:
+            q = q.filter(Chapter.order < current_chapter_order)
+
+        recent_chapters = (
+            q.order_by(Chapter.order.desc())
+            .limit(10)
             .options(load_only(Chapter.title, Chapter.summary))
-            .limit(5)
             .all()
         )
+        # Restore chronological order for the summariser
+        recent_chapters = list(reversed(recent_chapters))
 
-        if len(project_chapters) > 1:
+        if len(recent_chapters) > 1:
             chapters_data = [
                 {"title": ch.title, "summary": ch.summary, "original_text": ""}
-                for ch in project_chapters
+                for ch in recent_chapters
             ]
             return context_summarizer.create_project_summary(chapters_data)
         return None

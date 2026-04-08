@@ -265,6 +265,8 @@ def process_chapter_sync(chapter_id: int, db: Session = None):
                             relation_type=relation_type,
                             confidence=confidence,
                             context=context,
+                            source_chapter_id=chapter.id,
+                            valid_from_chapter=chapter.order,
                         )
                         local_db.add(relationship)
                 except Exception as rel_save_error:

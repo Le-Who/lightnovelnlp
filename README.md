@@ -41,6 +41,7 @@
 *   **AI Engine**: Google Gemini 3.x / 2.5.x с автоопределением ThinkingConfig и per-task model routing.
 *   **Async Core**: Celery + Redis для очереди задач (анализ и перевод могут занимать минуты).
 *   **Database**: PostgreSQL + pgvector для хранения текстов, связей и семантических эмбеддингов.
+*   **MemPalace Memory**: Temporal Knowledge Graph для отслеживания сюжета в стиле AAAK, с Implicit Caching для максимального переиспользования контекста Gemini 3.x.
 *   **Rate Limiting**: Per-key per-model RPM/RPD трекинг через Redis с ротацией ключей и soft cooldown.
 
 ---
@@ -59,6 +60,7 @@
 *   **Частотный анализ**: Подсчет, как часто термин встречается в тексте, для приоритизации перевода.
 *   **Контекст**: Определение типа термина (Person, Location, Organization, Ability).
 *   **Semantic Memory (LTM)**: pgvector эмбеддинги (gemini-embedding-2-preview, 768-dim MRL) для семантического поиска связанных терминов.
+*   **MemPalace Analytics**: Temporal Knowledge Graph с отслеживанием сюжета во времени (Narrative Threads) и выявлением логических противоречий.
 
 ### 3. Перевод с Контекстом
 *   **Task-aware model routing**: Разные модели для разных стадий (gemini-3.1-flash-lite для extraction, gemini-3-flash для translation).

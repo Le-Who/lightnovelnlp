@@ -121,6 +121,9 @@ class Project(Base):
     batch_job_items = relationship(
         "BatchJobItem", back_populates="project", cascade="all, delete-orphan"
     )
+    narrative_threads = relationship(
+        "NarrativeThread", back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Chapter(Base):

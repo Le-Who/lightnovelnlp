@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ProjectPage from './pages/ProjectPage.jsx'
+import ProjectAnalyticsPage from './pages/ProjectAnalyticsPage.jsx'
 import { AppLayout } from './components/layout/AppLayout'
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/projects/:projectId" element={<ProjectPage />} />
+          <Route path="/projects/:projectId/analytics" element={<ProjectAnalyticsPage />} />
         </Routes>
       </AppLayout>
     </Router>

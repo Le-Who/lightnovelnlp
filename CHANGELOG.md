@@ -4,8 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.5.1] - 2026-04-05
+## [2.6.0] - 2026-04-08
 
+### 🧠 MemPalace Memory Architecture
+- **Translation Pipeline Implicit Caching**: Restructured `prompt` payloads to push static content (system, glossary, style) to the top, maximizing cache hit rate for Gemini 3.x implicit caching engine. Fixed recent chapter context lookback bug in `_get_project_summary`.
+- **Temporal Knowledge Graph**: Added `valid_from_chapter`, `valid_to_chapter`, and `superseded_by_id` arrays to `TermRelationship`. Replaced static relationship pulls with dynamic temporal filtering (`graph_service`).
+- **Glossary Consistency Checker**: Added semantic deduplication and prefix checks via `consistency_checker.py`.
+- **Narrative Analytics Engine**: Automatic subplot and narrative thread mapping across chapters based on TermOccurrence co-occurrence distributions (`NarrativeThread` and `ThreadAnchor`).
+- **MemPalace Analytics Dashboard**: Added dedicated `/projects/:projectId/analytics` frontend route featuring `KnowledgeGraphVisualizer` (React Flow), `TermFrequencySparkline` (Recharts), and a `ContradictionDashboard` for graph discrepancies.
+
+## [2.5.1] - 2026-04-05
 ### ✨ Architecture & Stabilization
 
 - **Python 3.14 Official Compatibility:**

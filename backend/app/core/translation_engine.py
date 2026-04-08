@@ -182,6 +182,17 @@ class TranslationEngine:
                 + "\n</narrative_context>\n"
             )
 
+        # Prompt block ordering is intentional for Gemini implicit caching:
+        # ┌──────────────────────────────────────────┐
+        # │  STABLE PREFIX  (identical across globs) │  ← Gemini caches this
+        # │    <system>, <glossary>, <style>,        │
+        # │    <constraints>                         │
+        # ├──────────────────────────────────────────┤
+        # │  DYNAMIC SUFFIX  (changes per chapter)   │  ← Always sent fresh
+        # │    <narrative_context>, <input>          │
+        # └──────────────────────────────────────────┘
+        # Glossary is stable for a project (grows only on approvals), so it anchors
+        # the cache.  Context/relationships are per-chapter and must stay dynamic.
         return f"""<system>
 You are a professional literary translator specializing in light novels.
 Translate from {source_name} to {target_name}.
@@ -191,15 +202,14 @@ Produce natural, publication-quality prose that reads as if originally written i
 <glossary mandatory="true">
 {glossary_text}
 </glossary>
-{rels_section}{context_section}{style_section}
-<constraints>
+{style_section}<constraints>
 - Use EXACT glossary translations for all matched terms — no synonyms, no alternatives
 - Preserve paragraph structure and dialogue formatting
 - Maintain emotional tone, narrative voice, and pacing
 - Do NOT add translator notes, commentary, or explanations
 - Preserve honorifics and cultural markers per language conventions
 </constraints>
-
+{context_section}{rels_section}
 <input>
 {normalized_text}
 </input>

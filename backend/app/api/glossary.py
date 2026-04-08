@@ -447,3 +447,37 @@ def get_cache_stats():
     ok_del = cache_service.delete(test_key)
     cache_info["cache_working"] = bool(ok_set and ok_get and ok_del)
     return {"success": True, "data": cache_info}
+
+
+# ── Consistency Checker Endpoints ──────────────────────────────────────────────
+
+@router.get("/{project_id}/consistency/audit")
+def audit_glossary_consistency(
+    project_id: int,
+    similarity_threshold: float = Query(0.85),
+    db: Session = Depends(get_db)
+):
+    """Scan all terms in a project to find potential semantic duplicates and overlapping prefixes."""
+    from app.services.consistency_checker import consistency_checker
+    
+    clusters = consistency_checker.audit_project(db, project_id, similarity_threshold)
+    return {
+        "project_id": project_id,
+        "clusters_found": len(clusters),
+        "clusters": clusters
+    }
+
+@router.post("/terms/{source_term_id}/merge/{target_term_id}")
+def merge_glossary_terms(
+    source_term_id: int,
+    target_term_id: int,
+    db: Session = Depends(get_db)
+):
+    """Merge source_term INTO target_term, transferring occurrences and relationships."""
+    from app.services.consistency_checker import consistency_checker
+    
+    result = consistency_checker.merge_terms(db, source_term_id, target_term_id)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+        
+    return result

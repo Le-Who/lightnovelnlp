@@ -100,6 +100,18 @@ class TermRelationship(Base):
     context = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # ── Temporal validity (MemPalace-inspired) ────────────────────────────────
+    # Tracks WHEN a relationship is true, enabling "as-of-chapter" queries.
+    # null valid_to_chapter means the relationship is currently active.
+    source_chapter_id = Column(
+        Integer, ForeignKey("chapters.id"), nullable=True, index=True
+    )
+    valid_from_chapter = Column(Integer, nullable=True)  # chapter.order value
+    valid_to_chapter = Column(Integer, nullable=True)    # chapter.order; null = still valid
+    superseded_by_id = Column(
+        Integer, ForeignKey("term_relationships.id"), nullable=True
+    )
+
     # Связи
     project = relationship("Project", back_populates="term_relationships")
     source_term = relationship(
@@ -111,6 +123,12 @@ class TermRelationship(Base):
         "GlossaryTerm",
         foreign_keys=[target_term_id],
         back_populates="target_relationships",
+    )
+    source_chapter = relationship("Chapter", foreign_keys=[source_chapter_id])
+    superseded_by = relationship(
+        "TermRelationship",
+        foreign_keys=[superseded_by_id],
+        remote_side="TermRelationship.id",
     )
 
 
@@ -199,3 +217,61 @@ class TermOccurrence(Base):
     __table_args__ = (
         UniqueConstraint("term_id", "chapter_id", name="uq_term_occurrence"),
     )
+
+
+class NarrativeThread(Base):
+    """
+    A narrative arc or plot thread running across multiple chapters.
+
+    Maps to MemPalace 'Tunnels' — cross-chapter connections.
+    Can be auto-detected from TermOccurrence co-occurrence patterns
+    or created/confirmed manually by the user.
+    """
+
+    __tablename__ = "narrative_threads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    thread_name = Column(String(255), nullable=False)
+    thread_type = Column(
+        String(50), default="plot"
+    )  # plot, character_arc, mystery, foreshadowing, item
+    is_auto_detected = Column(Integer, default=0)  # boolean-like for SQLite compat
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    project = relationship("Project", back_populates="narrative_threads")
+    anchors = relationship(
+        "ThreadAnchor", back_populates="thread", cascade="all, delete-orphan"
+    )
+
+
+class ThreadAnchor(Base):
+    """
+    A specific chapter attachment point for a NarrativeThread.
+
+    anchor_type indicates the narrative role:
+      - setup    : first introduction of the thread element
+      - development : progression / elaboration
+      - payoff   : resolution / climax of the thread
+      - callback : later reference back to an earlier setup
+    """
+
+    __tablename__ = "thread_anchors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(
+        Integer, ForeignKey("narrative_threads.id"), nullable=False, index=True
+    )
+    chapter_id = Column(Integer, ForeignKey("chapters.id"), nullable=False, index=True)
+    term_id = Column(
+        Integer, ForeignKey("glossary_terms.id"), nullable=True, index=True
+    )
+    anchor_text = Column(Text, nullable=True)  # key quote or event description
+    anchor_type = Column(String(50), default="mention")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    thread = relationship("NarrativeThread", back_populates="anchors")
+    chapter = relationship("Chapter")
+    term = relationship("GlossaryTerm")

@@ -86,6 +86,10 @@ export function NeonProjectPage({ project, loading, projectId, onRefresh }) {
                   <button onClick={openEditModal} className="ml-4 text-text-muted hover:text-accent transition-colors opacity-50 hover:opacity-100">
                     <Edit2 className="w-5 h-5" />
                   </button>
+                  <Link to={`/projects/${projectId}/analytics`} className="ml-4 text-text-muted hover:text-indigo-400 transition-colors opacity-80 hover:opacity-100 flex items-center text-sm border border-indigo-500/30 px-2 py-1 bg-indigo-500/10">
+                    <Activity className="w-4 h-4 mr-2" />
+                    MEM_PALACE_ANALYTICS
+                  </Link>
                 </h1>
               </div>
             </div>

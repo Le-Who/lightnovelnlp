@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from app.api import batch, glossary, processing, projects, translation
+    from app.api import batch, glossary, graph, processing, projects, translation
     from app.core.config import settings
     from app.core.exceptions import APIKeyExhausted, RateLimitExceeded
     from app.db import engine
@@ -102,6 +102,7 @@ app.include_router(glossary.router, prefix="/glossary", tags=["glossary"])
 app.include_router(processing.router, prefix="/processing", tags=["processing"])
 app.include_router(translation.router, prefix="/translation", tags=["translation"])
 app.include_router(batch.router, prefix="/batch", tags=["batch"])
+app.include_router(graph.router, prefix="/projects", tags=["graph"])
 
 
 # Exception handlers for custom service exceptions
