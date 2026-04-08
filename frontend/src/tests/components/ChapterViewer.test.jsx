@@ -216,4 +216,20 @@ describe("ChapterViewer", () => {
     expect(prevButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
   });
+
+  it("renders chapter list items as accessible buttons", async () => {
+    render(<ChapterViewer projectId="123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Chapter 1")).toBeInTheDocument();
+    });
+
+    const chapter1Btn = screen.getByRole("button", { name: /Chapter 1/ });
+    const chapter2Btn = screen.getByRole("button", { name: /Chapter 2/ });
+
+    expect(chapter1Btn).toBeInTheDocument();
+    expect(chapter2Btn).toBeInTheDocument();
+
+    expect(chapter1Btn).toHaveAttribute("type", "button");
+  });
 });
