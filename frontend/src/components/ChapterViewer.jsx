@@ -241,22 +241,24 @@ export default function ChapterViewer({ projectId }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {chapters.map((chapter, idx) => (
-            <div
+            <button
               key={chapter.id}
+              type="button"
               onClick={() => handleSelectChapter(chapter)}
-              className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
+              className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden w-full text-left focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              aria-label={`Read ${chapter.title}`}
             >
               {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity" />
 
               <div className="flex justify-between items-start mb-4 relative z-10">
                 <div className="text-xs font-mono text-secondary-accent px-2 py-1 bg-secondary-accent/10 border border-secondary-accent/20">
                   ID_{String(idx + 1).padStart(3, '0')}
                 </div>
-                <ArrowRight className="w-4 h-4 text-accent opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                <ArrowRight className="w-4 h-4 text-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 -translate-x-2 group-hover:translate-x-0 group-focus-visible:translate-x-0 transition-all" />
               </div>
 
-              <h4 className="font-bold text-text group-hover:text-accent truncate mb-6 text-lg tracking-tight relative z-10 transition-colors">
+              <h4 className="font-bold text-text group-hover:text-accent group-focus-visible:text-accent truncate mb-6 text-lg tracking-tight relative z-10 transition-colors">
                 {chapter.title}
               </h4>
 
@@ -272,10 +274,10 @@ export default function ChapterViewer({ projectId }) {
               </div>
 
               {/* Decorative styles */}
-              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent/0 group-hover:bg-accent/50 transition-colors duration-500 scale-x-0 group-hover:scale-x-100 origin-left" />
-              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent/0 group-hover:bg-accent/50 group-focus-visible:bg-accent/50 transition-colors duration-500 scale-x-0 group-hover:scale-x-100 group-focus-visible:scale-x-100 origin-left" />
+              <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity" />
+              <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity" />
+            </button>
           ))}
         </div>
       )}
