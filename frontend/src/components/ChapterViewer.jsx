@@ -241,10 +241,10 @@ export default function ChapterViewer({ projectId }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {chapters.map((chapter, idx) => (
-            <div
+            <button
               key={chapter.id}
               onClick={() => handleSelectChapter(chapter)}
-              className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden"
+              className="group relative border border-accent/20 bg-surface/40 p-6 cursor-pointer hover:bg-accent/5 hover:border-accent transition-all duration-300 overflow-hidden w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -275,7 +275,7 @@ export default function ChapterViewer({ projectId }) {
               <div className="absolute bottom-0 left-0 w-full h-[2px] bg-accent/0 group-hover:bg-accent/50 transition-colors duration-500 scale-x-0 group-hover:scale-x-100 origin-left" />
               <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-accent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+            </button>
           ))}
         </div>
       )}
